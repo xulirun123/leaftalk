@@ -130,15 +130,6 @@ const initializeConnection = async () => {
       rememberUpgrade: true
     })
 
-// 移除事件监听器（避免重复绑定）
-function removeEventListeners() {
-  const s = socket.value
-  if (!s) return
-  try {
-    const events = ['connect','disconnect','connect_error','new_message','system_message','message_status','user_status','blacklist_updated','incoming_call','webrtc:incoming-call','call_timeout','call_answered','call_ended','unread_update']
-    events.forEach(evt => { try { (s as any).off(evt) } catch {} })
-  } catch {}
-}
 
 
     // 设置为共享连接
@@ -153,6 +144,17 @@ function removeEventListeners() {
   }
 }
 
+// 移除事件监听器（避免重复绑定）- 放在模块作用域，供多个函数调用
+function removeEventListeners() {
+  const s = socket.value
+  if (!s) return
+  try {
+    const events = ['connect','disconnect','connect_error','new_message','system_message','message_status','user_status','blacklist_updated','incoming_call','webrtc:incoming-call','call_timeout','call_answered','call_ended','unread_update']
+    events.forEach(evt => { try { (s as any).off(evt) } catch {} })
+  } catch {}
+}
+
+
 // 设置事件监听器
 const setupEventListeners = () => {
   if (!socket.value) return
@@ -162,6 +164,8 @@ const setupEventListeners = () => {
 
   // 连接成功
   socket.value.on('connect', () => {
+
+
     console.log('✅ 实时消息接收器连接成功')
     isConnected.value = true
     isConnecting.value = false
