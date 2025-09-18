@@ -30,6 +30,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
 import { useAuthStore } from '../../../stores/auth'
+import { signalingService } from '../services/signalingService'
 
 // 路由和状态
 const route = useRoute()
@@ -57,6 +58,9 @@ const callTypeText = computed(() => {
 const acceptCall = async () => {
   console.log('📞 接听通话:', { callId: callId.value, callerId: callerId.value, callType: callType.value })
 
+  // 标记：会话期间保持聊天实时连接
+  try { sessionStorage.setItem('keep_realtime_ws', '1') } catch {}
+
   // 后台触发接听，不等待完成（由后端推送 answered，主叫再发 Offer）
   fetch('http://localhost:8893/api/webrtc-calls/answer', {
     method: 'POST',
@@ -66,6 +70,13 @@ const acceptCall = async () => {
     },
     body: JSON.stringify({ callId: callId.value })
   }).catch(err => console.warn('⚠️ 接听API失败（后台）:', err))
+
+  // 立即通过 Socket 转发 answered 状态，确保主叫方能尽快发送 Offer（与视频流程一致）
+  try {
+    signalingService.sendCallStatus(callId.value, 'answered')
+  } catch (e) {
+    console.warn('⚠️ 发送 answered 状态失败（可忽略，后端可能会推送）:', e)
+  }
 
   // 立即进入通话页，尽快加入房间并监听信令
   if (callType.value === 'video') {

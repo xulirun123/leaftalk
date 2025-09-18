@@ -255,6 +255,10 @@ let onCallStatusHandler: ((data: any) => any) | null = null
 let onErrorHandler: ((data: any) => any) | null = null
 let onCallEndedHandler: ((data: any) => any) | null = null
 
+// Offer 重发兜底（与视频通话保持一致的流程）
+let lastOffer: RTCSessionDescriptionInit | null = null
+let offerResendTimer: number | null = null
+
 // 计算属性
 const callStatusText = computed(() => {
   switch (callStatus.value) {
@@ -415,7 +419,7 @@ function setupSignalingListeners(): void {
   }
   signalingService.on('ice-candidate', onIceHandler)
 
-  // 被叫方接听后，主叫再进入连接流程并发送 Offer
+  // 被叫方接听后，主叫再进入连接流程并发送 Offer（并在未收到 Answer 时重发一次）
   onCallStatusHandler = async (data: any) => {
     if (data.callId === callId.value && data.status === 'answered') {
       callStatus.value = 'connecting'
@@ -423,7 +427,20 @@ function setupSignalingListeners(): void {
       if (isInitiator.value) {
         try {
           const offer = await peerConnectionService.createOffer()
+          lastOffer = offer
           signalingService.sendOffer(callId.value, targetUserId.value, offer, 'voice')
+
+          // 10秒未收到Answer则重发一次
+          if (offerResendTimer) clearTimeout(offerResendTimer)
+          offerResendTimer = window.setTimeout(() => {
+            const pc = peerConnectionService.getPeerConnection()
+            if (pc && pc.signalingState === 'have-local-offer') {
+              console.warn('⌛ 未收到 Answer，重发 Offer(voice)')
+              if (lastOffer) {
+                signalingService.sendOffer(callId.value, targetUserId.value, lastOffer, 'voice')
+              }
+            }
+          }, 10000)
         } catch (e) {
           console.error('❌ 发送 Offer 失败:', e)
         }
@@ -805,6 +822,10 @@ function cleanup(): void {
   if (durationTimer) {
     clearInterval(durationTimer)
     durationTimer = null
+  }
+  if (offerResendTimer) {
+    clearTimeout(offerResendTimer)
+    offerResendTimer = null
   }
 
   // 清理网络优化服务
