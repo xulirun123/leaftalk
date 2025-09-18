@@ -31,20 +31,8 @@
 
       <!-- 用户信息区域 -->
       <div class="user-section">
-        <div v-if="callStatus !== 'connected'" class="single-avatar">
+        <div class="single-avatar">
           <img :src="contactInfo.avatar" :alt="contactInfo.name" />
-        </div>
-        <div v-else class="avatars-row">
-          <div class="mini-avatar">
-            <img :src="selfInfo.avatar" :alt="selfInfo.name" />
-          </div>
-          <div class="mini-avatar">
-            <img :src="contactInfo.avatar" :alt="contactInfo.name" />
-          </div>
-        </div>
-        <div v-if="callStatus === 'connected'" class="names-row">
-          <span class="self-name">{{ selfInfo.name }}</span>
-          <span class="contact-name">{{ contactInfo.name }}</span>
         </div>
 
         <div class="user-info">

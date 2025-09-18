@@ -64,7 +64,9 @@ export function setupCallFlow(opts: CallFlowOptions, hooks: CallFlowHooks): () =
   const answerHandler = async (data: any) => {
     if (data.callId !== callId) return
     try {
+      console.log('📞 [callFlow] 收到 Answer, callId=', data.callId)
       await peerConnectionService.setRemoteAnswer(data.answer)
+      console.log('✅ [callFlow] 已设置远端 Answer')
     } catch (e) {
       console.error('❌ 设置远端 Answer 失败:', e)
     }
@@ -97,7 +99,7 @@ export function setupCallFlow(opts: CallFlowOptions, hooks: CallFlowHooks): () =
         offerResendTimer = window.setTimeout(() => {
           const pc = peerConnectionService.getPeerConnection()
           if (pc && pc.signalingState === 'have-local-offer' && lastOffer) {
-            console.warn('⌛ 未收到 Answer，重发 Offer:', type)
+            console.warn('⌛ 未收到 Answer，重发 Offer:', { callId, type })
             signalingService.sendOffer(callId, targetUserId, lastOffer, type)
           }
         }, 10000)
