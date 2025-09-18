@@ -226,20 +226,66 @@ class PeerConnectionService {
   }
 
   /**
-   * 创建 Answer
+   * 创建 Answer（幂等/容错）
+   * - 仅在 have-remote-offer 时创建 Answer
+   * - 重复/时序异常时安全忽略并返回已存在的本地 Answer（若有）
    */
   async createAnswer(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
     try {
-      if (!this.peerConnection) {
-        throw new Error('PeerConnection 未初始化')
+      const pc = this.peerConnection
+      if (!pc) throw new Error('PeerConnection 未初始化')
+
+      const state = pc.signalingState
+      const localType = pc.localDescription?.type
+      const remoteType = pc.remoteDescription?.type
+
+      // 若已存在本地 Answer，直接返回，避免重复 setLocalDescription 报错
+      if (localType === 'answer' && pc.localDescription) {
+        console.info('ℹ️ 已存在本地 Answer，跳过重复创建')
+        return pc.localDescription
       }
 
-      console.log('📞 处理 Offer 并创建 Answer')
-      await this.peerConnection.setRemoteDescription(offer)
-      
-      const answer = await this.peerConnection.createAnswer()
-      await this.peerConnection.setLocalDescription(answer)
-      
+      // 主叫侧（have-local-offer）不应创建 Answer
+      if (state === 'have-local-offer') {
+        console.info('ℹ️ 当前为主叫/已有本地 Offer，忽略创建 Answer')
+        throw new Error('InvalidState: have-local-offer cannot create answer')
+      }
+
+      // 设置远端 Offer：仅当尚未设置或 SDP 不同时再设置
+      if (!pc.remoteDescription || pc.remoteDescription.sdp !== offer.sdp) {
+        if (remoteType && remoteType !== 'offer') {
+          console.info('ℹ️ 远端描述已存在且非 offer，忽略设置远端 Offer:', remoteType)
+        } else {
+          console.log('📞 设置远端 Offer')
+          await pc.setRemoteDescription(offer)
+        }
+      }
+
+      // 仅在 have-remote-offer 状态下创建 Answer
+      if (pc.signalingState !== 'have-remote-offer') {
+        console.info('ℹ️ 当前信令状态非 have-remote-offer，跳过创建 Answer:', pc.signalingState)
+        // 返回现有本地 Answer（若存在），否则抛出以便上层忽略此次时序
+        if (pc.localDescription?.type === 'answer') return pc.localDescription
+        throw new Error(`InvalidState: ${pc.signalingState}`)
+      }
+
+      const answer = await pc.createAnswer()
+      try {
+        await pc.setLocalDescription(answer)
+      } catch (e: any) {
+        const msg = String(e?.message || '')
+        if (e?.name === 'InvalidModificationError' || /does not match the previously generated SDP/i.test(msg)) {
+          console.info('ℹ️ setLocalDescription(answer) 冲突，返回当前本地描述')
+          if (pc.localDescription?.type === 'answer') return pc.localDescription
+        }
+        if (e?.name === 'InvalidStateError' || /Called in wrong state|stable/i.test(msg)) {
+          console.info('ℹ️ setLocalDescription(answer) 时机已过/状态不符，忽略')
+          if (pc.localDescription?.type === 'answer') return pc.localDescription
+          throw e
+        }
+        throw e
+      }
+
       console.log('✅ Answer 创建成功')
       return answer
     } catch (error) {

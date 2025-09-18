@@ -502,30 +502,36 @@ function setupPeerConnectionListeners(): void {
 }
 
 /**
- * 处理收到的 Offer
+ * 处理收到的 Offer（幂等/容错）
  */
 async function handleOffer(offer: RTCSessionDescriptionInit): Promise<void> {
   try {
     callStatus.value = 'connecting'
     isConnecting.value = true
 
-    // 初始化 PeerConnection
-    await peerConnectionService.initializePeerConnection({
-      callId: callId.value,
-      isInitiator: false,
-      targetUserId: targetUserId.value,
-      type: 'voice'
-    })
+    // 如已存在 PeerConnection，避免重复初始化
+    const existing = peerConnectionService.getPeerConnection()
+    if (!existing) {
+      await peerConnectionService.initializePeerConnection({
+        callId: callId.value,
+        isInitiator: false,
+        targetUserId: targetUserId.value,
+        type: 'voice'
+      })
 
-    // 添加本地流
-    if (localStream.value) {
-      await peerConnectionService.addLocalStream(localStream.value)
+      if (localStream.value) {
+        await peerConnectionService.addLocalStream(localStream.value)
+      }
+    } else {
+      // 若重复 Offer 且已设置相同远端，后续 createAnswer 内部会根据状态安全忽略
+      console.warn('⚠️ 已存在 PeerConnection，继续按现有连接处理 Offer。state:', existing.signalingState)
     }
 
-    // 监听由统一通话流程内部完成
-    // 创建并发送 Answer
+    // 创建并发送 Answer（内部已做状态校验与重复保护）
     const answer = await peerConnectionService.createAnswer(offer)
-    signalingService.sendAnswer(callId.value, targetUserId.value, answer)
+    if (answer && (answer as any).type === 'answer') {
+      signalingService.sendAnswer(callId.value, targetUserId.value, answer)
+    }
 
   } catch (error) {
     console.error('❌ 处理 Offer 失败:', error)
