@@ -512,6 +512,13 @@ function setupPeerConnectionListeners(): void {
 
   peerConnectionService.on('remoteStream', (data: any) => {
     remoteStream.value = data.stream
+    // Fallback: 一旦收到远端流，视为已连接，防止因某些浏览器不触发 connectionState=connected 而卡在“正在连接”
+    if (!isConnected.value) {
+      callStatus.value = 'connected'
+      isConnected.value = true
+      isConnecting.value = false
+      startDurationTimer()
+    }
   })
 
   peerConnectionService.on('iceCandidate', (data: any) => {
