@@ -120,6 +120,7 @@ import { apiClient } from '../../../shared/services/apiClient'
 import { mediaService } from '../services/mediaService'
 import { peerConnectionService } from '../services/peerConnectionService'
 import { signalingService } from '../services/signalingService'
+import { setupCallFlow } from '../services/callFlow'
 
 // 路由和状态
 const route = useRoute()
@@ -161,6 +162,10 @@ const bigLocalPreviewRef = ref<HTMLVideoElement>()
 let durationTimer: number | null = null
 let offerResendTimer: number | null = null
 const answerHandled = ref(false)
+
+// 统一通话流程清理函数
+let callFlowCleanup: (() => void) | null = null
+
 let lastOffer: RTCSessionDescriptionInit | null = null
 
 // 计算属性
@@ -376,103 +381,44 @@ const initializeWebRTC = async () => {
 
 // 设置信令监听
 const setupSignalingListeners = () => {
-  // 收到来电
-  signalingService.on('incoming-call', (data) => {
-    console.log('📞 收到来电:', data)
-    if (data.callId === callId.value) {
-      // 这是我们正在处理的通话
-      callStatus.value = 'connecting'
-    }
-  })
+  // 统一通话流程（共用 voice/video）
+  if (callFlowCleanup) { try { callFlowCleanup() } catch {} callFlowCleanup = null }
 
-  // 收到 Offer
-  signalingService.on('offer', async (data) => {
-    if (data.callId === callId.value) {
-      await handleOffer(data.offer)
-    }
-  })
-
-  // 收到 Answer（幂等处理）
-  signalingService.on('answer', async (data: any) => {
-    if (data.callId === callId.value) {
-      // 若已处理过，直接忽略重复 Answer
-      if (answerHandled.value) {
-        console.warn('⚠️ 已处理过 Answer，忽略重复事件')
-        return
-      }
-      // 收到 Answer 后，清理Offer重发定时器
-      if (offerResendTimer) {
-        clearTimeout(offerResendTimer)
-        offerResendTimer = null
-      }
-      lastOffer = null
-
-      // 仅在本端处于 have-local-offer 时才设置远端Answer，避免 stable 状态报错
-      const pc = peerConnectionService.getPeerConnection()
-      const state = pc?.signalingState
-      if (state && state !== 'have-local-offer') {
-        console.warn('⚠️ 当前信令状态非 have-local-offer，忽略收到的 Answer:', state)
-        return
-      }
-
-      await handleAnswer(data.answer)
-    }
-  })
-
-  // 通话状态更新（用于在被叫方接听后，主叫再发送 Offer）
-  signalingService.on('call-status', async (data: any) => {
-    console.log('📊 通话状态更新:', data)
-    if (data.callId === callId.value && data.status === 'answered') {
-      callStatus.value = 'connecting'
-      if (isInitiator.value) {
-        try {
-          const offer = await peerConnectionService.createOffer()
-          // 记录最后一次Offer，若超时未收到Answer则重发
-          lastOffer = offer
-          signalingService.sendOffer(callId.value, contactInfo.value.id, offer, 'video')
-
-          // 10秒未收到Answer则重发一次
-          if (offerResendTimer) clearTimeout(offerResendTimer)
-          offerResendTimer = window.setTimeout(() => {
-            const pc = peerConnectionService.getPeerConnection()
-            if (pc && pc.signalingState === 'have-local-offer') {
-              console.warn('⌛ 未收到 Answer，重发 Offer')
-              if (lastOffer) {
-                signalingService.sendOffer(callId.value, contactInfo.value.id, lastOffer, 'video')
-              }
-            }
-          }, 10000)
-        } catch (e) {
-          console.error('❌ 发送 Offer 失败:', e)
+  callFlowCleanup = setupCallFlow(
+    {
+      callId: callId.value,
+      targetUserId: String(contactInfo.value.id),
+      type: 'video',
+      isInitiator: isInitiator.value,
+    },
+    {
+      handleOffer: async (offer) => { await handleOffer(offer) },
+      onConnected: () => {
+        callStatus.value = 'connected'
+        isConnecting.value = false
+        isSwapped.value = false
+        updateVideoBindings()
+        startDurationTimer()
+        appStore.showToast('通话已接通', 'success')
+      },
+      onRemoteStream: (stream) => {
+        remoteStream.value = stream
+        updateVideoBindings()
+      },
+      onError: (data) => {
+        if (data?.callId && data.callId !== callId.value) return
+        if (data?.error === 'TARGET_OFFLINE') {
+          appStore.showToast('对方不在线，无法接通', 'error')
+          handleCallEnded('target_offline')
         }
-      }
+      },
+      onCallEnded: (data) => {
+        if (data?.callId === callId.value) handleCallEnded(data.reason)
+      },
+      setConnecting: (v) => { isConnecting.value = v },
+      setStatus: (s) => { callStatus.value = s },
     }
-  })
-
-  // 收到 ICE 候选者
-  signalingService.on('ice-candidate', async (data: any) => {
-    if (data.callId === callId.value) {
-      await handleIceCandidate(data.candidate)
-    }
-  })
-
-  // 错误事件（如对方不在线等）
-  signalingService.on('error', (data: any) => {
-    if (data.callId === callId.value) {
-      console.error('❌ 收到信令错误:', data)
-      if (data.error === 'TARGET_OFFLINE') {
-        appStore.showToast('对方不在线，无法接通', 'error')
-        handleCallEnded('target_offline')
-      }
-    }
-  })
-
-  // 通话结束
-  signalingService.on('call-ended', (data: any) => {
-    if (data.callId === callId.value) {
-      handleCallEnded(data.reason)
-    }
-  })
+  )
 }
 
 // 开始通话流程
@@ -495,8 +441,7 @@ const startCall = async () => {
       await peerConnectionService.addLocalStream(localStream.value)
     }
 
-    // 设置 PeerConnection 监听
-    setupPeerConnectionListeners()
+    // 监听由统一通话流程内部完成
 
     if (isInitiator.value) {
       // 发起方：仅通知开始通话；等待对方接听（answered）后再创建并发送 Offer
@@ -604,8 +549,7 @@ const handleOffer = async (offer: RTCSessionDescriptionInit) => {
       await peerConnectionService.addLocalStream(localStream.value)
     }
 
-    // 设置监听
-    setupPeerConnectionListeners()
+    // 监听由统一通话流程内部完成
 
     // 创建并发送 Answer
     const answer = await peerConnectionService.createAnswer(offer)
@@ -686,6 +630,9 @@ const cleanup = () => {
     offerResendTimer = null
   }
   lastOffer = null
+
+  // 统一通话流程清理
+  if (callFlowCleanup) { try { callFlowCleanup() } catch {} callFlowCleanup = null }
 
   // 停止媒体流
   if (localStream.value) {
