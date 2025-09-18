@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地区选择页面修复测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #07C160;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .fix-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .fix-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .status.success {
+            background: #28a745;
+        }
+        
+        .status.warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .status.info {
+            background: #17a2b8;
+        }
+        
+        .status.error {
+            background: #dc3545;
+        }
+        
+        .fix-description {
+            flex: 1;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .problem-title {
+            font-weight: 600;
+            color: #dc3545;
+            margin-bottom: 4px;
+        }
+        
+        .solution-title {
+            font-weight: 600;
+            color: #28a745;
+            margin-bottom: 4px;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 8px 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #495057;
+        }
+        
+        .before {
+            background: #fff5f5;
+            border-color: #fed7d7;
+            color: #c53030;
+        }
+        
+        .after {
+            background: #f0fff4;
+            border-color: #c6f6d5;
+            color: #38a169;
+        }
+        
+        .test-link {
+            display: inline-block;
+            background: #07C160;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 8px 8px 8px 0;
+            transition: background 0.2s;
+        }
+        
+        .test-link:hover {
+            background: #06a552;
+        }
+        
+        .summary {
+            background: #e8f5e8;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .summary-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d5a2d;
+            margin-bottom: 8px;
+        }
+        
+        .summary-text {
+            color: #2d5a2d;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🔧 地区选择页面修复测试</h1>
+        
+        <div class="section">
+            <div class="section-title">🐛 修复的问题</div>
+            
+            <div class="fix-item">
+                <div class="status error">1</div>
+                <div class="fix-description">
+                    <div class="problem-title">Vue 重复键警告</div>
+                    <div>错误信息: "Duplicate keys found during update: 奠边省, 老街省"</div>
+                    <div class="code-block before">原因: v-for 使用 region 作为 key，地区数据中有重复名称</div>
+                    <div class="solution-title">解决方案:</div>
+                    <div class="code-block after">使用组合键: :key="`${currentLevel}-${index}-${region}`"</div>
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <div class="status error">2</div>
+                <div class="fix-description">
+                    <div class="problem-title">当前位置和实时位置区域被遮挡</div>
+                    <div>问题: MobileTopBar (z-index: 1000) 遮挡了下方内容</div>
+                    <div class="code-block before">原因: 固定定位的导航栏遮挡了页面内容</div>
+                    <div class="solution-title">解决方案:</div>
+                    <div class="code-block after">为关键元素添加 position: relative 和 z-index: 1</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">✅ 修复内容详情</div>
+            
+            <div class="fix-item">
+                <div class="status success">✓</div>
+                <div class="fix-description">
+                    <div class="solution-title">修复 Vue 重复键警告</div>
+                    <div>更改 v-for 的 key 属性:</div>
+                    <div class="code-block before">修复前: :key="region"</div>
+                    <div class="code-block after">修复后: :key="`${currentLevel}-${index}-${region}`"</div>
+                    <div>确保每个列表项都有唯一的键值，避免 Vue 渲染警告</div>
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <div class="status success">✓</div>
+                <div class="fix-description">
+                    <div class="solution-title">修复当前位置文本遮挡</div>
+                    <div>为 .current-location 添加样式:</div>
+                    <div class="code-block after">position: relative; z-index: 1;</div>
+                    <div>确保当前位置文本不被 MobileTopBar 遮挡</div>
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <div class="status success">✓</div>
+                <div class="fix-description">
+                    <div class="solution-title">修复自动定位容器遮挡</div>
+                    <div>为 .auto-location-container 添加样式:</div>
+                    <div class="code-block after">position: relative; z-index: 1;</div>
+                    <div>确保实时位置区域正常显示</div>
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <div class="status success">✓</div>
+                <div class="fix-description">
+                    <div class="solution-title">修复选择地区文本遮挡</div>
+                    <div>为 .select-region-text 添加样式:</div>
+                    <div class="code-block after">position: relative; z-index: 1;</div>
+                    <div>确保"选择地区"文本正常显示</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🎯 技术细节</div>
+            
+            <div class="fix-item">
+                <div class="status info">📋</div>
+                <div class="fix-description">
+                    <div class="solution-title">Vue 键值唯一性</div>
+                    <div>Vue 要求 v-for 中的 key 必须唯一，用于高效的 DOM 更新。</div>
+                    <div>组合键格式: <code>${currentLevel}-${index}-${region}</code></div>
+                    <div>包含层级、索引和地区名称，确保绝对唯一</div>
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <div class="status info">🎨</div>
+                <div class="fix-description">
+                    <div class="solution-title">Z-index 层级管理</div>
+                    <div>MobileTopBar: z-index: 1000 (最高层)</div>
+                    <div>页面内容: z-index: 1 (确保在导航栏下方但可见)</div>
+                    <div>使用 position: relative 建立新的层叠上下文</div>
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <div class="status info">📱</div>
+                <div class="fix-description">
+                    <div class="solution-title">移动端布局适配</div>
+                    <div>MobileApp 提供 65px 的统一顶部间距</div>
+                    <div>页面内容从导航栏下方开始显示</div>
+                    <div>确保所有关键元素都在可视区域内</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🧪 测试验证</div>
+            
+            <a href="http://127.0.0.1:5173/settings/region-selector" class="test-link" target="_blank">
+                🌍 测试地区选择页面
+            </a>
+            
+            <div style="margin-top: 12px;">
+                <strong>测试要点:</strong>
+                <ul style="margin-left: 20px; margin-top: 8px;">
+                    <li>✅ 控制台不再显示重复键警告</li>
+                    <li>✅ 当前位置文本完全可见</li>
+                    <li>✅ 实时位置区域完全可见</li>
+                    <li>✅ "选择地区"文本完全可见</li>
+                    <li>✅ 地区列表正常滚动</li>
+                    <li>✅ 点击交互正常工作</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="summary">
+            <div class="summary-title">📋 修复总结</div>
+            <div class="summary-text">
+                <strong>已解决的问题:</strong><br>
+                ✅ Vue 重复键警告 - 使用组合键确保唯一性<br>
+                ✅ 当前位置文本被遮挡 - 添加正确的 z-index<br>
+                ✅ 实时位置区域被遮挡 - 建立层叠上下文<br>
+                ✅ 选择地区文本被遮挡 - 确保可见性<br><br>
+                
+                <strong>技术改进:</strong><br>
+                🔧 更好的 Vue 列表渲染性能<br>
+                🎨 正确的 CSS 层级管理<br>
+                📱 完善的移动端布局适配<br>
+                🐛 消除控制台警告信息
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔧 地区选择页面修复测试');
+        console.log('✅ 修复内容：');
+        console.log('  1. Vue 重复键警告 - 使用组合键');
+        console.log('  2. 当前位置文本遮挡 - 添加 z-index');
+        console.log('  3. 实时位置区域遮挡 - 层叠上下文');
+        console.log('  4. 选择地区文本遮挡 - 确保可见');
+        console.log('🧪 请测试地区选择页面功能');
+    </script>
+</body>
+</html>

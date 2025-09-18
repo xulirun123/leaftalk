@@ -1,0 +1,50 @@
+{
+  "name": "leaftalk-unified-server",
+  "version": "2.0.0",
+  "description": "叶语统一服务器 - 整合WebRTC和后端服务",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "monitor": "node monitor-server.js",
+    "start:monitor": "node monitor-server.js",
+    "webrtc": "node webrtc/start-webrtc.js",
+    "webrtc:dev": "nodemon webrtc/start-webrtc.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install:all": "npm install && cd webrtc && npm install",
+    "clean": "rm -rf node_modules webrtc/node_modules services/node_modules"
+  },
+  "keywords": [
+    "leaftalk",
+    "叶语",
+    "chat",
+    "webrtc",
+    "nodejs",
+    "express",
+    "unified-server"
+  ],
+  "author": "叶语团队",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-fileupload": "^1.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.14.4",
+    "redis": "^4.6.0",
+    "socket.io": "^4.8.1",
+    "tencentcloud-sdk-nodejs": "^4.1.112",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "type": "commonjs"
+}

@@ -1,0 +1,382 @@
+// 叶语聊天系统 - 主样式文件
+// @use规则必须在最前面
+@use 'sass:color';
+@use './variables' as *;
+@use './mixins' as *;
+@use './chat.scss';
+
+// 导入设计令牌
+@import './design-tokens.css';
+
+// CSS变量定义（按要求统一：小13px，标准14px，大15px，特大16px）
+:root {
+  --font-size-s: 13px;
+  --font-size-m: 14px;
+  --font-size-l: 15px;
+  --font-size-xl: 16px;
+  /* 兼容旧变量名 */
+  --base-font-size: var(--font-size-m);
+  --chat-font-size: var(--font-size-m);
+}
+
+// 字体大小类（可切换全局尺寸档位）
+.font-size-small {
+  --base-font-size: var(--font-size-s);
+  --chat-font-size: var(--font-size-s);
+}
+
+.font-size-standard {
+  --base-font-size: var(--font-size-m);
+  --chat-font-size: var(--font-size-m);
+}
+
+.font-size-large {
+  --base-font-size: var(--font-size-l);
+  --chat-font-size: var(--font-size-l);
+}
+
+.font-size-extra-large {
+  --base-font-size: var(--font-size-xl);
+  --chat-font-size: var(--font-size-xl);
+}
+
+// 重置样式
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: $font-family-base;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+  color: $text-color-primary;
+  background-color: #e5e5e5 !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// 链接样式
+a {
+  color: $primary-color;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  
+  &:hover {
+    color: color.adjust($primary-color, $lightness: -10%);
+  }
+
+  &:active {
+    color: color.adjust($primary-color, $lightness: -20%);
+  }
+}
+
+// 按钮样式
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  outline: none;
+  transition: all 0.2s ease;
+  
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+// 输入框样式
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+// 图片样式
+img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+// 列表样式
+ul, ol {
+  list-style: none;
+}
+
+// 表格样式
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+// 滚动条样式
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: $border-color-light;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $border-color;
+  border-radius: 3px;
+  
+  &:hover {
+    background: color.adjust($border-color, $lightness: -10%);
+  }
+}
+
+// 选择文本样式
+::selection {
+  background: rgba($primary-color, 0.2);
+  color: $text-color-primary;
+}
+
+::-moz-selection {
+  background: rgba($primary-color, 0.2);
+  color: $text-color-primary;
+}
+
+// 工具类
+.clearfix {
+  @include clearfix;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-ellipsis {
+  @include text-ellipsis;
+}
+
+.text-ellipsis-2 {
+  @include text-ellipsis(2);
+}
+
+.text-ellipsis-3 {
+  @include text-ellipsis(3);
+}
+
+// 显示/隐藏
+.hidden {
+  display: none !important;
+}
+
+.invisible {
+  visibility: hidden !important;
+}
+
+.visible {
+  visibility: visible !important;
+}
+
+// 间距工具类
+@for $i from 0 through 10 {
+  .m-#{$i} { margin: #{$i * $spacing-unit} !important; }
+  .mt-#{$i} { margin-top: #{$i * $spacing-unit} !important; }
+  .mr-#{$i} { margin-right: #{$i * $spacing-unit} !important; }
+  .mb-#{$i} { margin-bottom: #{$i * $spacing-unit} !important; }
+  .ml-#{$i} { margin-left: #{$i * $spacing-unit} !important; }
+  .mx-#{$i} { 
+    margin-left: #{$i * $spacing-unit} !important;
+    margin-right: #{$i * $spacing-unit} !important;
+  }
+  .my-#{$i} { 
+    margin-top: #{$i * $spacing-unit} !important;
+    margin-bottom: #{$i * $spacing-unit} !important;
+  }
+  
+  .p-#{$i} { padding: #{$i * $spacing-unit} !important; }
+  .pt-#{$i} { padding-top: #{$i * $spacing-unit} !important; }
+  .pr-#{$i} { padding-right: #{$i * $spacing-unit} !important; }
+  .pb-#{$i} { padding-bottom: #{$i * $spacing-unit} !important; }
+  .pl-#{$i} { padding-left: #{$i * $spacing-unit} !important; }
+  .px-#{$i} { 
+    padding-left: #{$i * $spacing-unit} !important;
+    padding-right: #{$i * $spacing-unit} !important;
+  }
+  .py-#{$i} { 
+    padding-top: #{$i * $spacing-unit} !important;
+    padding-bottom: #{$i * $spacing-unit} !important;
+  }
+}
+
+// 弹性布局
+.flex {
+  display: flex !important;
+}
+
+.flex-column {
+  flex-direction: column !important;
+}
+
+.flex-row {
+  flex-direction: row !important;
+}
+
+.flex-wrap {
+  flex-wrap: wrap !important;
+}
+
+.flex-nowrap {
+  flex-wrap: nowrap !important;
+}
+
+.justify-start {
+  justify-content: flex-start !important;
+}
+
+.justify-center {
+  justify-content: center !important;
+}
+
+.justify-end {
+  justify-content: flex-end !important;
+}
+
+.justify-between {
+  justify-content: space-between !important;
+}
+
+.justify-around {
+  justify-content: space-around !important;
+}
+
+.align-start {
+  align-items: flex-start !important;
+}
+
+.align-center {
+  align-items: center !important;
+}
+
+.align-end {
+  align-items: flex-end !important;
+}
+
+.align-stretch {
+  align-items: stretch !important;
+}
+
+.flex-1 {
+  flex: 1 !important;
+}
+
+.flex-auto {
+  flex: auto !important;
+}
+
+.flex-none {
+  flex: none !important;
+}
+
+// 安全区域
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+// 响应式工具类
+@media (max-width: 576px) {
+  .hidden-xs {
+    display: none !important;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 768px) {
+  .hidden-sm {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 992px) {
+  .hidden-md {
+    display: none !important;
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1200px) {
+  .hidden-lg {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .hidden-xl {
+    display: none !important;
+  }
+}
+
+// 深色模式
+[data-theme="dark"] {
+  color-scheme: dark;
+  
+  body {
+    background-color: $dark-background-color;
+    color: $dark-text-color-primary;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: $dark-border-color-light;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: $dark-border-color;
+    
+    &:hover {
+      background: color.adjust($dark-border-color, $lightness: 10%);
+    }
+  }
+}
+
+// 全局统一背景色 - 将所有白色背景改为灰色
+* {
+  &[style*="background: white"],
+  &[style*="background-color: white"],
+  &[style*="background: #ffffff"],
+  &[style*="background-color: #ffffff"],
+  &[style*="background: #fff"],
+  &[style*="background-color: #fff"] {
+    background-color: #e5e5e5 !important;
+  }
+}
+
+

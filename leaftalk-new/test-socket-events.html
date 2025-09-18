@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO事件测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Socket.IO WebRTC事件测试</h1>
+    
+    <div class="section">
+        <h3>连接状态</h3>
+        <div id="connectionStatus" class="status">未连接</div>
+        <button onclick="connectSocket()">连接Socket.IO</button>
+        <button onclick="disconnectSocket()">断开连接</button>
+    </div>
+
+    <div class="section">
+        <h3>用户登录</h3>
+        <input type="text" id="userId" placeholder="用户ID" value="1">
+        <button onclick="joinUserRoom()">加入用户房间</button>
+    </div>
+
+    <div class="section">
+        <h3>模拟来电测试</h3>
+        <input type="text" id="callId" placeholder="通话ID" value="test-call-123">
+        <input type="text" id="fromUserId" placeholder="来电用户ID" value="2">
+        <select id="callType">
+            <option value="video">视频通话</option>
+            <option value="voice">语音通话</option>
+        </select>
+        <button onclick="simulateIncomingCall()">模拟接收来电</button>
+    </div>
+
+    <div class="section">
+        <h3>事件日志</h3>
+        <button onclick="clearLog()">清空日志</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+
+        function updateConnectionStatus(status, isSuccess = true) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.textContent = status;
+            statusDiv.className = `status ${isSuccess ? 'success' : 'error'}`;
+        }
+
+        function connectSocket() {
+            if (socket && socket.connected) {
+                log('Socket已连接');
+                return;
+            }
+
+            log('正在连接Socket.IO...');
+            socket = io('http://localhost:8893');
+
+            socket.on('connect', () => {
+                log(`✅ Socket.IO连接成功: ${socket.id}`);
+                updateConnectionStatus(`已连接: ${socket.id}`, true);
+            });
+
+            socket.on('disconnect', (reason) => {
+                log(`❌ Socket.IO连接断开: ${reason}`);
+                updateConnectionStatus(`连接断开: ${reason}`, false);
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`❌ Socket.IO连接错误: ${error.message}`);
+                updateConnectionStatus(`连接错误: ${error.message}`, false);
+            });
+
+            // 监听WebRTC事件
+            socket.on('webrtc:incoming-call', (data) => {
+                log(`📞 收到webrtc:incoming-call事件: ${JSON.stringify(data, null, 2)}`);
+            });
+
+            socket.on('incoming_call', (data) => {
+                log(`📞 收到incoming_call事件: ${JSON.stringify(data, null, 2)}`);
+            });
+
+            // 监听其他事件
+            socket.on('user_status', (data) => {
+                log(`👤 用户状态更新: ${JSON.stringify(data)}`);
+            });
+
+            socket.on('error', (error) => {
+                log(`❌ Socket错误: ${error}`);
+            });
+        }
+
+        function disconnectSocket() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                updateConnectionStatus('已断开', false);
+                log('Socket.IO连接已断开');
+            }
+        }
+
+        function joinUserRoom() {
+            if (!socket || !socket.connected) {
+                log('❌ Socket未连接');
+                return;
+            }
+
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                log('❌ 请输入用户ID');
+                return;
+            }
+
+            log(`📞 发送加入用户房间请求: ${userId}`);
+            socket.emit('join_user_room', { userId });
+        }
+
+        function simulateIncomingCall() {
+            if (!socket || !socket.connected) {
+                log('❌ Socket未连接');
+                return;
+            }
+
+            const callId = document.getElementById('callId').value;
+            const fromUserId = document.getElementById('fromUserId').value;
+            const type = document.getElementById('callType').value;
+
+            if (!callId || !fromUserId) {
+                log('❌ 请填写完整的通话信息');
+                return;
+            }
+
+            const callData = {
+                callId,
+                fromUserId,
+                type,
+                caller: {
+                    id: fromUserId
+                }
+            };
+
+            log(`📞 模拟发送webrtc:incoming-call事件: ${JSON.stringify(callData, null, 2)}`);
+            
+            // 直接触发事件（模拟服务器发送）
+            socket.emit('webrtc:incoming-call', callData);
+        }
+
+        // 页面加载时自动连接
+        window.onload = () => {
+            connectSocket();
+        };
+    </script>
+</body>
+</html>

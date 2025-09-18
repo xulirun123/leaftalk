@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清空时间戳机制测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #07C160;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            display: block;
+            width: 100%;
+            text-align: left;
+        }
+        .test-button:hover {
+            background: #06A050;
+        }
+        .danger-button {
+            background: #FF4444;
+        }
+        .danger-button:hover {
+            background: #DD2222;
+        }
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>⏰ 清空时间戳机制测试</h1>
+    
+    <div class="test-section">
+        <h2>📋 测试说明</h2>
+        <div class="info status">
+            <strong>新的解决方案：</strong><br>
+            使用时间戳机制区分历史消息和新消息，只有在清空时间之后发送的消息才会移除清空标记
+        </div>
+        
+        <div class="warning status">
+            <strong>新的修复逻辑：</strong><br>
+            1. 清空消息记录时记录时间戳<br>
+            2. 彻底阻止API同步已清空的会话<br>
+            3. 只有当前用户主动发送的新消息才移除清空标记<br>
+            4. 接收到的消息不会移除清空标记，历史消息永远不会回来
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 测试操作</h2>
+        
+        <button class="test-button" onclick="checkCurrentStatus()">
+            1. 检查当前状态
+        </button>
+        
+        <button class="test-button danger-button" onclick="clearChatWithTimestamp()">
+            2. 清空消息记录（记录时间戳）
+        </button>
+        
+        <button class="test-button" onclick="simulateOldMessage()">
+            3. 模拟旧消息（清空前的时间）
+        </button>
+        
+        <button class="test-button" onclick="simulateNewMessage()">
+            4. 模拟新消息（清空后的时间）
+        </button>
+        
+        <button class="test-button" onclick="checkTimestamps()">
+            5. 检查时间戳状态
+        </button>
+        
+        <button class="test-button" onclick="goToChatPage()">
+            6. 跳转到聊天页面验证
+        </button>
+        
+        <button class="test-button danger-button" onclick="resetTestData()">
+            重置测试数据
+        </button>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 测试结果</h2>
+        <div id="status" class="info status">等待测试...</div>
+        <div id="log" class="log">测试日志将在这里显示...</div>
+    </div>
+
+    <script>
+        let logContent = '';
+        let clearTimestamp = 0;
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContent += `[${timestamp}] ${message}\n`;
+            document.getElementById('log').textContent = logContent;
+            console.log(message);
+        }
+        
+        function setStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        function checkCurrentStatus() {
+            log('🔍 检查当前状态...');
+            
+            try {
+                const clearedSessions = localStorage.getItem('cleared_chat_sessions');
+                const clearedTimestamps = localStorage.getItem('cleared_chat_timestamps');
+                
+                log('📊 当前状态:');
+                
+                if (clearedSessions) {
+                    const cleared = JSON.parse(clearedSessions);
+                    log(`🧹 已清空的会话: ${cleared.length} 个`);
+                    cleared.forEach(sessionId => {
+                        log(`  - ${sessionId}`);
+                    });
+                } else {
+                    log('🧹 没有已清空的会话');
+                }
+                
+                if (clearedTimestamps) {
+                    const timestamps = JSON.parse(clearedTimestamps);
+                    log(`⏰ 清空时间戳: ${Object.keys(timestamps).length} 个`);
+                    Object.entries(timestamps).forEach(([sessionId, timestamp]) => {
+                        log(`  - ${sessionId}: ${new Date(Number(timestamp)).toLocaleString()}`);
+                    });
+                } else {
+                    log('⏰ 没有清空时间戳记录');
+                }
+                
+                setStatus('状态检查完成', 'success');
+            } catch (error) {
+                log(`❌ 检查状态失败: ${error.message}`);
+                setStatus('检查失败', 'error');
+            }
+        }
+        
+        function clearChatWithTimestamp() {
+            log('🧹 清空消息记录并记录时间戳...');
+            
+            try {
+                clearTimestamp = Date.now();
+                
+                // 添加到清空列表
+                const clearedSessions = localStorage.getItem('cleared_chat_sessions');
+                let cleared = clearedSessions ? JSON.parse(clearedSessions) : [];
+                
+                if (!cleared.includes('chat_1_2')) {
+                    cleared.push('chat_1_2');
+                    localStorage.setItem('cleared_chat_sessions', JSON.stringify(cleared));
+                }
+                
+                // 记录清空时间戳
+                const clearedTimestamps = localStorage.getItem('cleared_chat_timestamps');
+                let timestamps = clearedTimestamps ? JSON.parse(clearedTimestamps) : {};
+                timestamps['chat_1_2'] = clearTimestamp;
+                localStorage.setItem('cleared_chat_timestamps', JSON.stringify(timestamps));
+                
+                log(`✅ 已清空 chat_1_2，时间戳: ${clearTimestamp}`);
+                log(`📅 清空时间: ${new Date(clearTimestamp).toLocaleString()}`);
+                
+                setStatus('消息记录清空完成', 'success');
+            } catch (error) {
+                log(`❌ 清空失败: ${error.message}`);
+                setStatus('清空失败', 'error');
+            }
+        }
+        
+        function simulateOldMessage() {
+            log('📤 模拟旧消息（清空前的时间）...');
+            
+            if (!clearTimestamp) {
+                log('❌ 请先执行清空操作');
+                setStatus('请先清空消息记录', 'error');
+                return;
+            }
+            
+            try {
+                // 创建一个时间早于清空时间的消息
+                const oldMessageTime = clearTimestamp - 60000; // 清空前1分钟
+                const oldMessage = {
+                    id: `old_msg_${Date.now()}`,
+                    sessionId: 'chat_1_2',
+                    senderId: '2',
+                    receiverId: '1',
+                    content: '这是清空前的旧消息',
+                    type: 'text',
+                    timestamp: oldMessageTime,
+                    status: 'sent',
+                    isOwn: true
+                };
+                
+                log(`📤 旧消息时间: ${new Date(oldMessageTime).toLocaleString()}`);
+                log(`📤 清空时间: ${new Date(clearTimestamp).toLocaleString()}`);
+                log(`📤 时间差: ${oldMessageTime - clearTimestamp}ms (负数表示早于清空时间)`);
+                
+                // 模拟chatStore逻辑检查
+                const clearedTimestamps = localStorage.getItem('cleared_chat_timestamps');
+                const timestamps = clearedTimestamps ? JSON.parse(clearedTimestamps) : {};
+                const clearTime = timestamps['chat_1_2'] || 0;
+                
+                if (oldMessageTime > clearTime) {
+                    log('❌ 逻辑错误：旧消息时间晚于清空时间');
+                } else {
+                    log('✅ 正确：旧消息时间早于清空时间，不会移除清空标记');
+                }
+                
+                setStatus('旧消息模拟完成', 'success');
+            } catch (error) {
+                log(`❌ 模拟失败: ${error.message}`);
+                setStatus('模拟失败', 'error');
+            }
+        }
+        
+        function simulateNewMessage() {
+            log('📤 模拟新消息（清空后的时间）...');
+            
+            if (!clearTimestamp) {
+                log('❌ 请先执行清空操作');
+                setStatus('请先清空消息记录', 'error');
+                return;
+            }
+            
+            try {
+                // 创建一个时间晚于清空时间的消息
+                const newMessageTime = Date.now(); // 当前时间
+                const newMessage = {
+                    id: `new_msg_${Date.now()}`,
+                    sessionId: 'chat_1_2',
+                    senderId: '2',
+                    receiverId: '1',
+                    content: '这是清空后的新消息',
+                    type: 'text',
+                    timestamp: newMessageTime,
+                    status: 'sent',
+                    isOwn: true
+                };
+                
+                log(`📤 新消息时间: ${new Date(newMessageTime).toLocaleString()}`);
+                log(`📤 清空时间: ${new Date(clearTimestamp).toLocaleString()}`);
+                log(`📤 时间差: ${newMessageTime - clearTimestamp}ms (正数表示晚于清空时间)`);
+                
+                // 模拟chatStore逻辑检查
+                const clearedTimestamps = localStorage.getItem('cleared_chat_timestamps');
+                let timestamps = clearedTimestamps ? JSON.parse(clearedTimestamps) : {};
+                const clearTime = timestamps['chat_1_2'] || 0;
+                
+                if (newMessageTime > clearTime) {
+                    log('✅ 正确：新消息时间晚于清空时间，应该移除清空标记');
+                    
+                    // 模拟移除清空标记
+                    const clearedSessions = localStorage.getItem('cleared_chat_sessions');
+                    let cleared = clearedSessions ? JSON.parse(clearedSessions) : [];
+                    cleared = cleared.filter(id => id !== 'chat_1_2');
+                    localStorage.setItem('cleared_chat_sessions', JSON.stringify(cleared));
+                    
+                    delete timestamps['chat_1_2'];
+                    localStorage.setItem('cleared_chat_timestamps', JSON.stringify(timestamps));
+                    
+                    log('✅ 已从清空列表中移除 chat_1_2');
+                } else {
+                    log('❌ 逻辑错误：新消息时间早于清空时间');
+                }
+                
+                setStatus('新消息模拟完成', 'success');
+            } catch (error) {
+                log(`❌ 模拟失败: ${error.message}`);
+                setStatus('模拟失败', 'error');
+            }
+        }
+        
+        function checkTimestamps() {
+            log('⏰ 检查时间戳状态...');
+            
+            try {
+                const clearedSessions = localStorage.getItem('cleared_chat_sessions');
+                const clearedTimestamps = localStorage.getItem('cleared_chat_timestamps');
+                
+                const cleared = clearedSessions ? JSON.parse(clearedSessions) : [];
+                const timestamps = clearedTimestamps ? JSON.parse(clearedTimestamps) : {};
+                
+                log(`📋 当前清空列表: ${cleared.length > 0 ? cleared.join(', ') : '空'}`);
+                log(`⏰ 当前时间戳记录: ${Object.keys(timestamps).length} 个`);
+                
+                if (cleared.includes('chat_1_2')) {
+                    log('❌ chat_1_2 仍在清空列表中，历史消息会被过滤');
+                    setStatus('清空状态仍然有效', 'warning');
+                } else {
+                    log('✅ chat_1_2 不在清空列表中，消息应该正常显示');
+                    setStatus('清空状态已移除', 'success');
+                }
+            } catch (error) {
+                log(`❌ 检查失败: ${error.message}`);
+                setStatus('检查失败', 'error');
+            }
+        }
+        
+        function goToChatPage() {
+            log('🔗 跳转到聊天页面验证...');
+            window.location.href = '/chat/1_2';
+        }
+        
+        function resetTestData() {
+            if (confirm('确定要重置所有测试数据吗？')) {
+                log('🔄 重置测试数据...');
+                
+                try {
+                    localStorage.removeItem('cleared_chat_sessions');
+                    localStorage.removeItem('cleared_chat_timestamps');
+                    clearTimestamp = 0;
+                    
+                    log('✅ 测试数据重置完成');
+                    setStatus('测试数据重置完成', 'success');
+                } catch (error) {
+                    log(`❌ 重置失败: ${error.message}`);
+                    setStatus('重置失败', 'error');
+                }
+            }
+        }
+        
+        // 页面加载时自动检查状态
+        window.onload = function() {
+            log('🚀 清空时间戳机制测试工具已加载');
+            checkCurrentStatus();
+        };
+    </script>
+</body>
+</html>

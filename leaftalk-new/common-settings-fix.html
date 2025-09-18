@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ common.settings 翻译键修复完成</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #48bb78;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .fix-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .fix-section h3 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        
+        .error-list {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .error-list h4 {
+            color: #c53030;
+            margin-bottom: 12px;
+        }
+        
+        .error-list ul {
+            margin-left: 20px;
+            color: #c53030;
+        }
+        
+        .error-list li {
+            margin-bottom: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+        
+        .fix-list {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .fix-list h4 {
+            color: #2f855a;
+            margin-bottom: 12px;
+        }
+        
+        .fix-list ul {
+            margin-left: 20px;
+            color: #2f855a;
+        }
+        
+        .fix-list li {
+            margin-bottom: 8px;
+        }
+        
+        .translation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        
+        .translation-table th,
+        .translation-table td {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .translation-table th {
+            background: #48bb78;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .translation-table tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        
+        .test-button {
+            padding: 16px 20px;
+            background: #48bb78;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            display: block;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+        }
+        
+        .test-button.primary {
+            background: #3182ce;
+        }
+        
+        .test-button.primary:hover {
+            background: #2c5282;
+        }
+        
+        .code-block {
+            background: #f1f3f4;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #333;
+            white-space: pre-wrap;
+            margin: 16px 0;
+            border: 1px solid #e0e0e0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">✅ common.settings 翻译键修复完成</h1>
+            <p class="subtitle">修复了 MobileApp.vue 中缺失的 common.settings 翻译键</p>
+            <div class="status">🎉 修复成功</div>
+        </div>
+        
+        <div class="fix-section">
+            <h3>❌ 修复前的问题</h3>
+            <div class="error-list">
+                <h4>控制台错误信息：</h4>
+                <ul>
+                    <li>[intlify] Not found 'common.settings' key in 'ko' locale messages.</li>
+                    <li>[intlify] Fall back to translate 'common.settings' key with 'zh-CN' locale.</li>
+                    <li>[intlify] Fall back to translate 'common.settings' key with 'zh' locale.</li>
+                    <li>[intlify] Not found 'common.settings' key in 'zh' locale messages.</li>
+                    <li>类似错误在所有语言文件中都存在</li>
+                </ul>
+            </div>
+            
+            <h4>问题原因：</h4>
+            <p style="margin-left: 20px; color: #666; line-height: 1.6;">
+                MobileApp.vue 在页面标题映射中使用了 <code>t('common.settings')</code>，但是所有语言文件的 common 部分都缺少 settings 键，导致翻译失败并出现控制台警告。
+            </p>
+        </div>
+        
+        <div class="fix-section">
+            <h3>✅ 修复内容</h3>
+            <div class="fix-list">
+                <h4>已添加的翻译键：</h4>
+                <ul>
+                    <li><strong>common.settings</strong> - 在所有 6 种语言文件中添加</li>
+                    <li>确保页面标题能正确显示 "设置" 而不是回退到其他语言</li>
+                    <li>统一了 common 部分的翻译键结构</li>
+                    <li>消除了控制台中的翻译键缺失警告</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="fix-section">
+            <h3>🌐 完整的翻译对照表</h3>
+            <table class="translation-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>简体中文</th>
+                        <th>English</th>
+                        <th>日本語</th>
+                        <th>한국어</th>
+                        <th>Bahasa Malaysia</th>
+                        <th>繁體中文</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>common.settings</strong></td>
+                        <td>设置</td>
+                        <td>Settings</td>
+                        <td>設定</td>
+                        <td>설정</td>
+                        <td>Tetapan</td>
+                        <td>設置</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="fix-section">
+            <h3>🔧 技术实现</h3>
+            
+            <h4>修复前的问题：</h4>
+            <div class="code-block">❌ 语言文件中的 common 部分：
+{
+  "common": {
+    "confirm": "确认",
+    "cancel": "取消",
+    // ... 其他键
+    "redo": "重做"
+    // ❌ 缺少 "settings" 键
+  }
+}</div>
+            
+            <h4>修复后的结构：</h4>
+            <div class="code-block">✅ 语言文件中的 common 部分：
+{
+  "common": {
+    "confirm": "确认",
+    "cancel": "取消",
+    // ... 其他键
+    "redo": "重做",
+    "settings": "设置"  // ✅ 新添加的键
+  }
+}</div>
+        </div>
+        
+        <div class="fix-section">
+            <h3>🧪 测试验证</h3>
+            <div class="test-grid">
+                <a href="http://127.0.0.1:5174/settings" class="test-button primary" target="_blank">
+                    ⚙️ 打开设置页面
+                </a>
+                <a href="http://127.0.0.1:5174/profile" class="test-button" target="_blank">
+                    👤 打开个人资料页面
+                </a>
+                <a href="http://127.0.0.1:5174/settings/language-selector" class="test-button" target="_blank">
+                    🌐 打开语言选择页面
+                </a>
+                <button class="test-button" onclick="showTestSteps()">
+                    📋 查看测试步骤
+                </button>
+                <button class="test-button" onclick="openDevConsole()">
+                    🛠️ 打开开发者控制台
+                </button>
+            </div>
+        </div>
+        
+        <div class="fix-section">
+            <h3>✅ 验证清单</h3>
+            <div style="margin-left: 20px;">
+                <p><strong>请按以下步骤验证修复效果：</strong></p>
+                <ol style="margin-top: 12px; line-height: 1.6;">
+                    <li><strong>检查控制台</strong>：打开开发者控制台，确认没有 common.settings 相关的翻译键缺失警告</li>
+                    <li><strong>测试设置页面标题</strong>：
+                        <ul style="margin-left: 20px; margin-top: 8px;">
+                            <li>打开设置页面，观察页面标题是否正确显示</li>
+                            <li>切换到韩语，确认标题显示为 "설정"</li>
+                            <li>切换到日语，确认标题显示为 "設定"</li>
+                            <li>切换到英语，确认标题显示为 "Settings"</li>
+                        </ul>
+                    </li>
+                    <li><strong>验证页面导航</strong>：从个人资料页面点击设置，确认页面标题正确</li>
+                    <li><strong>跨语言测试</strong>：在不同语言下访问设置页面，确认标题都能正确翻译</li>
+                </ol>
+                
+                <p style="margin-top: 16px;"><strong>预期结果：</strong></p>
+                <ul style="margin-top: 8px; line-height: 1.6;">
+                    <li>✅ 控制台不再出现 common.settings 相关的翻译键缺失警告</li>
+                    <li>✅ 设置页面标题在所有语言下都能正确显示</li>
+                    <li>✅ 页面标题不再回退到其他语言</li>
+                    <li>✅ 语言切换时页面标题立即更新</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTestSteps() {
+            alert(`🧪 common.settings 翻译键修复验证步骤：
+
+1. 🛠️ 打开开发者控制台
+   - 按 F12 或右键选择"检查"
+   - 查看 Console 标签页
+   - 确认没有 common.settings 相关的翻译键缺失错误
+
+2. ⚙️ 测试设置页面
+   - 打开设置页面
+   - 观察页面标题是否正确显示
+
+3. 🌐 测试语言切换
+   - 切换到韩语：标题应显示 "설정"
+   - 切换到日语：标题应显示 "設定"
+   - 切换到英语：标题应显示 "Settings"
+
+4. 🔄 验证实时更新
+   - 在设置页面直接切换语言
+   - 观察页面标题是否立即更新
+
+✅ 如果所有步骤都通过，说明 common.settings 翻译键修复成功！`)
+        }
+        
+        function openDevConsole() {
+            console.log('🔍 common.settings 翻译键修复验证：')
+            console.log('✅ 已添加的翻译键：')
+            console.log('  - common.settings: 设置/Settings/設定/설정/Tetapan/設置')
+            console.log('📋 现在应该不会再出现 common.settings 相关的翻译键缺失警告了！')
+            
+            alert('请按 F12 打开开发者控制台，查看详细的验证信息')
+        }
+        
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ common.settings 翻译键修复验证页面已加载')
+            console.log('🎯 修复内容：')
+            console.log('  - 在所有 6 种语言文件的 common 部分添加了 settings 键')
+            console.log('  - 修复了 MobileApp.vue 页面标题映射中的翻译问题')
+            console.log('  - 统一了翻译键结构')
+            console.log('📋 现在可以测试设置页面标题的翻译是否正常工作！')
+        })
+    </script>
+</body>
+</html>

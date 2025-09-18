@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户数据调试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .data-item {
+            margin: 10px 0;
+            padding: 8px;
+            background: #f9f9f9;
+            border-left: 3px solid #007bff;
+        }
+        .data-item strong {
+            color: #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error {
+            color: red;
+            background: #ffe6e6;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+            background: #e6ffe6;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>用户数据调试工具</h1>
+        
+        <div class="section">
+            <h3>操作按钮</h3>
+            <button onclick="checkLocalStorage()">检查 LocalStorage</button>
+            <button onclick="fetchUserProfile()">获取用户资料</button>
+            <button onclick="updateGender()">更新性别为男</button>
+            <button onclick="updateSignature()">更新个性签名</button>
+            <button onclick="checkFrontendState()">检查前端状态</button>
+            <button onclick="clearData()">清除数据</button>
+        </div>
+
+        <div class="section">
+            <h3>LocalStorage 数据</h3>
+            <div id="localStorage-data"></div>
+        </div>
+
+        <div class="section">
+            <h3>API 响应数据</h3>
+            <div id="api-data"></div>
+        </div>
+
+        <div class="section">
+            <h3>操作日志</h3>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function checkLocalStorage() {
+            const storageDiv = document.getElementById('localStorage-data');
+            const token = localStorage.getItem('yeyu_auth_token') || localStorage.getItem('token');
+            const user = localStorage.getItem('yeyu_user') || localStorage.getItem('user');
+            
+            let html = '';
+            html += `<div class="data-item"><strong>Token:</strong> ${token ? '存在 (长度: ' + token.length + ')' : '不存在'}</div>`;
+            
+            if (user) {
+                try {
+                    const userData = JSON.parse(user);
+                    html += `<div class="data-item"><strong>用户数据:</strong></div>`;
+                    html += `<div class="data-item">ID: ${userData.id}</div>`;
+                    html += `<div class="data-item">昵称: ${userData.nickname || '未设置'}</div>`;
+                    html += `<div class="data-item">性别: ${userData.gender || '未设置'}</div>`;
+                    html += `<div class="data-item">个性签名: ${userData.signature || '未设置'}</div>`;
+                    html += `<div class="data-item">完整数据: <pre>${JSON.stringify(userData, null, 2)}</pre></div>`;
+                } catch (e) {
+                    html += `<div class="data-item error">用户数据解析失败: ${e.message}</div>`;
+                }
+            } else {
+                html += `<div class="data-item">用户数据: 不存在</div>`;
+            }
+            
+            storageDiv.innerHTML = html;
+            log('LocalStorage 数据检查完成');
+        }
+
+        async function fetchUserProfile() {
+            const token = localStorage.getItem('yeyu_auth_token') || localStorage.getItem('token');
+            if (!token) {
+                log('没有找到认证令牌', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                const apiDiv = document.getElementById('api-data');
+                
+                if (data.success) {
+                    const user = data.data;
+                    let html = `<div class="data-item"><strong>API 响应成功:</strong></div>`;
+                    html += `<div class="data-item">ID: ${user.id}</div>`;
+                    html += `<div class="data-item">昵称: ${user.nickname || '未设置'}</div>`;
+                    html += `<div class="data-item">性别: ${user.gender || '未设置'}</div>`;
+                    html += `<div class="data-item">个性签名: ${user.signature || '未设置'}</div>`;
+                    html += `<div class="data-item">完整数据: <pre>${JSON.stringify(user, null, 2)}</pre></div>`;
+                    apiDiv.innerHTML = html;
+                    log('用户资料获取成功', 'success');
+                } else {
+                    apiDiv.innerHTML = `<div class="error">API 错误: ${data.error}</div>`;
+                    log(`API 错误: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`请求失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateGender() {
+            const token = localStorage.getItem('yeyu_auth_token') || localStorage.getItem('token');
+            if (!token) {
+                log('没有找到认证令牌', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ gender: 'male' })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    log('性别更新成功', 'success');
+                    await fetchUserProfile();
+                } else {
+                    log(`性别更新失败: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`性别更新请求失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateSignature() {
+            const signature = prompt('请输入新的个性签名:');
+            if (!signature) return;
+
+            const token = localStorage.getItem('yeyu_auth_token') || localStorage.getItem('token');
+            if (!token) {
+                log('没有找到认证令牌', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ signature })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    log('个性签名更新成功', 'success');
+                    await fetchUserProfile();
+                } else {
+                    log(`个性签名更新失败: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`个性签名更新请求失败: ${error.message}`, 'error');
+            }
+        }
+
+        function clearData() {
+            localStorage.removeItem('yeyu_auth_token');
+            localStorage.removeItem('token');
+            localStorage.removeItem('yeyu_user');
+            localStorage.removeItem('user');
+            document.getElementById('localStorage-data').innerHTML = '';
+            document.getElementById('api-data').innerHTML = '';
+            log('数据已清除', 'success');
+        }
+
+        // 检查前端状态
+        function checkFrontendState() {
+            // 检查是否有Vue应用实例
+            if (window.Vue || window.__VUE__) {
+                log('Vue应用已加载');
+
+                // 尝试访问authStore
+                try {
+                    // 这里需要用户在控制台手动检查
+                    log('请在浏览器控制台运行以下命令检查前端状态:');
+                    log('1. 检查authStore: window.$pinia?.state?.value?.auth');
+                    log('2. 检查用户数据: window.$pinia?.state?.value?.auth?.user');
+                    log('3. 检查token: window.$pinia?.state?.value?.auth?.token');
+                } catch (e) {
+                    log('无法访问前端状态: ' + e.message, 'error');
+                }
+            } else {
+                log('Vue应用未加载', 'error');
+            }
+        }
+
+        // 页面加载时自动检查数据
+        window.onload = function() {
+            checkLocalStorage();
+            fetchUserProfile();
+            checkFrontendState();
+        };
+    </script>
+</body>
+</html>

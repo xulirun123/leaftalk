@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叶语统一布局演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #EDEDED; /* 统一的灰色背景 */
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 模拟手机屏幕 */
+        .phone-container {
+            width: 375px;
+            height: 667px;
+            margin: 20px auto;
+            background: #EDEDED;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        
+        /* 统一导航栏 - 48px高度 */
+        .settings-header {
+            background: white;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid #f0f0f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 100;
+        }
+        
+        .back-btn {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        
+        .back-btn:hover {
+            background: #f5f5f5;
+        }
+        
+        .header-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            flex: 1;
+            text-align: center;
+            margin-right: 32px;
+        }
+        
+        /* 内容区域 */
+        .settings-content {
+            height: calc(100% - 48px);
+            overflow-y: auto;
+            padding: 8px; /* 8px网格系统 */
+            background: #EDEDED;
+        }
+        
+        /* 设置分组 */
+        .settings-group {
+            margin-bottom: 8px;
+        }
+        
+        .group-content {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 设置项 */
+        .settings-item {
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+        
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* 文本项：25px高度，灰色背景 */
+        .text-item {
+            height: 25px;
+            background: #e5e5e5;
+            border-bottom: 1px solid #d0d0d0;
+        }
+        
+        .text-item .item-title {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        /* 普通项：48px高度，白色背景 */
+        .normal-item {
+            height: 48px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .normal-item:hover {
+            background: #f8f8f8;
+        }
+        
+        .normal-item .item-title {
+            font-size: 16px;
+            color: #333;
+            font-weight: 400;
+        }
+        
+        /* 开关项：48px高度 */
+        .switch-item {
+            height: 48px;
+            background: white;
+        }
+        
+        .item-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .item-subtitle {
+            font-size: 12px;
+            color: #999;
+            margin-top: 2px;
+        }
+        
+        .item-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .item-value {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        .arrow {
+            color: #c8c8c8;
+            font-size: 14px;
+        }
+        
+        /* 开关样式 */
+        .switch {
+            width: 44px;
+            height: 24px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .switch.active {
+            background: #07C160;
+        }
+        
+        .switch-thumb {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 10px;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .switch.active .switch-thumb {
+            transform: translateX(20px);
+        }
+        
+        .emoji-icon {
+            font-size: 18px;
+            margin-right: 12px;
+        }
+        
+        .check-icon {
+            color: #07C160;
+            font-size: 18px;
+        }
+        
+        .demo-title {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-container">
+        <div class="demo-title">叶语统一布局演示</div>
+        
+        <!-- 统一导航栏 -->
+        <div class="settings-header">
+            <button class="back-btn">
+                <span style="font-size: 18px;">←</span>
+            </button>
+            <div class="header-title">通用设置</div>
+        </div>
+        
+        <!-- 内容区域 -->
+        <div class="settings-content">
+            <!-- 说明文本组 -->
+            <div class="settings-group">
+                <div class="group-content">
+                    <div class="settings-item text-item">
+                        <div class="item-content">
+                            <div class="item-title">文本项示例 - 25px高度，灰色背景</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 语言设置组 -->
+            <div class="settings-group">
+                <div class="group-content">
+                    <div class="settings-item text-item">
+                        <div class="item-content">
+                            <div class="item-title">语言设置</div>
+                        </div>
+                    </div>
+                    <div class="settings-item normal-item">
+                        <span class="emoji-icon">🇨🇳</span>
+                        <div class="item-content">
+                            <div class="item-title">简体中文</div>
+                            <div class="item-subtitle">简体中文</div>
+                        </div>
+                        <div class="item-right">
+                            <span class="check-icon">✓</span>
+                        </div>
+                    </div>
+                    <div class="settings-item normal-item">
+                        <span class="emoji-icon">🇺🇸</span>
+                        <div class="item-content">
+                            <div class="item-title">English</div>
+                            <div class="item-subtitle">English</div>
+                        </div>
+                        <div class="item-right">
+                            <span class="arrow">→</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 开关设置组 -->
+            <div class="settings-group">
+                <div class="group-content">
+                    <div class="settings-item text-item">
+                        <div class="item-content">
+                            <div class="item-title">聊天设置</div>
+                        </div>
+                    </div>
+                    <div class="settings-item switch-item">
+                        <div class="item-content">
+                            <div class="item-title">回车键发送</div>
+                        </div>
+                        <div class="item-right">
+                            <div class="switch active">
+                                <div class="switch-thumb"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-item switch-item">
+                        <div class="item-content">
+                            <div class="item-title">翻译功能</div>
+                        </div>
+                        <div class="item-right">
+                            <div class="switch">
+                                <div class="switch-thumb"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 普通设置组 -->
+            <div class="settings-group">
+                <div class="group-content">
+                    <div class="settings-item normal-item">
+                        <div class="item-content">
+                            <div class="item-title">聊天背景</div>
+                        </div>
+                        <div class="item-right">
+                            <span class="item-value">默认</span>
+                            <span class="arrow">→</span>
+                        </div>
+                    </div>
+                    <div class="settings-item normal-item">
+                        <div class="item-content">
+                            <div class="item-title">字体大小</div>
+                        </div>
+                        <div class="item-right">
+                            <span class="item-value">标准</span>
+                            <span class="arrow">→</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 开关交互
+        document.querySelectorAll('.switch').forEach(switchEl => {
+            switchEl.addEventListener('click', () => {
+                switchEl.classList.toggle('active');
+            });
+        });
+        
+        console.log('🎨 叶语统一布局演示');
+        console.log('📏 设计规范：');
+        console.log('  - 页面背景：#EDEDED 灰色');
+        console.log('  - 导航栏：48px高度，白色背景');
+        console.log('  - 文本项：25px高度，#e5e5e5背景');
+        console.log('  - 普通项：48px高度，白色背景');
+        console.log('  - 开关项：48px高度，统一开关样式');
+        console.log('  - 网格系统：8px基础间距');
+    </script>
+</body>
+</html>

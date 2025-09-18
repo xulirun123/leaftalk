@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 语言切换功能测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #ff6b6b;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-left: 4px solid #ff6b6b;
+        }
+        
+        .test-section h3 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .test-button {
+            padding: 12px 20px;
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            display: block;
+        }
+        
+        .test-button:hover {
+            background: #45b7aa;
+            transform: translateY(-2px);
+        }
+        
+        .test-button.primary {
+            background: #ff6b6b;
+        }
+        
+        .test-button.primary:hover {
+            background: #ff5252;
+        }
+        
+        .debug-info {
+            background: #f1f3f4;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #333;
+            white-space: pre-wrap;
+            margin: 16px 0;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .problem-list {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .problem-list h4 {
+            color: #856404;
+            margin-bottom: 12px;
+        }
+        
+        .problem-list ul {
+            margin-left: 20px;
+            color: #856404;
+        }
+        
+        .problem-list li {
+            margin-bottom: 8px;
+        }
+        
+        .solution-list {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .solution-list h4 {
+            color: #155724;
+            margin-bottom: 12px;
+        }
+        
+        .solution-list ul {
+            margin-left: 20px;
+            color: #155724;
+        }
+        
+        .solution-list li {
+            margin-bottom: 8px;
+        }
+        
+        .current-lang {
+            background: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🔧 语言切换功能测试</h1>
+            <p class="subtitle">诊断和修复语言切换问题</p>
+            <div class="status">🚨 需要修复</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 问题描述</h3>
+            <div class="problem-list">
+                <h4>⚠️ 当前问题</h4>
+                <ul>
+                    <li><strong>profile.services</strong> 等翻译键切换语种时不生效</li>
+                    <li>选择不同语言后，部分界面元素没有统一切换</li>
+                    <li>语言切换后需要刷新页面才能看到完整效果</li>
+                    <li>i18n 的 locale 设置可能没有正确传播到所有组件</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 诊断步骤</h3>
+            <div class="test-grid">
+                <button class="test-button" onclick="checkI18nStatus()">
+                    检查 i18n 状态
+                </button>
+                <button class="test-button" onclick="testTranslations()">
+                    测试翻译键
+                </button>
+                <button class="test-button" onclick="checkLocalStorage()">
+                    检查本地存储
+                </button>
+                <button class="test-button" onclick="simulateLanguageSwitch()">
+                    模拟语言切换
+                </button>
+            </div>
+            <div id="diagnostic-output" class="debug-info">点击上方按钮开始诊断...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🛠️ 解决方案</h3>
+            <div class="solution-list">
+                <h4>✅ 修复步骤</h4>
+                <ul>
+                    <li><strong>确保 i18n 实例正确配置</strong>：检查所有语言包是否正确加载</li>
+                    <li><strong>统一语言切换逻辑</strong>：确保所有组件使用相同的 locale 状态</li>
+                    <li><strong>强制重新渲染</strong>：语言切换后触发组件重新渲染</li>
+                    <li><strong>检查翻译键结构</strong>：确保所有语言文件有相同的键结构</li>
+                    <li><strong>添加响应式监听</strong>：监听 locale 变化并更新所有相关组件</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 实际测试</h3>
+            <div class="test-grid">
+                <a href="http://127.0.0.1:5173/settings/language-selector" class="test-button primary" target="_blank">
+                    打开语言选择页面
+                </a>
+                <a href="http://127.0.0.1:5173/profile" class="test-button" target="_blank">
+                    打开个人资料页面
+                </a>
+                <a href="http://127.0.0.1:5173/settings/general" class="test-button" target="_blank">
+                    打开通用设置页面
+                </a>
+                <button class="test-button" onclick="openDevTools()">
+                    打开开发者工具
+                </button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 测试说明</h3>
+            <p><strong>测试流程：</strong></p>
+            <ol style="margin-left: 20px; margin-top: 12px;">
+                <li>打开语言选择页面</li>
+                <li>选择不同的语言（如英语、日语）</li>
+                <li>观察页面是否立即切换语言</li>
+                <li>返回个人资料页面，检查 profile.services 等是否正确翻译</li>
+                <li>如果没有切换，检查控制台错误信息</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function checkI18nStatus() {
+            const output = document.getElementById('diagnostic-output')
+            let info = '🔍 i18n 状态检查:\n\n'
+            
+            // 检查本地存储
+            const savedLang = localStorage.getItem('yeyu_language')
+            const userLocale = localStorage.getItem('user-locale')
+            
+            info += `📦 本地存储:\n`
+            info += `  - yeyu_language: ${savedLang || '未设置'}\n`
+            info += `  - user-locale: ${userLocale || '未设置'}\n\n`
+            
+            // 检查 HTML lang 属性
+            const htmlLang = document.documentElement.lang
+            info += `🌐 HTML lang 属性: ${htmlLang}\n\n`
+            
+            // 检查是否有全局 i18n 相关对象
+            info += `🔧 全局对象检查:\n`
+            info += `  - window.$t: ${typeof window.$t}\n`
+            info += `  - window.$setLanguage: ${typeof window.$setLanguage}\n\n`
+            
+            info += `⏰ 检查时间: ${new Date().toLocaleString()}`
+            
+            output.textContent = info
+            console.log('🔍 i18n 状态检查完成')
+        }
+        
+        function testTranslations() {
+            const output = document.getElementById('diagnostic-output')
+            let info = '📝 翻译键测试:\n\n'
+            
+            const testKeys = [
+                'profile.services',
+                'profile.favorites', 
+                'profile.moments',
+                'profile.videoChannel',
+                'profile.stickers',
+                'profile.settings',
+                'settings.language',
+                'languages.zhCN',
+                'languages.en'
+            ]
+            
+            info += `🧪 测试翻译键:\n`
+            testKeys.forEach(key => {
+                info += `  - ${key}: 需要在实际应用中测试\n`
+            })
+            
+            info += `\n💡 提示: 这些键需要在 Vue 应用中使用 t('${testKeys[0]}') 等函数测试`
+            
+            output.textContent = info
+            console.log('📝 翻译键测试完成')
+        }
+        
+        function checkLocalStorage() {
+            const output = document.getElementById('diagnostic-output')
+            let info = '💾 本地存储检查:\n\n'
+            
+            // 获取所有相关的本地存储项
+            const keys = ['yeyu_language', 'user-locale', 'i18n-locale']
+            
+            info += `📋 存储项检查:\n`
+            keys.forEach(key => {
+                const value = localStorage.getItem(key)
+                info += `  - ${key}: ${value || '未设置'}\n`
+            })
+            
+            info += `\n🔄 尝试设置测试语言...\n`
+            localStorage.setItem('yeyu_language', 'en')
+            localStorage.setItem('user-locale', 'en')
+            info += `✅ 已设置测试语言为英语\n`
+            
+            info += `\n⏰ 检查时间: ${new Date().toLocaleString()}`
+            
+            output.textContent = info
+            console.log('💾 本地存储检查完成')
+        }
+        
+        function simulateLanguageSwitch() {
+            const output = document.getElementById('diagnostic-output')
+            let info = '🔄 模拟语言切换:\n\n'
+            
+            const languages = ['zh-CN', 'en', 'ja', 'ko', 'ms', 'zh-TW']
+            const currentLang = localStorage.getItem('yeyu_language') || 'zh-CN'
+            const currentIndex = languages.indexOf(currentLang)
+            const nextLang = languages[(currentIndex + 1) % languages.length]
+            
+            info += `📍 当前语言: ${currentLang}\n`
+            info += `🎯 切换到: ${nextLang}\n\n`
+            
+            // 设置新语言
+            localStorage.setItem('yeyu_language', nextLang)
+            localStorage.setItem('user-locale', nextLang)
+            document.documentElement.lang = nextLang
+            
+            info += `✅ 本地存储已更新\n`
+            info += `✅ HTML lang 属性已更新\n\n`
+            
+            info += `⚠️ 注意: 实际的 Vue 应用需要监听这些变化并重新渲染\n`
+            info += `💡 建议: 刷新页面或重新打开语言选择页面查看效果\n\n`
+            
+            info += `⏰ 切换时间: ${new Date().toLocaleString()}`
+            
+            output.textContent = info
+            console.log(`🔄 模拟语言切换: ${currentLang} -> ${nextLang}`)
+        }
+        
+        function openDevTools() {
+            alert('请按 F12 或右键选择"检查"打开开发者工具，查看控制台信息')
+            console.log('🛠️ 开发者工具提示')
+            console.log('📋 检查以下内容:')
+            console.log('1. 控制台是否有 i18n 相关错误')
+            console.log('2. Network 标签页是否正确加载了语言文件')
+            console.log('3. Application 标签页的 Local Storage 中的语言设置')
+            console.log('4. Vue DevTools 中的 i18n 状态')
+        }
+        
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 语言切换功能测试页面已加载')
+            console.log('🎯 目标: 修复 profile.services 等翻译键的语言切换问题')
+            console.log('📋 测试步骤:')
+            console.log('1. 点击诊断按钮检查当前状态')
+            console.log('2. 打开实际应用页面测试语言切换')
+            console.log('3. 观察控制台输出和页面变化')
+            console.log('4. 根据结果调整 i18n 配置')
+            
+            // 自动检查当前状态
+            setTimeout(checkI18nStatus, 1000)
+        })
+    </script>
+</body>
+</html>

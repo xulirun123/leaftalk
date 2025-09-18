@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试叶语号API</title>
+</head>
+<body>
+    <h1>测试叶语号检查API</h1>
+    <input type="text" id="yeyuInput" placeholder="输入叶语号" value="YYFSRATEHB">
+    <button onclick="checkYeyu()">检查叶语号</button>
+    <div id="result"></div>
+
+    <script>
+        async function checkYeyu() {
+            const yeyuId = document.getElementById('yeyuInput').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('🔍 开始检查叶语号:', yeyuId);
+                
+                const response = await fetch('http://localhost:8893/api/user/check-yeyu-id', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInVzZXJuYW1lIjoieWFuZ2RhIiwiaWF0IjoxNzU3NDQ0NzU5LCJleHAiOjE3NTc0NDgzNTl9.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8'
+                    },
+                    body: JSON.stringify({
+                        yeyuId: yeyuId
+                    })
+                });
+                
+                console.log('📡 API响应状态:', response.status);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('📊 API响应结果:', result);
+                    resultDiv.innerHTML = `
+                        <h3>检查结果:</h3>
+                        <p>成功: ${result.success}</p>
+                        <p>可用: ${result.available}</p>
+                        <p>消息: ${result.message}</p>
+                    `;
+                } else {
+                    const errorData = await response.json();
+                    console.error('❌ API错误:', errorData);
+                    resultDiv.innerHTML = `<p style="color: red;">错误: ${errorData.error}</p>`;
+                }
+            } catch (error) {
+                console.error('❌ 网络错误:', error);
+                resultDiv.innerHTML = `<p style="color: red;">网络错误: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

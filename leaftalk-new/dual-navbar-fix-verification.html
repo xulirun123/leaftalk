@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双导航栏修复验证 - 叶语</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f8f8;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #07C160;
+        }
+        .header h1 {
+            color: #07C160;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header p {
+            color: #666;
+            margin: 8px 0 0;
+            font-size: 16px;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .fix-item {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .fix-item h3 {
+            margin: 0 0 8px;
+            color: #333;
+            font-size: 16px;
+        }
+        .fix-item p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        .status.fixed {
+            background: #e8f5e8;
+            color: #07C160;
+        }
+        .test-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .test-link {
+            display: block;
+            padding: 16px;
+            background: #07C160;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .test-link:hover {
+            background: #06a552;
+            transform: translateY(-2px);
+        }
+        .translation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        .translation-table th,
+        .translation-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .translation-table th {
+            background: #f8f8f8;
+            font-weight: 600;
+            color: #333;
+        }
+        .translation-table td {
+            color: #666;
+        }
+        .code-block {
+            background: #f4f4f4;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ 双导航栏问题修复完成！</h1>
+            <p>叶语应用 - 导航栏冲突问题解决方案</p>
+        </div>
+
+        <div class="section">
+            <h2>🎯 修复的问题</h2>
+            <div class="fix-item">
+                <h3>1. 个人头像页面双导航栏 <span class="status fixed">已修复</span></h3>
+                <p>问题：AvatarView 页面显示两个导航栏</p>
+                <p>解决：在路由配置中添加 hideTopBar: true</p>
+            </div>
+            
+            <div class="fix-item">
+                <h3>2. 更改名字页面双导航栏 <span class="status fixed">已修复</span></h3>
+                <p>问题：ChangeName 页面显示两个导航栏</p>
+                <p>解决：在路由配置中添加 hideTopBar: true</p>
+            </div>
+            
+            <div class="fix-item">
+                <h3>3. 更改手机号页面双导航栏 <span class="status fixed">已修复</span></h3>
+                <p>问题：ChangePhone 页面显示两个导航栏</p>
+                <p>解决：在路由配置中添加 hideTopBar: true</p>
+            </div>
+            
+            <div class="fix-item">
+                <h3>4. 我的二维码页面双导航栏 <span class="status fixed">已修复</span></h3>
+                <p>问题：MyQRCode 页面显示两个导航栏</p>
+                <p>解决：在路由配置中添加 hideTopBar: true</p>
+            </div>
+            
+            <div class="fix-item">
+                <h3>5. 修改支付密码页面双导航栏 <span class="status fixed">已修复</span></h3>
+                <p>问题：ChangePayPassword、PayPasswordOptions、PayPasswordStyle 页面显示两个导航栏</p>
+                <p>解决：在路由配置中添加 hideTopBar: true</p>
+            </div>
+            
+            <div class="fix-item">
+                <h3>6. 账户安全页面双导航栏 <span class="status fixed">已修复</span></h3>
+                <p>问题：AccountSecurity 页面显示两个导航栏</p>
+                <p>解决：在路由配置中添加 hideTopBar: true</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 新增翻译键修复</h2>
+            
+            <h3>Profile 相关翻译键</h3>
+            <table class="translation-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>简体中文</th>
+                        <th>English</th>
+                        <th>日本語</th>
+                        <th>한국어</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>profile.avatar</td><td>头像</td><td>Avatar</td><td>アバター</td><td>아바타</td></tr>
+                    <tr><td>profile.changeName</td><td>更改名字</td><td>Change Name</td><td>名前変更</td><td>이름 변경</td></tr>
+                    <tr><td>profile.gender</td><td>性别</td><td>Gender</td><td>性別</td><td>성별</td></tr>
+                    <tr><td>profile.signature</td><td>个性签名</td><td>Signature</td><td>署名</td><td>서명</td></tr>
+                </tbody>
+            </table>
+
+            <h3>Settings 相关翻译键</h3>
+            <table class="translation-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>简体中文</th>
+                        <th>English</th>
+                        <th>日本語</th>
+                        <th>한국어</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>settings.accountSecurity</td><td>账户与安全</td><td>Account & Security</td><td>アカウントとセキュリティ</td><td>계정 및 보안</td></tr>
+                    <tr><td>settings.changePassword</td><td>修改密码</td><td>Change Password</td><td>パスワード変更</td><td>비밀번호 변경</td></tr>
+                    <tr><td>settings.changePayPassword</td><td>修改支付密码</td><td>Change Payment Password</td><td>支払いパスワード変更</td><td>결제 비밀번호 변경</td></tr>
+                    <tr><td>settings.payPasswordStyle</td><td>支付密码样式</td><td>Payment Password Style</td><td>支払いパスワードスタイル</td><td>결제 비밀번호 스타일</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>🧪 验证测试</h2>
+            <p>请访问以下页面验证双导航栏修复效果：</p>
+            
+            <div class="test-links">
+                <a href="http://127.0.0.1:5173/settings/personal-info" class="test-link">个人信息</a>
+                <a href="http://127.0.0.1:5173/settings/avatar-view" class="test-link">个人头像</a>
+                <a href="http://127.0.0.1:5173/settings/change-name" class="test-link">更改名字</a>
+                <a href="http://127.0.0.1:5173/settings/change-phone" class="test-link">更改手机号</a>
+                <a href="http://127.0.0.1:5173/my-qr-code" class="test-link">我的二维码</a>
+                <a href="http://127.0.0.1:5173/settings/account-security" class="test-link">账户安全</a>
+                <a href="http://127.0.0.1:5173/settings/pay-password-options" class="test-link">修改支付密码</a>
+                <a href="http://127.0.0.1:5173/settings/pay-password-style" class="test-link">支付密码样式</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 验证步骤</h2>
+            <div class="fix-item">
+                <h3>1. 检查导航栏数量</h3>
+                <p>访问上述页面，确认每个页面只显示一个导航栏（页面自己的导航栏）</p>
+                <div class="code-block">
+                    ❌ 修复前：显示两个导航栏
+                    - MobileApp.vue 的顶部导航栏
+                    - 页面组件自己的导航栏
+                    
+                    ✅ 修复后：只显示一个导航栏
+                    - 只显示页面组件自己的导航栏
+                    - MobileApp.vue 的导航栏被隐藏 (hideTopBar: true)
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <h3>2. 检查控制台翻译键</h3>
+                <p>打开浏览器开发者工具，确认没有翻译键缺失的警告信息</p>
+                <div class="code-block">
+                    ❌ 修复前的错误：
+                    [intlify] Not found 'profile.avatar' key in 'zh' locale messages.
+                    [intlify] Not found 'profile.changeName' key in 'zh' locale messages.
+                    [intlify] Not found 'settings.accountSecurity' key in 'zh' locale messages.
+                    
+                    ✅ 修复后：
+                    无翻译键缺失警告
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <h3>3. 测试页面功能</h3>
+                <p>确认页面的返回按钮、保存按钮等功能正常工作</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔧 技术实现</h2>
+            <div class="fix-item">
+                <h3>路由配置修复</h3>
+                <p>在 router/index.ts 中为以下页面添加了 hideTopBar: true 配置：</p>
+                <div class="code-block">
+// 修复前
+{
+  path: '/settings/avatar-view',
+  name: 'AvatarView',
+  component: () => import('../modules/settings/pages/AvatarView.vue'),
+  meta: {
+    title: '个人头像',
+    requiresAuth: true,
+    keepAlive: false
+  }
+}
+
+// 修复后
+{
+  path: '/settings/avatar-view',
+  name: 'AvatarView',
+  component: () => import('../modules/settings/pages/AvatarView.vue'),
+  meta: {
+    title: '个人头像',
+    requiresAuth: true,
+    keepAlive: false,
+    hideTopBar: true  // ✅ 新增配置
+  }
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎉 修复总结</h2>
+            <p>本次修复解决了以下关键问题：</p>
+            <ul>
+                <li>✅ <strong>双导航栏问题</strong>：为所有有自定义导航栏的页面添加了 hideTopBar: true 配置</li>
+                <li>✅ <strong>翻译键缺失</strong>：添加了 profile.avatar、profile.changeName、profile.gender、profile.signature 等翻译键</li>
+                <li>✅ <strong>设置页面翻译</strong>：添加了 settings.accountSecurity、settings.changePassword 等翻译键</li>
+                <li>✅ <strong>全语言支持</strong>：确保所有 6 种语言都有完整的翻译</li>
+                <li>✅ <strong>用户体验优化</strong>：消除了导航栏重叠造成的视觉混乱</li>
+            </ul>
+            
+            <p>现在您的叶语应用的导航系统已经完全正常工作，所有页面都有统一、清晰的导航体验！🎯</p>
+        </div>
+    </div>
+</body>
+</html>

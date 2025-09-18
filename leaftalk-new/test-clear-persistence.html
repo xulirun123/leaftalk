@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清空消息记录持久化测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #07C160;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            display: block;
+            width: 100%;
+            text-align: left;
+        }
+        .test-button:hover {
+            background: #06A050;
+        }
+        .danger-button {
+            background: #FF4444;
+        }
+        .danger-button:hover {
+            background: #DD2222;
+        }
+        .log {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <h1>🧹 清空消息记录持久化测试</h1>
+    
+    <div class="test-section">
+        <h2>📋 测试说明</h2>
+        <div class="error status">
+            <strong>问题描述：</strong><br>
+            清空消息记录后再发送消息，退出页面或刷新页面，消息就不见了
+        </div>
+        
+        <div class="warning status">
+            <strong>问题原因：</strong><br>
+            会话被标记为已清空，新消息虽然保存到IndexedDB，但重新加载时被跳过
+        </div>
+        
+        <div class="success status">
+            <strong>修复方案：</strong><br>
+            当检测到已清空的会话有新消息时，自动从清空列表中移除该会话
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 测试操作</h2>
+        
+        <button class="test-button" onclick="checkCurrentStatus()">
+            1. 检查当前状态
+        </button>
+        
+        <button class="test-button danger-button" onclick="clearChatHistory()">
+            2. 清空消息记录 (chat_1_2)
+        </button>
+        
+        <button class="test-button" onclick="simulateNewMessage()">
+            3. 模拟发送新消息
+        </button>
+        
+        <button class="test-button" onclick="checkClearedList()">
+            4. 检查清空列表状态
+        </button>
+        
+        <button class="test-button" onclick="simulatePageRefresh()">
+            5. 模拟页面刷新测试
+        </button>
+        
+        <button class="test-button" onclick="goToChatPage()">
+            6. 跳转到聊天页面验证
+        </button>
+        
+        <button class="test-button danger-button" onclick="resetTestData()">
+            重置测试数据
+        </button>
+    </div>
+
+    <div class="test-section">
+        <h2>📊 测试结果</h2>
+        <div id="status" class="info status">等待测试...</div>
+        <div id="log" class="log">测试日志将在这里显示...</div>
+    </div>
+
+    <script>
+        let logContent = '';
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContent += `[${timestamp}] ${message}\n`;
+            document.getElementById('log').textContent = logContent;
+            console.log(message);
+        }
+        
+        function setStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        function checkCurrentStatus() {
+            log('🔍 检查当前状态...');
+            
+            try {
+                const clearedSessions = localStorage.getItem('cleared_chat_sessions');
+                const deletedSessions = localStorage.getItem('deleted_chat_sessions');
+                
+                log('📊 当前状态:');
+                
+                if (clearedSessions) {
+                    const cleared = JSON.parse(clearedSessions);
+                    log(`🧹 已清空的会话: ${cleared.length} 个`);
+                    cleared.forEach(sessionId => {
+                        log(`  - ${sessionId}`);
+                    });
+                } else {
+                    log('🧹 没有已清空的会话');
+                }
+                
+                if (deletedSessions) {
+                    const deleted = JSON.parse(deletedSessions);
+                    log(`🗑️ 已删除的会话: ${deleted.length} 个`);
+                } else {
+                    log('🗑️ 没有已删除的会话');
+                }
+                
+                // 检查IndexedDB中的消息
+                checkIndexedDBMessages();
+                
+                setStatus('状态检查完成', 'success');
+            } catch (error) {
+                log(`❌ 检查状态失败: ${error.message}`);
+                setStatus('检查失败', 'error');
+            }
+        }
+        
+        function checkIndexedDBMessages() {
+            if ('indexedDB' in window) {
+                const request = indexedDB.open('YeYuChatDB', 1);
+                request.onsuccess = function(event) {
+                    const db = event.target.result;
+                    if (db.objectStoreNames.contains('messages')) {
+                        const transaction = db.transaction(['messages'], 'readonly');
+                        const store = transaction.objectStore('messages');
+                        const getAllRequest = store.getAll();
+                        
+                        getAllRequest.onsuccess = function() {
+                            const messages = getAllRequest.result;
+                            const chat_1_2_messages = messages.filter(msg => 
+                                msg.sessionId === 'chat_1_2' || msg.sessionId === '1_2'
+                            );
+                            log(`💾 IndexedDB中chat_1_2的消息数量: ${chat_1_2_messages.length}`);
+                            chat_1_2_messages.forEach(msg => {
+                                log(`  - ${msg.id}: ${msg.content} (${new Date(msg.timestamp).toLocaleTimeString()})`);
+                            });
+                        };
+                    } else {
+                        log('💾 IndexedDB中没有messages表');
+                    }
+                };
+                request.onerror = function() {
+                    log('❌ 无法访问IndexedDB');
+                };
+            }
+        }
+        
+        function clearChatHistory() {
+            log('🧹 清空消息记录 chat_1_2...');
+            
+            try {
+                const clearedSessions = localStorage.getItem('cleared_chat_sessions');
+                let cleared = clearedSessions ? JSON.parse(clearedSessions) : [];
+                
+                if (!cleared.includes('chat_1_2')) {
+                    cleared.push('chat_1_2');
+                    localStorage.setItem('cleared_chat_sessions', JSON.stringify(cleared));
+                    log('✅ 已将 chat_1_2 添加到清空列表');
+                } else {
+                    log('⚠️ chat_1_2 已在清空列表中');
+                }
+                
+                log(`📋 当前清空列表: ${cleared.join(', ')}`);
+                setStatus('消息记录清空完成', 'success');
+            } catch (error) {
+                log(`❌ 清空失败: ${error.message}`);
+                setStatus('清空失败', 'error');
+            }
+        }
+        
+        function simulateNewMessage() {
+            log('📤 模拟发送新消息到已清空的会话...');
+            
+            try {
+                const newMessage = {
+                    id: `test_msg_${Date.now()}`,
+                    sessionId: 'chat_1_2',
+                    senderId: '2',
+                    receiverId: '1',
+                    content: '清空后的新消息',
+                    type: 'text',
+                    timestamp: Date.now(),
+                    status: 'sent',
+                    isOwn: true
+                };
+                
+                // 模拟添加到IndexedDB
+                if ('indexedDB' in window) {
+                    const request = indexedDB.open('YeYuChatDB', 1);
+                    request.onsuccess = function(event) {
+                        const db = event.target.result;
+                        if (db.objectStoreNames.contains('messages')) {
+                            const transaction = db.transaction(['messages'], 'readwrite');
+                            const store = transaction.objectStore('messages');
+                            store.add(newMessage);
+                            log('✅ 新消息已添加到IndexedDB');
+                            
+                            // 模拟chatStore的逻辑：检测到已清空会话有新消息，从清空列表中移除
+                            log('🔄 模拟chatStore逻辑：从清空列表中移除会话...');
+                            const clearedSessions = localStorage.getItem('cleared_chat_sessions');
+                            let cleared = clearedSessions ? JSON.parse(clearedSessions) : [];
+                            
+                            if (cleared.includes('chat_1_2')) {
+                                cleared = cleared.filter(id => id !== 'chat_1_2');
+                                localStorage.setItem('cleared_chat_sessions', JSON.stringify(cleared));
+                                log('✅ chat_1_2 已从清空列表中移除');
+                                log(`📋 更新后的清空列表: ${cleared.length > 0 ? cleared.join(', ') : '空'}`);
+                            }
+                        }
+                    };
+                }
+                
+                log(`📤 新消息内容: ${newMessage.content}`);
+                log(`📤 消息ID: ${newMessage.id}`);
+                setStatus('新消息模拟发送完成', 'success');
+            } catch (error) {
+                log(`❌ 模拟发送失败: ${error.message}`);
+                setStatus('模拟发送失败', 'error');
+            }
+        }
+        
+        function checkClearedList() {
+            log('🔍 检查清空列表状态...');
+            
+            try {
+                const clearedSessions = localStorage.getItem('cleared_chat_sessions');
+                const cleared = clearedSessions ? JSON.parse(clearedSessions) : [];
+                
+                log(`📋 当前清空列表: ${cleared.length > 0 ? cleared.join(', ') : '空'}`);
+                
+                if (cleared.includes('chat_1_2')) {
+                    log('❌ chat_1_2 仍在清空列表中，这会导致消息加载被跳过');
+                    setStatus('清空列表检查失败', 'error');
+                } else {
+                    log('✅ chat_1_2 不在清空列表中，消息应该正常加载');
+                    setStatus('清空列表检查成功', 'success');
+                }
+            } catch (error) {
+                log(`❌ 检查失败: ${error.message}`);
+                setStatus('检查失败', 'error');
+            }
+        }
+        
+        function simulatePageRefresh() {
+            log('🔄 模拟页面刷新测试...');
+            log('📊 刷新前状态:');
+            
+            checkCurrentStatus();
+            
+            setTimeout(() => {
+                log('🔄 模拟重新加载消息...');
+                log('✅ 如果修复成功，chat_1_2应该不在清空列表中');
+                log('✅ 消息应该能正常从IndexedDB加载');
+                setStatus('页面刷新模拟完成', 'info');
+            }, 2000);
+        }
+        
+        function goToChatPage() {
+            log('🔗 跳转到聊天页面验证...');
+            window.location.href = '/chat/1_2';
+        }
+        
+        function resetTestData() {
+            if (confirm('确定要重置所有测试数据吗？')) {
+                log('🔄 重置测试数据...');
+                
+                try {
+                    localStorage.removeItem('cleared_chat_sessions');
+                    localStorage.removeItem('deleted_chat_sessions');
+                    
+                    // 清理IndexedDB中的测试消息
+                    if ('indexedDB' in window) {
+                        const request = indexedDB.open('YeYuChatDB', 1);
+                        request.onsuccess = function(event) {
+                            const db = event.target.result;
+                            if (db.objectStoreNames.contains('messages')) {
+                                const transaction = db.transaction(['messages'], 'readwrite');
+                                const store = transaction.objectStore('messages');
+                                
+                                const getAllRequest = store.getAll();
+                                getAllRequest.onsuccess = function() {
+                                    const messages = getAllRequest.result;
+                                    messages.forEach(msg => {
+                                        if (msg.id.startsWith('test_msg_')) {
+                                            store.delete(msg.id);
+                                        }
+                                    });
+                                    log('✅ 测试消息已清理');
+                                };
+                            }
+                        };
+                    }
+                    
+                    log('✅ 测试数据重置完成');
+                    setStatus('测试数据重置完成', 'success');
+                } catch (error) {
+                    log(`❌ 重置失败: ${error.message}`);
+                    setStatus('重置失败', 'error');
+                }
+            }
+        }
+        
+        // 页面加载时自动检查状态
+        window.onload = function() {
+            log('🚀 清空消息记录持久化测试工具已加载');
+            checkCurrentStatus();
+        };
+    </script>
+</body>
+</html>

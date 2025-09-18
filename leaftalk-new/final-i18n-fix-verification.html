@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最终国际化修复验证 - 叶语</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f8f8;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #07C160;
+        }
+        .header h1 {
+            color: #07C160;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .critical-fix {
+            background: #fff3cd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #ffc107;
+        }
+        .critical-fix h3 {
+            margin: 0 0 8px;
+            color: #856404;
+            font-size: 16px;
+        }
+        .critical-fix p {
+            margin: 0;
+            color: #856404;
+            font-size: 14px;
+        }
+        .success-item {
+            background: #d4edda;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #28a745;
+        }
+        .success-item h3 {
+            margin: 0 0 8px;
+            color: #155724;
+            font-size: 16px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .test-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #dee2e6;
+        }
+        .test-card h3 {
+            margin: 0 0 12px;
+            color: #333;
+        }
+        .test-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 4px 4px 4px 0;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .code-block {
+            background: #f4f4f4;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 最终国际化修复验证</h1>
+            <p>修复了翻译键位置错误的关键问题</p>
+        </div>
+
+        <div class="section">
+            <h2>🚨 发现并修复的关键问题</h2>
+            <div class="critical-fix">
+                <h3>问题：翻译键添加到了错误的位置</h3>
+                <p><strong>发现：</strong> 之前添加的翻译键被错误地放在了 "profile" 部分，而不是 "settings" 部分</p>
+                <p><strong>影响：</strong> 导致 $t('settings.xxx') 调用时找不到对应的翻译键</p>
+                <p><strong>修复：</strong> 将所有设置相关的翻译键移动到正确的 "settings" 部分</p>
+            </div>
+            
+            <div class="critical-fix">
+                <h3>修复的文件结构问题</h3>
+                <div class="code-block">
+// ❌ 错误的位置（之前）
+"profile": {
+  "personalInfo": "个人资料",
+  "youthMode": "未成年模式",
+  // ... 其他设置翻译键
+}
+
+// ✅ 正确的位置（修复后）
+"settings": {
+  "personalInfo": "个人资料",
+  "youthMode": "未成年模式",
+  // ... 其他设置翻译键
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>✅ 修复完成的语言文件</h2>
+            <div class="success-item">
+                <h3>已修复的语言文件</h3>
+                <ul>
+                    <li>✅ <strong>马来语 (ms.json)</strong> - 翻译键已移动到 settings 部分</li>
+                    <li>✅ <strong>日语 (ja.json)</strong> - 翻译键已移动到 settings 部分</li>
+                    <li>✅ <strong>韩语 (ko.json)</strong> - 翻译键位置正确</li>
+                    <li>✅ <strong>繁体中文 (zh-TW.json)</strong> - 翻译键位置正确</li>
+                    <li>✅ <strong>简体中文 (zh-CN.json)</strong> - 翻译键位置正确</li>
+                    <li>✅ <strong>英语 (en.json)</strong> - 翻译键位置正确</li>
+                </ul>
+            </div>
+            
+            <div class="success-item">
+                <h3>修复的翻译键</h3>
+                <p>以下翻译键现在在所有语言的 "settings" 部分中正确可用：</p>
+                <ul>
+                    <li>settings.personalInfo - 个人资料</li>
+                    <li>settings.youthMode - 未成年模式</li>
+                    <li>settings.friendPermissions - 朋友权限</li>
+                    <li>settings.logout - 退出登录</li>
+                    <li>settings.logoutConfirm - 退出确认</li>
+                    <li>settings.avatar - 头像</li>
+                    <li>settings.name - 名字</li>
+                    <li>settings.phone - 手机号</li>
+                    <li>settings.yeyuId - 叶语号</li>
+                    <li>settings.notSet - 未设置</li>
+                    <li>settings.canModifyAfter - 可修改</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 关键测试验证</h2>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h3>🇲🇾 马来语测试</h3>
+                    <p>重点测试马来语的设置页面：</p>
+                    <a href="http://127.0.0.1:5173/settings/language-selector" class="test-link">语言选择器</a>
+                    <p><strong>测试步骤：</strong></p>
+                    <ol>
+                        <li>选择 "Bahasa Malaysia"</li>
+                        <li>返回设置页面</li>
+                        <li>检查控制台无错误</li>
+                        <li>验证所有文本正确显示</li>
+                    </ol>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🇯🇵 日语测试</h3>
+                    <p>测试日语的设置页面：</p>
+                    <a href="http://127.0.0.1:5173/settings" class="test-link">设置页面</a>
+                    <p><strong>检查项目：</strong></p>
+                    <ul>
+                        <li>选择 "日本語"</li>
+                        <li>个人情報、ユースモード 等显示正确</li>
+                        <li>控制台无翻译键错误</li>
+                        <li>退出登录对话框正确</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>👤 个人信息页面</h3>
+                    <p>测试个人信息页面多语言：</p>
+                    <a href="http://127.0.0.1:5173/settings/personal-info" class="test-link">个人信息</a>
+                    <p><strong>验证内容：</strong></p>
+                    <ul>
+                        <li>切换到马来语和日语</li>
+                        <li>检查 "头像"、"名字" 等标签</li>
+                        <li>验证 "未设置" 状态文本</li>
+                        <li>确认控制台无错误</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🔍 控制台验证</h3>
+                    <p>最重要的验证：</p>
+                    <p><strong>应该看到：</strong></p>
+                    <ul>
+                        <li>✅ 无 "Not found 'settings.xxx' key in 'ms' locale" 错误</li>
+                        <li>✅ 无 "Fall back to translate" 警告</li>
+                        <li>✅ 马来语和日语完全正常显示</li>
+                        <li>✅ 所有6种语言都能正确切换</li>
+                    </ul>
+                    <p><strong>如果仍有错误：</strong></p>
+                    <ul>
+                        <li>按 F12 打开开发者工具</li>
+                        <li>查看具体的错误信息</li>
+                        <li>报告哪种语言和哪个翻译键有问题</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎯 修复总结</h2>
+            <div class="success-item">
+                <h3>这次修复解决的根本问题</h3>
+                <ul>
+                    <li>🔧 <strong>翻译键位置错误</strong>：将设置翻译键从 "profile" 移动到 "settings" 部分</li>
+                    <li>🔧 <strong>文件结构规范</strong>：确保翻译键在正确的命名空间中</li>
+                    <li>🔧 <strong>重复键清理</strong>：移除了 profile 部分的重复翻译键</li>
+                    <li>🔧 <strong>语言一致性</strong>：所有6种语言的结构现在完全一致</li>
+                </ul>
+                
+                <p><strong>技术细节：</strong></p>
+                <ul>
+                    <li>Vue i18n 使用 $t('settings.xxx') 调用时，会在 messages.settings 对象中查找翻译键</li>
+                    <li>之前翻译键在 messages.profile 中，导致查找失败</li>
+                    <li>现在翻译键在正确的 messages.settings 中，查找成功</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 最终验证清单</h2>
+            <div class="critical-fix">
+                <h3>请完成以下验证</h3>
+                <ol>
+                    <li><strong>马来语完整测试</strong>：切换到马来语，访问设置页面，确认无控制台错误</li>
+                    <li><strong>日语完整测试</strong>：切换到日语，访问设置页面，确认无控制台错误</li>
+                    <li><strong>其他语言验证</strong>：测试韩语、繁体中文、英语是否仍然正常</li>
+                    <li><strong>个人信息页面</strong>：在所有语言下测试个人信息页面</li>
+                    <li><strong>退出登录对话框</strong>：测试退出登录确认对话框的翻译</li>
+                </ol>
+                
+                <p><strong>成功标准：</strong></p>
+                <ul>
+                    <li>✅ 控制台完全清洁，无任何翻译键错误</li>
+                    <li>✅ 所有6种语言的设置页面完全可用</li>
+                    <li>✅ 用户界面文本正确显示，无回退到中文的情况</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 最终国际化修复验证页面已加载');
+            console.log('🚨 关键修复：翻译键已移动到正确的 settings 部分');
+            console.log('📍 请重点测试马来语和日语的设置页面');
+            console.log('✅ 期望结果：控制台完全清洁，无翻译键错误');
+        });
+    </script>
+</body>
+</html>

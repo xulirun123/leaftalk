@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>i18n 测试页面</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 20px;
+            padding: 16px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .lang-button {
+            display: inline-block;
+            padding: 8px 16px;
+            margin: 4px;
+            background: #07C160;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+        }
+        
+        .lang-button:hover {
+            background: #06a552;
+        }
+        
+        .current-lang {
+            background: #ff6b6b;
+        }
+        
+        .debug-info {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin: 8px 0;
+        }
+        
+        .translation-test {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 12px 0;
+        }
+        
+        .translation-item {
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 3px solid #07C160;
+        }
+        
+        .translation-key {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .translation-value {
+            color: #333;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 i18n 国际化测试页面</h1>
+        
+        <div class="test-section">
+            <h3>🔧 调试信息</h3>
+            <div id="debug-info" class="debug-info">正在加载调试信息...</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🌍 语言切换测试</h3>
+            <p>点击下面的按钮切换语言，观察翻译是否正确：</p>
+            <button class="lang-button" onclick="testLanguage('zh-CN')">简体中文</button>
+            <button class="lang-button" onclick="testLanguage('zh-TW')">繁體中文</button>
+            <button class="lang-button" onclick="testLanguage('en')">English</button>
+            <button class="lang-button" onclick="testLanguage('ja')">日本語</button>
+            <button class="lang-button" onclick="testLanguage('ko')">한국어</button>
+            <button class="lang-button" onclick="testLanguage('ms')">Bahasa Malaysia</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 翻译键测试</h3>
+            <div id="translation-tests" class="translation-test">
+                <!-- 翻译测试将在这里显示 -->
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔗 快速链接</h3>
+            <a href="http://127.0.0.1:5173/settings/language-selector" class="lang-button">
+                打开语言选择页面
+            </a>
+            <a href="http://127.0.0.1:5173/settings/general" class="lang-button">
+                打开通用设置页面
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 模拟翻译数据
+        const translations = {
+            'zh-CN': {
+                'settings.language': '语言',
+                'settings.languageChanged': '语言已切换',
+                'languages.zhCN': '简体中文',
+                'languages.zhTW': '繁体中文',
+                'languages.en': '英语',
+                'languages.ja': '日语',
+                'languages.ko': '韩语',
+                'languages.ms': '马来语',
+                'navigation.settings': '设置',
+                'common.confirm': '确认',
+                'common.cancel': '取消'
+            },
+            'zh-TW': {
+                'settings.language': '語言',
+                'settings.languageChanged': '語言已切換',
+                'languages.zhCN': '簡體中文',
+                'languages.zhTW': '繁體中文',
+                'languages.en': '英語',
+                'languages.ja': '日語',
+                'languages.ko': '韓語',
+                'languages.ms': '馬來語',
+                'navigation.settings': '設置',
+                'common.confirm': '確認',
+                'common.cancel': '取消'
+            },
+            'en': {
+                'settings.language': 'Language',
+                'settings.languageChanged': 'Language changed',
+                'languages.zhCN': 'Simplified Chinese',
+                'languages.zhTW': 'Traditional Chinese',
+                'languages.en': 'English',
+                'languages.ja': 'Japanese',
+                'languages.ko': 'Korean',
+                'languages.ms': 'Malay',
+                'navigation.settings': 'Settings',
+                'common.confirm': 'Confirm',
+                'common.cancel': 'Cancel'
+            },
+            'ja': {
+                'settings.language': '言語',
+                'settings.languageChanged': '言語が変更されました',
+                'languages.zhCN': '簡体字中国語',
+                'languages.zhTW': '繁体字中国語',
+                'languages.en': '英語',
+                'languages.ja': '日本語',
+                'languages.ko': '韓国語',
+                'languages.ms': 'マレー語',
+                'navigation.settings': '設定',
+                'common.confirm': '確認',
+                'common.cancel': 'キャンセル'
+            },
+            'ko': {
+                'settings.language': '언어',
+                'settings.languageChanged': '언어가 변경되었습니다',
+                'languages.zhCN': '중국어 간체',
+                'languages.zhTW': '중국어 번체',
+                'languages.en': '영어',
+                'languages.ja': '일본어',
+                'languages.ko': '한국어',
+                'languages.ms': '말레이어',
+                'navigation.settings': '설정',
+                'common.confirm': '확인',
+                'common.cancel': '취소'
+            },
+            'ms': {
+                'settings.language': 'Bahasa',
+                'settings.languageChanged': 'Bahasa telah ditukar',
+                'languages.zhCN': 'Bahasa Cina Ringkas',
+                'languages.zhTW': 'Bahasa Cina Tradisional',
+                'languages.en': 'Bahasa Inggeris',
+                'languages.ja': 'Bahasa Jepun',
+                'languages.ko': 'Bahasa Korea',
+                'languages.ms': 'Bahasa Malaysia',
+                'navigation.settings': 'Tetapan',
+                'common.confirm': 'Sahkan',
+                'common.cancel': 'Batal'
+            }
+        }
+
+        let currentLang = 'zh-CN'
+
+        function updateDebugInfo() {
+            const debugInfo = document.getElementById('debug-info')
+            const info = `当前语言: ${currentLang}
+可用语言: ${Object.keys(translations).join(', ')}
+翻译文件状态: ${translations[currentLang] ? '✅ 已加载' : '❌ 未找到'}
+翻译键数量: ${translations[currentLang] ? Object.keys(translations[currentLang]).length : 0}
+本地存储: ${localStorage.getItem('yeyu_language') || '未设置'}
+时间戳: ${new Date().toLocaleString()}`
+            
+            debugInfo.textContent = info
+        }
+
+        function updateTranslationTests() {
+            const container = document.getElementById('translation-tests')
+            const testKeys = [
+                'settings.language',
+                'settings.languageChanged',
+                'languages.zhCN',
+                'languages.en',
+                'languages.ja',
+                'navigation.settings',
+                'common.confirm',
+                'common.cancel'
+            ]
+
+            container.innerHTML = ''
+            
+            testKeys.forEach(key => {
+                const item = document.createElement('div')
+                item.className = 'translation-item'
+                
+                const keyDiv = document.createElement('div')
+                keyDiv.className = 'translation-key'
+                keyDiv.textContent = key
+                
+                const valueDiv = document.createElement('div')
+                valueDiv.className = 'translation-value'
+                const translation = translations[currentLang] && translations[currentLang][key]
+                valueDiv.textContent = translation || `❌ 未找到翻译`
+                valueDiv.style.color = translation ? '#333' : '#ff6b6b'
+                
+                item.appendChild(keyDiv)
+                item.appendChild(valueDiv)
+                container.appendChild(item)
+            })
+        }
+
+        function testLanguage(lang) {
+            console.log(`🌐 切换语言到: ${lang}`)
+            currentLang = lang
+            localStorage.setItem('yeyu_language', lang)
+            localStorage.setItem('user-locale', lang)
+            
+            // 更新按钮状态
+            document.querySelectorAll('.lang-button').forEach(btn => {
+                btn.classList.remove('current-lang')
+            })
+            event.target.classList.add('current-lang')
+            
+            // 更新显示
+            updateDebugInfo()
+            updateTranslationTests()
+            
+            console.log(`✅ 语言已切换到: ${lang}`)
+            console.log(`📝 当前翻译:`, translations[lang])
+        }
+
+        // 初始化
+        function init() {
+            const savedLang = localStorage.getItem('yeyu_language') || 'zh-CN'
+            currentLang = savedLang
+            
+            console.log('🔍 i18n 测试页面初始化')
+            console.log('📦 翻译数据:', translations)
+            console.log('🌐 当前语言:', currentLang)
+            
+            updateDebugInfo()
+            updateTranslationTests()
+            
+            // 高亮当前语言按钮
+            document.querySelectorAll('.lang-button').forEach(btn => {
+                if (btn.textContent.includes(translations[currentLang]['languages.' + currentLang.replace('-', '')])) {
+                    btn.classList.add('current-lang')
+                }
+            })
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init)
+        
+        console.log('🧪 i18n 测试页面已加载')
+        console.log('📋 测试步骤:')
+        console.log('1. 点击不同语言按钮')
+        console.log('2. 观察翻译是否正确')
+        console.log('3. 检查本地存储是否保存')
+        console.log('4. 测试实际的语言选择页面')
+    </script>
+</body>
+</html>

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ 完整多语言功能演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 24px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        
+        .demo-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .demo-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+        
+        .demo-card.active {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .card-flag {
+            font-size: 24px;
+        }
+        
+        .phone-mockup {
+            width: 200px;
+            height: 360px;
+            background: #000;
+            border-radius: 20px;
+            padding: 4px;
+            margin: 0 auto 16px;
+            position: relative;
+        }
+        
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: #f5f5f5;
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .phone-status {
+            height: 20px;
+            background: #e5e5e5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 8px;
+            font-size: 8px;
+            color: #333;
+        }
+        
+        .phone-nav {
+            height: 32px;
+            background: #07C160;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            color: white;
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        .phone-content {
+            flex: 1;
+            background: white;
+            padding: 8px;
+        }
+        
+        .phone-item {
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 8px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 9px;
+            color: #333;
+        }
+        
+        .phone-item.selected {
+            background: #f0f9ff;
+            color: #07C160;
+            font-weight: 500;
+        }
+        
+        .phone-check {
+            color: #07C160;
+            font-weight: bold;
+        }
+        
+        .test-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            transition: background 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #5a67d8;
+        }
+        
+        .test-button.primary {
+            background: #10b981;
+        }
+        
+        .test-button.primary:hover {
+            background: #059669;
+        }
+        
+        .features {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+        
+        .features h3 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 20px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        
+        .feature-icon {
+            font-size: 20px;
+            margin-right: 12px;
+        }
+        
+        .feature-text {
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .actions {
+            text-align: center;
+            margin-top: 32px;
+        }
+        
+        .action-button {
+            display: inline-block;
+            margin: 8px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .success-badge {
+            background: #10b981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🌐 完整多语言国际化功能</h1>
+            <p class="subtitle">选择语言后整个项目界面都会切换到对应语言</p>
+            <div class="status">✅ 功能已完成</div>
+        </div>
+        
+        <div class="demo-grid">
+            <div class="demo-card active">
+                <div class="card-header">
+                    <div class="card-title">简体中文</div>
+                    <div class="card-flag">🇨🇳</div>
+                </div>
+                <div class="phone-mockup">
+                    <div class="phone-screen">
+                        <div class="phone-status">
+                            <span>13:31</span>
+                            <span>🔋 100%</span>
+                        </div>
+                        <div class="phone-nav">← 语言</div>
+                        <div class="phone-content">
+                            <div class="phone-item selected">
+                                <span>简体中文</span>
+                                <span class="phone-check">✓</span>
+                            </div>
+                            <div class="phone-item">繁体中文</div>
+                            <div class="phone-item">英语</div>
+                            <div class="phone-item">日语</div>
+                            <div class="phone-item">韩语</div>
+                            <div class="phone-item">马来语</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="test-button primary" onclick="testLanguage('zh-CN')">
+                    测试简体中文
+                </button>
+            </div>
+            
+            <div class="demo-card">
+                <div class="card-header">
+                    <div class="card-title">English</div>
+                    <div class="card-flag">🇺🇸</div>
+                </div>
+                <div class="phone-mockup">
+                    <div class="phone-screen">
+                        <div class="phone-status">
+                            <span>13:31</span>
+                            <span>🔋 100%</span>
+                        </div>
+                        <div class="phone-nav">← Language</div>
+                        <div class="phone-content">
+                            <div class="phone-item">Simplified Chinese</div>
+                            <div class="phone-item">Traditional Chinese</div>
+                            <div class="phone-item selected">
+                                <span>English</span>
+                                <span class="phone-check">✓</span>
+                            </div>
+                            <div class="phone-item">Japanese</div>
+                            <div class="phone-item">Korean</div>
+                            <div class="phone-item">Malay</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="test-button" onclick="testLanguage('en')">
+                    Test English
+                </button>
+            </div>
+            
+            <div class="demo-card">
+                <div class="card-header">
+                    <div class="card-title">日本語</div>
+                    <div class="card-flag">🇯🇵</div>
+                </div>
+                <div class="phone-mockup">
+                    <div class="phone-screen">
+                        <div class="phone-status">
+                            <span>13:31</span>
+                            <span>🔋 100%</span>
+                        </div>
+                        <div class="phone-nav">← 言語</div>
+                        <div class="phone-content">
+                            <div class="phone-item">簡体字中国語</div>
+                            <div class="phone-item">繁体字中国語</div>
+                            <div class="phone-item">英語</div>
+                            <div class="phone-item selected">
+                                <span>日本語</span>
+                                <span class="phone-check">✓</span>
+                            </div>
+                            <div class="phone-item">韓国語</div>
+                            <div class="phone-item">マレー語</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="test-button" onclick="testLanguage('ja')">
+                    日本語をテスト
+                </button>
+            </div>
+        </div>
+        
+        <div class="features">
+            <h3>🎯 核心功能特性</h3>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🌐</div>
+                    <div class="feature-text">
+                        <strong>全局语言切换</strong><br>
+                        选择语言后整个应用界面都会切换
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-text">
+                        <strong>实时生效</strong><br>
+                        无需刷新页面，立即看到语言切换效果
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💾</div>
+                    <div class="feature-text">
+                        <strong>本地存储</strong><br>
+                        保存用户语言选择，重新打开应用保持设置
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-text">
+                        <strong>类型安全</strong><br>
+                        TypeScript 确保语言代码和翻译键的类型安全
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🎨</div>
+                    <div class="feature-text">
+                        <strong>完整翻译</strong><br>
+                        导航栏、按钮、提示信息全部翻译
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🌍</div>
+                    <div class="feature-text">
+                        <strong>6种语言</strong><br>
+                        简体中文、繁体中文、英语、日语、韩语、马来语
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <a href="http://127.0.0.1:5173/settings/language-selector" class="action-button" target="_blank">
+                🌐 测试语言选择页面
+            </a>
+            <a href="http://127.0.0.1:5173/settings/general" class="action-button" target="_blank">
+                ⚙️ 测试通用设置页面
+            </a>
+            <a href="http://127.0.0.1:5173/" class="action-button" target="_blank">
+                🏠 打开主应用
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function testLanguage(lang) {
+            console.log(`🌐 模拟切换语言到: ${lang}`)
+            
+            // 更新卡片状态
+            document.querySelectorAll('.demo-card').forEach(card => {
+                card.classList.remove('active')
+            })
+            
+            // 根据语言高亮对应卡片
+            const langMap = {
+                'zh-CN': 0,
+                'en': 1,
+                'ja': 2
+            }
+            
+            const cardIndex = langMap[lang]
+            if (cardIndex !== undefined) {
+                document.querySelectorAll('.demo-card')[cardIndex].classList.add('active')
+            }
+            
+            // 保存到本地存储
+            localStorage.setItem('yeyu_language', lang)
+            localStorage.setItem('user-locale', lang)
+            
+            // 显示成功消息
+            const messages = {
+                'zh-CN': '已切换到简体中文',
+                'en': 'Switched to English',
+                'ja': '日本語に切り替えました'
+            }
+            
+            alert(messages[lang] || `已切换到 ${lang}`)
+            
+            console.log(`✅ 语言已设置为: ${lang}`)
+            console.log('🔗 现在可以打开实际的语言选择页面测试完整功能')
+        }
+        
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎉 完整多语言功能演示页面已加载')
+            console.log('📋 功能说明:')
+            console.log('1. 点击测试按钮模拟语言切换')
+            console.log('2. 点击下方链接测试实际功能')
+            console.log('3. 在实际应用中选择语言会立即切换整个界面')
+            console.log('4. 支持6种语言的完整翻译')
+            
+            // 检查当前保存的语言
+            const savedLang = localStorage.getItem('yeyu_language')
+            if (savedLang) {
+                console.log(`💾 检测到已保存的语言设置: ${savedLang}`)
+            }
+        })
+    </script>
+</body>
+</html>

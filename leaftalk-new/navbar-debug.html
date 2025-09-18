@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导航栏调试 - 叶语</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f8f8;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #07C160;
+        }
+        .header h1 {
+            color: #07C160;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .test-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .test-link {
+            display: block;
+            padding: 16px;
+            background: #07C160;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .test-link:hover {
+            background: #06a552;
+            transform: translateY(-2px);
+        }
+        .test-link.problem {
+            background: #ff4757;
+        }
+        .test-link.problem:hover {
+            background: #ff3838;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .debug-info {
+            background: #f4f4f4;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            margin: 16px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 导航栏调试页面</h1>
+            <p>检查哪些页面的导航栏有问题</p>
+        </div>
+
+        <div class="section">
+            <h2>🚨 问题页面（没有导航栏）</h2>
+            <div class="debug-info">
+                根据用户反馈，以下页面没有顶部导航栏：
+                - 个人头像页面
+                - 账户安全页面  
+                - 修改密码页面
+                - 支付密码样式页面
+            </div>
+            
+            <div class="test-links">
+                <a href="http://127.0.0.1:5173/settings/avatar-view" class="test-link problem">个人头像（问题页面）</a>
+                <a href="http://127.0.0.1:5173/settings/account-security" class="test-link problem">账户安全（问题页面）</a>
+                <a href="http://127.0.0.1:5173/settings/change-password" class="test-link problem">修改密码（问题页面）</a>
+                <a href="http://127.0.0.1:5173/settings/pay-password-style" class="test-link problem">支付密码样式（问题页面）</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>✅ 正常页面（应该有导航栏）</h2>
+            <div class="test-links">
+                <a href="http://127.0.0.1:5173/" class="test-link">首页</a>
+                <a href="http://127.0.0.1:5173/profile" class="test-link">个人资料</a>
+                <a href="http://127.0.0.1:5173/settings" class="test-link">设置</a>
+                <a href="http://127.0.0.1:5173/settings/general" class="test-link">通用设置</a>
+                <a href="http://127.0.0.1:5173/settings/personal-info" class="test-link">个人信息</a>
+                <a href="http://127.0.0.1:5173/settings/change-name" class="test-link">更改名字</a>
+                <a href="http://127.0.0.1:5173/my-qr-code" class="test-link">我的二维码</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔧 调试步骤</h2>
+            <div class="debug-info">
+1. 访问问题页面，检查是否有顶部导航栏
+2. 打开浏览器开发者工具
+3. 检查 MobileApp.vue 中的 showTopBar 计算属性
+4. 检查路由配置中的 hideTopBar 设置
+5. 检查页面组件是否正确加载
+
+预期结果：
+- 所有页面都应该有统一的顶部导航栏（除了登录、注册、聊天等特殊页面）
+- 导航栏高度：65px (25px状态栏 + 40px导航栏)
+- 导航栏颜色：#07C160
+- 返回按钮：左箭头图标
+- 页面标题：从路由配置获取
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 检查清单</h2>
+            <div class="debug-info">
+□ MobileApp.vue 的 showTopBar 逻辑是否正确
+□ 路由配置中是否有多余的 hideTopBar: true
+□ 页面组件是否正确渲染
+□ CSS 样式是否正确应用
+□ 是否有 JavaScript 错误影响渲染
+
+当前已知问题：
+- 某些页面的路由配置可能仍有 hideTopBar: true
+- 页面组件可能有渲染问题
+- MobileApp.vue 的逻辑可能需要调整
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎯 解决方案</h2>
+            <div class="debug-info">
+1. 检查并移除不必要的 hideTopBar: true 配置
+2. 确保 MobileApp.vue 的 showTopBar 逻辑正确
+3. 验证页面组件没有阻止导航栏渲染
+4. 测试所有页面的导航栏显示
+
+目标：所有设置页面都使用统一的 MobileApp.vue 导航栏
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 自动检测页面导航栏状态
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('导航栏调试页面已加载');
+            console.log('请点击上方链接测试各个页面的导航栏显示情况');
+        });
+    </script>
+</body>
+</html>

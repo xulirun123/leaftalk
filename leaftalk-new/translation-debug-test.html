@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻译调试测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .debug-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-left: 4px solid #007bff;
+        }
+
+        .debug-section h2 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .test-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 8px 8px 8px 0;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .test-link:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .test-link.success {
+            background: #28a745;
+        }
+
+        .test-link.warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .test-link.danger {
+            background: #dc3545;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 16px 0;
+            overflow-x: auto;
+            color: #495057;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .status-card:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+        }
+
+        .status-card.success {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .status-card.error {
+            border-color: #dc3545;
+            background: #fff8f8;
+        }
+
+        .status-card.warning {
+            border-color: #ffc107;
+            background: #fffdf0;
+        }
+
+        .status-card h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .status-card.success h3 {
+            color: #28a745;
+        }
+
+        .status-card.error h3 {
+            color: #dc3545;
+        }
+
+        .status-card.warning h3 {
+            color: #856404;
+        }
+
+        .chinese-text {
+            color: #dc3545;
+            font-weight: 500;
+            background: #fff5f5;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 4px 2px;
+            display: inline-block;
+        }
+
+        .steps {
+            background: #e3f2fd;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .steps h3 {
+            color: #1976d2;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .steps ol {
+            padding-left: 20px;
+        }
+
+        .steps li {
+            margin-bottom: 12px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .console-log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 16px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-success {
+            color: #4caf50;
+        }
+
+        .log-error {
+            color: #f44336;
+        }
+
+        .log-warning {
+            color: #ff9800;
+        }
+
+        .log-info {
+            color: #2196f3;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #856404;
+        }
+
+        .icon {
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 翻译调试测试</h1>
+
+        <div class="debug-section">
+            <h2>
+                <span class="icon">🎯</span>
+                测试目标
+            </h2>
+            <p><strong>主要问题：</strong></p>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li>二维码页面有两个导航栏</li>
+                <li>自动翻译没有生效，只有设置了翻译键的文本被翻译</li>
+                <li>i18n翻译键缺失警告</li>
+            </ul>
+        </div>
+
+        <div class="status-grid">
+            <div class="status-card success">
+                <h3>✅ 二维码页面修复</h3>
+                <p>移除页面内部的MobileTopBar组件，使用全局统一导航栏</p>
+                <a href="http://localhost:5173/my-qr-code" class="test-link success" target="_blank">
+                    测试二维码页面
+                </a>
+            </div>
+
+            <div class="status-card warning">
+                <h3>🔧 翻译服务初始化</h3>
+                <p>在main.ts中添加翻译管理器初始化，修复localStorage键名不一致</p>
+                <a href="http://localhost:5173/settings/language-selector" class="test-link warning" target="_blank">
+                    测试语言选择
+                </a>
+            </div>
+
+            <div class="status-card error">
+                <h3>🌍 自动翻译测试</h3>
+                <p>验证选择非中文语言后，页面中文文本是否自动翻译</p>
+                <a href="http://localhost:5173/settings/general" class="test-link danger" target="_blank">
+                    测试通用设置
+                </a>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h2>
+                <span class="icon">🧪</span>
+                测试步骤
+            </h2>
+            <div class="steps">
+                <h3>完整测试流程：</h3>
+                <ol>
+                    <li><strong>测试二维码页面：</strong>
+                        <br>打开二维码页面，检查是否只有一个导航栏
+                        <br><span class="highlight">预期：只有顶部一个导航栏</span>
+                    </li>
+                    
+                    <li><strong>测试语言选择：</strong>
+                        <br>打开语言选择页面，选择英语或其他非中文语言
+                        <br><span class="highlight">预期：选择后不自动跳转，翻译立即生效</span>
+                    </li>
+                    
+                    <li><strong>检查控制台日志：</strong>
+                        <br>打开浏览器开发者工具，查看控制台输出
+                        <br><span class="highlight">预期：看到翻译初始化和工作日志</span>
+                    </li>
+                    
+                    <li><strong>验证翻译效果：</strong>
+                        <br>在不同页面检查中文文本是否被翻译
+                        <br><span class="highlight">预期：所有中文文本都被翻译，不只是有翻译键的</span>
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h2>
+                <span class="icon">📊</span>
+                预期控制台日志
+            </h2>
+            <div class="console-log">
+<span class="log-info">🌍 初始化全局翻译管理器...</span>
+<span class="log-success">🌍 GlobalTranslationManager 开始初始化...</span>
+<span class="log-success">✅ GlobalTranslationManager 初始化完成</span>
+<span class="log-success">✅ 全局翻译管理器初始化完成</span>
+
+<span class="log-info">🌐 选择语言: en</span>
+<span class="log-info">🌍 启用自动翻译到: en</span>
+<span class="log-info">🔍 找到 45 个可翻译的文本节点</span>
+<span class="log-info">🔄 翻译文本: 这是一段普通的中文文本...</span>
+<span class="log-success">✅ 翻译完成: This is a normal Chinese text...</span>
+<span class="log-success">🌍 页面翻译完成，成功翻译 42 个文本节点</span>
+<span class="log-info">📢 已发送全局语言变更事件: en</span>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h2>
+                <span class="icon">🔍</span>
+                测试用中文文本
+            </h2>
+            <p>以下文本应该在选择非中文语言后被自动翻译：</p>
+            <div style="margin: 16px 0;">
+                <span class="chinese-text">设置</span>
+                <span class="chinese-text">个人信息</span>
+                <span class="chinese-text">通用</span>
+                <span class="chinese-text">隐私</span>
+                <span class="chinese-text">关于</span>
+                <span class="chinese-text">帮助</span>
+                <span class="chinese-text">退出登录</span>
+                <span class="chinese-text">确定</span>
+                <span class="chinese-text">取消</span>
+                <span class="chinese-text">保存</span>
+                <span class="chinese-text">删除</span>
+                <span class="chinese-text">编辑</span>
+                <span class="chinese-text">返回</span>
+                <span class="chinese-text">下一步</span>
+                <span class="chinese-text">完成</span>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h2>
+                <span class="icon">⚠️</span>
+                常见问题排查
+            </h2>
+            <div class="code-block">
+// 1. 检查localStorage中的语言设置
+console.log('yeyu_language:', localStorage.getItem('yeyu_language'))
+console.log('user-language:', localStorage.getItem('user-language'))
+
+// 2. 检查翻译管理器状态
+console.log('翻译管理器当前语言:', globalTranslationManager.currentLanguage)
+
+// 3. 手动触发翻译测试
+globalTranslationManager.enableAutoTranslation('en')
+
+// 4. 检查DOM中的文本节点
+document.querySelectorAll('*').forEach(el => {
+  if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+    const text = el.textContent.trim()
+    if (text && /[\u4e00-\u9fff]/.test(text)) {
+      console.log('中文文本节点:', text)
+    }
+  }
+})
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h2>
+                <span class="icon">🎊</span>
+                修复总结
+            </h2>
+            <div class="status-grid">
+                <div class="status-card success">
+                    <h3>✅ 双导航栏修复</h3>
+                    <p>移除页面内部导航栏，使用全局统一导航栏</p>
+                </div>
+                <div class="status-card success">
+                    <h3>✅ 翻译服务初始化</h3>
+                    <p>在main.ts中正确初始化翻译管理器</p>
+                </div>
+                <div class="status-card success">
+                    <h3>✅ localStorage键名统一</h3>
+                    <p>修复yeyu_language和user-language不一致问题</p>
+                </div>
+                <div class="status-card success">
+                    <h3>✅ DOM就绪检测</h3>
+                    <p>改进翻译服务的DOM准备就绪检测机制</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 监听控制台日志并显示在页面上
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addLogToPage(message, type = 'info') {
+            const logContainer = document.querySelector('.console-log');
+            if (logContainer) {
+                const logLine = document.createElement('div');
+                logLine.className = `log-${type}`;
+                logLine.textContent = message;
+                logContainer.appendChild(logLine);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ');
+            if (message.includes('翻译') || message.includes('🌍') || message.includes('🔄') || message.includes('✅')) {
+                addLogToPage(message, 'success');
+            } else if (message.includes('🌐') || message.includes('🔍')) {
+                addLogToPage(message, 'info');
+            }
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const message = args.join(' ');
+            addLogToPage('❌ ' + message, 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            const message = args.join(' ');
+            addLogToPage('⚠️ ' + message, 'warning');
+        };
+
+        // 页面加载完成后的检查
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addLogToPage('📄 测试页面加载完成', 'info');
+                
+                // 检查localStorage
+                const yeyuLang = localStorage.getItem('yeyu_language');
+                const userLang = localStorage.getItem('user-language');
+                addLogToPage(`🔍 yeyu_language: ${yeyuLang}`, 'info');
+                addLogToPage(`🔍 user-language: ${userLang}`, 'info');
+                
+                // 检查是否有全局翻译管理器
+                if (typeof globalTranslationManager !== 'undefined') {
+                    addLogToPage('✅ 全局翻译管理器已加载', 'success');
+                } else {
+                    addLogToPage('❌ 全局翻译管理器未找到', 'error');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

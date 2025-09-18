@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通讯录和发现页面国际化修复 - 叶语</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f8f8;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #07C160;
+        }
+        .header h1 {
+            color: #07C160;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .fix-item {
+            background: #f0fff4;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .fix-item h3 {
+            margin: 0 0 8px;
+            color: #333;
+            font-size: 16px;
+        }
+        .fix-item p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .test-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #dee2e6;
+        }
+        .test-card h3 {
+            margin: 0 0 12px;
+            color: #333;
+        }
+        .test-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 4px 4px 4px 0;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .translation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+        .translation-table th,
+        .translation-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .translation-table th {
+            background: #f8f8f8;
+            font-weight: 600;
+            color: #333;
+        }
+        .translation-table td {
+            color: #666;
+        }
+        .code-block {
+            background: #f4f4f4;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ 通讯录和发现页面国际化修复完成！</h1>
+            <p>完善语种切换功能，支持6种语言</p>
+        </div>
+
+        <div class="section">
+            <h2>🎯 修复的问题</h2>
+            <div class="fix-item">
+                <h3>1. 通讯录页面语种切换</h3>
+                <p><strong>问题：</strong> 通讯录页面的功能入口没有语种切换，都是硬编码的中文</p>
+                <p><strong>解决：</strong> 将所有硬编码文本替换为翻译键，支持6种语言切换</p>
+                <div class="code-block">
+修复前：&lt;span&gt;新的朋友&lt;/span&gt;
+修复后：&lt;span&gt;{{ $t('contacts.newFriends') }}&lt;/span&gt;
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <h3>2. 发现页面语种切换不完整</h3>
+                <p><strong>问题：</strong> 发现页面有些地方切换了英文，有些地方没有切换</p>
+                <p><strong>解决：</strong> 统一使用翻译键，确保所有文本都能正确切换语言</p>
+                <div class="code-block">
+修复前：&lt;span&gt;朋友圈&lt;/span&gt; （硬编码）
+修复后：&lt;span&gt;{{ $t('discover.moments') }}&lt;/span&gt; （翻译键）
+                </div>
+            </div>
+            
+            <div class="fix-item">
+                <h3>3. 通用设置页面语言显示</h3>
+                <p><strong>问题：</strong> 通用页面的语言选项显示固定的"简体中文"</p>
+                <p><strong>解决：</strong> 动态显示当前选择的语言名称</p>
+                <div class="code-block">
+修复前：&lt;span&gt;简体中文&lt;/span&gt; （固定显示）
+修复后：&lt;span&gt;{{ currentLanguageName }}&lt;/span&gt; （动态显示）
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 新增翻译键</h2>
+            
+            <h3>通讯录 (contacts) 翻译键</h3>
+            <table class="translation-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>简体中文</th>
+                        <th>English</th>
+                        <th>日本語</th>
+                        <th>한국어</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>contacts.newFriends</td><td>新的朋友</td><td>New Friends</td><td>新しい友達</td><td>새로운 친구</td></tr>
+                    <tr><td>contacts.groupChats</td><td>群聊</td><td>Group Chats</td><td>グループチャット</td><td>그룹 채팅</td></tr>
+                    <tr><td>contacts.unknownUser</td><td>未知用户</td><td>Unknown User</td><td>不明なユーザー</td><td>알 수 없는 사용자</td></tr>
+                    <tr><td>contacts.loadMore</td><td>加载更多联系人...</td><td>Load More Contacts...</td><td>連絡先をもっと読み込む...</td><td>연락처 더 보기...</td></tr>
+                    <tr><td>contacts.noContacts</td><td>暂无联系人</td><td>No Contacts</td><td>連絡先がありません</td><td>연락처가 없습니다</td></tr>
+                    <tr><td>contacts.addFriendTip</td><td>点击右上角"+"添加好友</td><td>Click "+" in the top right to add friends</td><td>右上の"+"をクリックして友達を追加</td><td>오른쪽 상단의 "+"를 클릭하여 친구 추가</td></tr>
+                </tbody>
+            </table>
+
+            <h3>发现页面翻译键（已存在，现已正确使用）</h3>
+            <table class="translation-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>简体中文</th>
+                        <th>English</th>
+                        <th>日本語</th>
+                        <th>한국어</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>discover.moments</td><td>朋友圈</td><td>Moments</td><td>モーメンツ</td><td>모멘트</td></tr>
+                    <tr><td>discover.videoChannel</td><td>视频号</td><td>Video Channel</td><td>ビデオチャンネル</td><td>비디오 채널</td></tr>
+                    <tr><td>discover.scan</td><td>扫一扫</td><td>Scan</td><td>スキャン</td><td>스캔</td></tr>
+                    <tr><td>discover.nearby</td><td>附近的人</td><td>Nearby</td><td>近くの人</td><td>근처 사람들</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>🧪 测试验证</h2>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h3>📱 通讯录页面测试</h3>
+                    <p>测试通讯录页面的语种切换：</p>
+                    <a href="http://127.0.0.1:5173/contacts" class="test-link">通讯录页面</a>
+                    <p><strong>检查项目：</strong></p>
+                    <ul>
+                        <li>"新的朋友" 是否能切换语言</li>
+                        <li>"群聊" 是否能切换语言</li>
+                        <li>"暂无联系人" 是否能切换语言</li>
+                        <li>"加载更多联系人..." 是否能切换语言</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🔍 发现页面测试</h3>
+                    <p>测试发现页面的语种切换：</p>
+                    <a href="http://127.0.0.1:5173/discover" class="test-link">发现页面</a>
+                    <p><strong>检查项目：</strong></p>
+                    <ul>
+                        <li>"朋友圈" 是否能切换语言</li>
+                        <li>"视频号" 是否能切换语言</li>
+                        <li>"扫一扫" 是否能切换语言</li>
+                        <li>"附近的人" 是否能切换语言</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>⚙️ 通用设置测试</h3>
+                    <p>测试通用设置页面的语言显示：</p>
+                    <a href="http://127.0.0.1:5173/settings/general" class="test-link">通用设置</a>
+                    <p><strong>检查项目：</strong></p>
+                    <ul>
+                        <li>语言选项是否显示当前语言</li>
+                        <li>点击语言是否能跳转到语言选择器</li>
+                        <li>切换语言后是否正确显示</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🌐 语言选择器测试</h3>
+                    <p>测试语言选择功能：</p>
+                    <a href="http://127.0.0.1:5173/settings/language-selector" class="test-link">语言选择器</a>
+                    <p><strong>测试步骤：</strong></p>
+                    <ol>
+                        <li>选择不同语言</li>
+                        <li>返回通讯录和发现页面</li>
+                        <li>验证所有文本是否正确切换</li>
+                        <li>检查是否还有硬编码文本</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 验证步骤</h2>
+            <div class="fix-item">
+                <h3>完整的语种切换测试</h3>
+                <ol>
+                    <li><strong>访问语言设置：</strong> 设置 → 通用 → 语言</li>
+                    <li><strong>切换到英语：</strong> 选择 "English"</li>
+                    <li><strong>测试通讯录：</strong> 检查 "New Friends"、"Group Chats" 等是否显示英文</li>
+                    <li><strong>测试发现页面：</strong> 检查 "Moments"、"Video Channel"、"Scan"、"Nearby" 等是否显示英文</li>
+                    <li><strong>切换到日语：</strong> 选择 "日本語"</li>
+                    <li><strong>重复测试：</strong> 验证日语显示是否正确</li>
+                    <li><strong>测试其他语言：</strong> 韩语、马来语、繁体中文</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎉 修复总结</h2>
+            <div class="fix-item">
+                <h3>完成的改进</h3>
+                <ul>
+                    <li>✅ <strong>通讯录页面完全国际化</strong>：所有文本都支持6种语言切换</li>
+                    <li>✅ <strong>发现页面完全国际化</strong>：修复了部分硬编码文本，现在完全支持语种切换</li>
+                    <li>✅ <strong>通用设置页面优化</strong>：语言选项动态显示当前选择的语言</li>
+                    <li>✅ <strong>翻译键完整性</strong>：为所有6种语言添加了完整的翻译</li>
+                    <li>✅ <strong>用户体验提升</strong>：语言切换更加一致和完整</li>
+                </ul>
+                
+                <p><strong>支持的语言：</strong></p>
+                <ul>
+                    <li>🇨🇳 简体中文 (zh-CN)</li>
+                    <li>🇺🇸 英语 (en)</li>
+                    <li>🇯🇵 日语 (ja)</li>
+                    <li>🇰🇷 韩语 (ko)</li>
+                    <li>🇲🇾 马来语 (ms)</li>
+                    <li>🇹🇼 繁体中文 (zh-TW)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🌐 通讯录和发现页面国际化修复验证页面已加载');
+            console.log('📍 请测试语种切换功能是否正常工作');
+        });
+    </script>
+</body>
+</html>

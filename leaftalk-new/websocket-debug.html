@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket连接调试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connected { background: #28a745; }
+        .status-connecting { background: #ffc107; }
+        .status-disconnected { background: #dc3545; }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+        }
+        .info-box {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error-box {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success-box {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔌 WebSocket连接调试工具</h1>
+    
+    <div class="debug-section">
+        <h2>📊 连接状态</h2>
+        <div id="connection-status">
+            <span class="status-indicator status-disconnected"></span>
+            <span id="status-text">未连接</span>
+        </div>
+        <div id="connection-info" class="info-box" style="display: none;">
+            连接信息将在这里显示
+        </div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🛠️ 测试操作</h2>
+        <button class="test-button" onclick="testConnection()">测试连接</button>
+        <button class="test-button" onclick="sendTestMessage()">发送测试消息</button>
+        <button class="test-button" onclick="disconnect()">断开连接</button>
+        <button class="test-button" onclick="clearLog()">清空日志</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>📝 连接日志</h2>
+        <div id="log" class="log">等待连接...</div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🔧 故障排除</h2>
+        <div class="info-box">
+            <strong>常见问题：</strong><br>
+            1. <strong>连接失败</strong>：检查服务器是否运行在 localhost:8893<br>
+            2. <strong>频繁断开</strong>：可能是网络不稳定或服务器重启<br>
+            3. <strong>认证失败</strong>：检查token是否有效<br>
+            4. <strong>消息发送失败</strong>：检查用户ID和接收者ID是否正确
+        </div>
+        
+        <button class="test-button" onclick="checkServerStatus()">检查服务器状态</button>
+        <button class="test-button" onclick="checkAuthToken()">检查认证Token</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket = null;
+        let logContent = '';
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logContent += `[${timestamp}] ${message}\n`;
+            document.getElementById('log').textContent = logContent;
+            console.log(message);
+            
+            // 自动滚动到底部
+            const logElement = document.getElementById('log');
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function updateStatus(status, text) {
+            const indicator = document.querySelector('.status-indicator');
+            const statusText = document.getElementById('status-text');
+            
+            indicator.className = `status-indicator status-${status}`;
+            statusText.textContent = text;
+        }
+        
+        function updateConnectionInfo(info) {
+            const infoElement = document.getElementById('connection-info');
+            infoElement.textContent = info;
+            infoElement.style.display = 'block';
+        }
+        
+        function testConnection() {
+            log('🔌 开始测试WebSocket连接...');
+            
+            if (socket && socket.connected) {
+                log('⚠️ 已有活跃连接，先断开');
+                socket.disconnect();
+            }
+            
+            // 获取认证信息
+            const token = localStorage.getItem('yeyu_auth_token');
+            const userId = getUserId();
+            
+            if (!token || !userId) {
+                log('❌ 缺少认证信息 - token或userId为空');
+                updateStatus('disconnected', '认证失败');
+                return;
+            }
+            
+            log(`🔑 使用Token: ${token.substring(0, 20)}...`);
+            log(`👤 用户ID: ${userId}`);
+            
+            updateStatus('connecting', '连接中...');
+            
+            socket = io('http://localhost:8893', {
+                auth: { token, userId },
+                transports: ['websocket', 'polling'],
+                timeout: 10000,
+                reconnection: false // 禁用自动重连，便于调试
+            });
+            
+            socket.on('connect', () => {
+                log('✅ WebSocket连接成功');
+                updateStatus('connected', '已连接');
+                updateConnectionInfo(`连接ID: ${socket.id}`);
+                
+                // 加入用户房间
+                socket.emit('join_user_room', { userId });
+                log(`🏠 已加入用户房间: ${userId}`);
+            });
+            
+            socket.on('disconnect', (reason) => {
+                log(`❌ 连接断开: ${reason}`);
+                updateStatus('disconnected', '已断开');
+                updateConnectionInfo('');
+            });
+            
+            socket.on('connect_error', (error) => {
+                log(`❌ 连接错误: ${error.message}`);
+                updateStatus('disconnected', '连接失败');
+                updateConnectionInfo(`错误: ${error.message}`);
+            });
+            
+            socket.on('new_message', (data) => {
+                log(`📨 收到新消息: ${JSON.stringify(data)}`);
+            });
+            
+            socket.on('message_delivered', (data) => {
+                log(`✅ 消息送达确认: ${data.messageId}`);
+            });
+        }
+        
+        function sendTestMessage() {
+            if (!socket || !socket.connected) {
+                log('❌ 未连接，无法发送消息');
+                return;
+            }
+            
+            const testMessage = {
+                id: `test_${Date.now()}`,
+                chatId: '1_2',
+                senderId: getUserId(),
+                receiverId: '2',
+                content: '这是一条测试消息',
+                type: 'text',
+                timestamp: Date.now(),
+                status: 'sent'
+            };
+            
+            log('📤 发送测试消息...');
+            socket.emit('send_message', testMessage, (response) => {
+                if (response && response.success) {
+                    log('✅ 测试消息发送成功');
+                } else {
+                    log(`❌ 测试消息发送失败: ${JSON.stringify(response)}`);
+                }
+            });
+        }
+        
+        function disconnect() {
+            if (socket) {
+                log('🔌 主动断开连接');
+                socket.disconnect();
+                socket = null;
+            }
+        }
+        
+        function clearLog() {
+            logContent = '';
+            document.getElementById('log').textContent = '日志已清空';
+        }
+        
+        function checkServerStatus() {
+            log('🔍 检查服务器状态...');
+            
+            fetch('http://localhost:8893/api/health')
+                .then(response => {
+                    if (response.ok) {
+                        log('✅ 服务器运行正常');
+                        return response.json();
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                })
+                .then(data => {
+                    log(`📊 服务器信息: ${JSON.stringify(data)}`);
+                })
+                .catch(error => {
+                    log(`❌ 服务器检查失败: ${error.message}`);
+                });
+        }
+        
+        function checkAuthToken() {
+            const token = localStorage.getItem('yeyu_auth_token');
+            const userId = getUserId();
+            
+            log('🔑 检查认证信息...');
+            log(`Token: ${token ? token.substring(0, 50) + '...' : '未找到'}`);
+            log(`用户ID: ${userId || '未找到'}`);
+            
+            if (token) {
+                // 验证token
+                fetch('http://localhost:8893/api/auth/verify', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        log('✅ Token验证成功');
+                        return response.json();
+                    } else {
+                        throw new Error(`Token验证失败: HTTP ${response.status}`);
+                    }
+                })
+                .then(data => {
+                    log(`👤 用户信息: ${JSON.stringify(data)}`);
+                })
+                .catch(error => {
+                    log(`❌ ${error.message}`);
+                });
+            }
+        }
+        
+        function getUserId() {
+            // 尝试从不同地方获取用户ID
+            const authData = localStorage.getItem('yeyu_auth_user');
+            if (authData) {
+                try {
+                    const user = JSON.parse(authData);
+                    return user.id;
+                } catch (e) {
+                    // 忽略解析错误
+                }
+            }
+            
+            // 默认返回1（测试用）
+            return '1';
+        }
+        
+        // 页面加载时自动检查状态
+        window.onload = function() {
+            log('🚀 WebSocket调试工具已加载');
+            checkAuthToken();
+            checkServerStatus();
+        };
+    </script>
+</body>
+</html>

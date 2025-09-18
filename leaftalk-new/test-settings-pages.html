@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置页面测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .page-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .page-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            background: #f9f9f9;
+        }
+        .page-item:hover {
+            background: #e8f5e8;
+            border-color: #07C160;
+        }
+        .page-item.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .page-item.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .test-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #07C160;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #06a552;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background-color: #28a745; }
+        .status-error { background-color: #dc3545; }
+        .status-pending { background-color: #ffc107; }
+    </style>
+</head>
+<body>
+    <h1>叶语设置页面测试</h1>
+    
+    <div class="container">
+        <h3>🔧 设置页面访问测试</h3>
+        <p>点击下方页面名称测试访问，或使用批量测试按钮</p>
+        
+        <button onclick="testAllPages()">🚀 批量测试所有页面</button>
+        <button onclick="clearResults()">🧹 清除结果</button>
+        
+        <div class="page-grid" id="pageGrid">
+            <!-- 页面项目将通过JavaScript动态生成 -->
+        </div>
+        
+        <div id="testResult" class="test-result" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h3>📊 测试统计</h3>
+        <div id="statistics">
+            <p>总页面数: <span id="totalPages">0</span></p>
+            <p>成功访问: <span id="successCount">0</span></p>
+            <p>访问失败: <span id="errorCount">0</span></p>
+            <p>未测试: <span id="pendingCount">0</span></p>
+        </div>
+    </div>
+
+    <script>
+        // 设置页面列表
+        const settingsPages = [
+            { name: 'About', title: '关于', path: '/settings/about' },
+            { name: 'Accessibility', title: '辅助功能', path: '/settings/accessibility' },
+            { name: 'AccountSecurity', title: '账号与安全', path: '/settings/account-security' },
+            { name: 'AvatarView', title: '头像查看', path: '/settings/avatar-view' },
+            { name: 'CallMusic', title: '通话背景音乐', path: '/settings/call-music' },
+            { name: 'CallSound', title: '通话铃声', path: '/settings/call-sound' },
+            { name: 'ChangeGender', title: '修改性别', path: '/settings/change-gender' },
+            { name: 'ChangeGesturePassword', title: '修改手势密码', path: '/settings/change-gesture-password' },
+            { name: 'ChangeName', title: '修改昵称', path: '/settings/change-name' },
+            { name: 'ChangePassword', title: '修改密码', path: '/settings/change-password' },
+            { name: 'ChangePayPassword', title: '修改支付密码', path: '/settings/change-pay-password' },
+            { name: 'ChangePhone', title: '修改手机号', path: '/settings/change-phone' },
+            { name: 'ChangeSignature', title: '修改个性签名', path: '/settings/change-signature' },
+            { name: 'ChangeYeyuId', title: '修改叶语号', path: '/settings/change-yeyu-id' },
+            { name: 'ChatBackground', title: '聊天背景', path: '/settings/chat-background' },
+            { name: 'DoNotDisturb', title: '免打扰', path: '/settings/do-not-disturb' },
+            { name: 'EmojiSettings', title: '表情设置', path: '/settings/emoji-settings' },
+            { name: 'FontSize', title: '字体大小', path: '/settings/font-size' },
+            { name: 'FriendPermissions', title: '朋友权限', path: '/settings/friend-permissions' },
+            { name: 'General', title: '通用', path: '/settings/general' },
+            { name: 'Help', title: '帮助', path: '/settings/help' },
+            { name: 'Language', title: '语言', path: '/settings/language' },
+            { name: 'MomentsPrivacy', title: '朋友圈隐私', path: '/settings/moments-privacy' },
+            { name: 'Notifications', title: '新消息通知', path: '/settings/notifications' },
+            { name: 'NotificationSettings', title: '通知设置', path: '/settings/notification-settings' },
+            { name: 'NotificationSound', title: '通知声音', path: '/settings/notification-sound' },
+            { name: 'PayPasswordOptions', title: '支付密码选项', path: '/settings/pay-password-options' },
+            { name: 'PayPasswordStyle', title: '支付密码样式', path: '/settings/pay-password-style' },
+            { name: 'PersonalInfo', title: '个人资料', path: '/settings/personal-info' },
+            { name: 'PersonalInfoPrivacy', title: '个人信息隐私', path: '/settings/personal-info-privacy' },
+            { name: 'PhotoVideo', title: '照片与视频', path: '/settings/photo-video' },
+            { name: 'Privacy', title: '隐私', path: '/settings/privacy' },
+            { name: 'PrivacySettings', title: '隐私设置', path: '/settings/privacy-settings' },
+            { name: 'RegionSelector', title: '地区选择', path: '/settings/region-selector' },
+            { name: 'SelectFriends', title: '选择朋友', path: '/settings/select-friends' },
+            { name: 'Settings', title: '设置', path: '/settings' },
+            { name: 'Storage', title: '存储空间', path: '/settings/storage' },
+            { name: 'YouthMode', title: '青少年模式', path: '/settings/youth-mode' }
+        ];
+
+        // 页面状态
+        const pageStatus = {};
+
+        // 初始化页面
+        function initializePages() {
+            const grid = document.getElementById('pageGrid');
+            grid.innerHTML = '';
+            
+            settingsPages.forEach(page => {
+                const item = document.createElement('div');
+                item.className = 'page-item';
+                item.id = `page-${page.name}`;
+                item.innerHTML = `
+                    <div class="status-indicator status-pending" id="status-${page.name}"></div>
+                    <strong>${page.title}</strong><br>
+                    <small>${page.name}</small>
+                `;
+                item.onclick = () => testSinglePage(page);
+                grid.appendChild(item);
+                
+                pageStatus[page.name] = 'pending';
+            });
+            
+            updateStatistics();
+        }
+
+        // 测试单个页面
+        function testSinglePage(page) {
+            const pageItem = document.getElementById(`page-${page.name}`);
+            const statusIndicator = document.getElementById(`status-${page.name}`);
+            
+            // 设置为加载状态
+            statusIndicator.className = 'status-indicator status-pending';
+            pageItem.className = 'page-item';
+            
+            try {
+                // 尝试打开页面
+                const url = `http://127.0.0.1:5173${page.path}`;
+                const newWindow = window.open(url, '_blank');
+                
+                // 模拟检查页面是否成功加载
+                setTimeout(() => {
+                    if (newWindow && !newWindow.closed) {
+                        // 页面成功打开
+                        statusIndicator.className = 'status-indicator status-success';
+                        pageItem.className = 'page-item success';
+                        pageStatus[page.name] = 'success';
+                        showResult(`✅ ${page.title} (${page.name}) 访问成功`, 'success');
+                    } else {
+                        // 页面打开失败
+                        statusIndicator.className = 'status-indicator status-error';
+                        pageItem.className = 'page-item error';
+                        pageStatus[page.name] = 'error';
+                        showResult(`❌ ${page.title} (${page.name}) 访问失败`, 'error');
+                    }
+                    updateStatistics();
+                }, 1000);
+                
+            } catch (error) {
+                statusIndicator.className = 'status-indicator status-error';
+                pageItem.className = 'page-item error';
+                pageStatus[page.name] = 'error';
+                showResult(`❌ ${page.title} (${page.name}) 访问异常: ${error.message}`, 'error');
+                updateStatistics();
+            }
+        }
+
+        // 批量测试所有页面
+        async function testAllPages() {
+            showResult('🚀 开始批量测试所有设置页面...', 'info');
+            
+            for (let i = 0; i < settingsPages.length; i++) {
+                const page = settingsPages[i];
+                showResult(`📋 测试进度: ${i + 1}/${settingsPages.length} - ${page.title}`, 'info');
+                
+                testSinglePage(page);
+                
+                // 等待一段时间再测试下一个页面
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            setTimeout(() => {
+                showResult('✅ 批量测试完成！请查看各页面状态。', 'success');
+            }, 2000);
+        }
+
+        // 显示测试结果
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = message;
+        }
+
+        // 清除结果
+        function clearResults() {
+            settingsPages.forEach(page => {
+                const pageItem = document.getElementById(`page-${page.name}`);
+                const statusIndicator = document.getElementById(`status-${page.name}`);
+                
+                statusIndicator.className = 'status-indicator status-pending';
+                pageItem.className = 'page-item';
+                pageStatus[page.name] = 'pending';
+            });
+            
+            document.getElementById('testResult').style.display = 'none';
+            updateStatistics();
+        }
+
+        // 更新统计信息
+        function updateStatistics() {
+            const total = settingsPages.length;
+            const success = Object.values(pageStatus).filter(status => status === 'success').length;
+            const error = Object.values(pageStatus).filter(status => status === 'error').length;
+            const pending = Object.values(pageStatus).filter(status => status === 'pending').length;
+            
+            document.getElementById('totalPages').textContent = total;
+            document.getElementById('successCount').textContent = success;
+            document.getElementById('errorCount').textContent = error;
+            document.getElementById('pendingCount').textContent = pending;
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePages();
+            showResult('📱 设置页面测试工具已就绪。点击页面名称进行单独测试，或使用批量测试功能。', 'info');
+        });
+    </script>
+</body>
+</html>

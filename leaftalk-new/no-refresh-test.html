@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无刷新语言切换测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .fix-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-left: 4px solid #28a745;
+        }
+
+        .fix-section h2 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .test-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 8px 8px 8px 0;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .test-link:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .test-link.success {
+            background: #28a745;
+        }
+
+        .test-link.warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .before, .after {
+            padding: 16px;
+            border-radius: 8px;
+            border: 2px solid;
+        }
+
+        .before {
+            background: #fff5f5;
+            border-color: #dc3545;
+        }
+
+        .after {
+            background: #f0fff4;
+            border-color: #28a745;
+        }
+
+        .before h3, .after h3 {
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .before h3 {
+            color: #dc3545;
+        }
+
+        .after h3 {
+            color: #28a745;
+        }
+
+        .console-log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 16px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-success {
+            color: #4caf50;
+        }
+
+        .log-error {
+            color: #f44336;
+        }
+
+        .log-warning {
+            color: #ff9800;
+        }
+
+        .log-info {
+            color: #2196f3;
+        }
+
+        .steps {
+            background: #e3f2fd;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .steps h3 {
+            color: #1976d2;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .steps ol {
+            padding-left: 20px;
+        }
+
+        .steps li {
+            margin-bottom: 12px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #856404;
+        }
+
+        .icon {
+            font-size: 20px;
+        }
+
+        .language-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .language-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            border: 2px solid #e9ecef;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .language-card:hover {
+            border-color: #007bff;
+            transform: translateY(-2px);
+        }
+
+        .language-card.fixed {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        .language-card h4 {
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .language-card .code {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.fixed {
+            background: #28a745;
+        }
+
+        .status-indicator.error {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚫 无刷新语言切换测试</h1>
+
+        <div class="fix-section">
+            <h2>
+                <span class="icon">🎯</span>
+                修复总结
+            </h2>
+            <p><strong>已修复的关键问题：</strong></p>
+            
+            <div class="comparison">
+                <div class="before">
+                    <h3>❌ 修复前的问题</h3>
+                    <ul>
+                        <li>i18n翻译键缺失警告</li>
+                        <li>切换语种时页面自动刷新</li>
+                        <li>无法连续测试多种语言</li>
+                        <li>用户体验被打断</li>
+                    </ul>
+                </div>
+                <div class="after">
+                    <h3>✅ 修复后的效果</h3>
+                    <ul>
+                        <li>所有翻译键正常工作</li>
+                        <li>语种切换无页面刷新</li>
+                        <li>可以连续测试所有语言</li>
+                        <li>流畅的用户体验</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="fix-section">
+            <h2>
+                <span class="icon">🔧</span>
+                修复的翻译键
+            </h2>
+            <p><strong>添加到 zh-CN.ts 的 languages 对象：</strong></p>
+            
+            <div class="language-grid">
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>简体中文</h4>
+                    <div class="code">languages.zhCN</div>
+                </div>
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>繁體中文</h4>
+                    <div class="code">languages.zhTW</div>
+                </div>
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>English</h4>
+                    <div class="code">languages.en</div>
+                </div>
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>日本語</h4>
+                    <div class="code">languages.ja</div>
+                </div>
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>한국어</h4>
+                    <div class="code">languages.ko</div>
+                </div>
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>Bahasa Malaysia</h4>
+                    <div class="code">languages.ms</div>
+                </div>
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>Français</h4>
+                    <div class="code">languages.fr</div>
+                </div>
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>Deutsch</h4>
+                    <div class="code">languages.de</div>
+                </div>
+                <div class="language-card fixed">
+                    <h4><span class="status-indicator fixed"></span>Español</h4>
+                    <div class="code">languages.es</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="fix-section">
+            <h2>
+                <span class="icon">🧪</span>
+                测试步骤
+            </h2>
+            <div class="steps">
+                <h3>验证修复效果：</h3>
+                <ol>
+                    <li><strong>打开语言选择页面：</strong>
+                        <br><a href="http://localhost:5173/settings/language-selector" class="test-link success" target="_blank">
+                            🌐 语言选择页面
+                        </a>
+                        <br><span class="highlight">检查控制台是否还有翻译键警告</span>
+                    </li>
+                    
+                    <li><strong>测试连续语言切换：</strong>
+                        <br>依次选择：英语 → 马来语 → 法语 → 德语 → 西班牙语
+                        <br><span class="highlight">页面应该不会刷新，可以连续切换</span>
+                    </li>
+                    
+                    <li><strong>测试切换回中文：</strong>
+                        <br>选择"简体中文"
+                        <br><span class="highlight">页面不刷新，原文自动恢复</span>
+                    </li>
+                    
+                    <li><strong>检查翻译效果：</strong>
+                        <br><a href="http://localhost:5173/settings/personal-info" class="test-link warning" target="_blank">
+                            👤 个人信息页面
+                        </a>
+                        <br><span class="highlight">在语言选择页面切换语言后，检查翻译效果</span>
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="fix-section">
+            <h2>
+                <span class="icon">📊</span>
+                预期控制台日志
+            </h2>
+            <div class="console-log">
+<span class="log-success">✅ 不再有 [intlify] Not found 'languages.fr' key 警告</span>
+<span class="log-success">✅ 不再有 [intlify] Not found 'languages.de' key 警告</span>
+<span class="log-success">✅ 不再有 [intlify] Not found 'languages.es' key 警告</span>
+
+<span class="log-info">🌐 选择语言: fr</span>
+<span class="log-info">🔄 尝试MyMemory翻译服务...</span>
+<span class="log-success">✅ MyMemory翻译成功: {original: "设置", translated: "Paramètres", confidence: 0.95}</span>
+
+<span class="log-info">🌐 选择语言: zh-CN</span>
+<span class="log-info">🌍 切换回中文，禁用自动翻译</span>
+<span class="log-info">🔄 恢复页面原文...</span>
+<span class="log-success">✅ 已恢复 5 个文本节点的原文</span>
+
+<span class="log-success">🎉 页面没有刷新，用户可以继续操作</span>
+            </div>
+        </div>
+
+        <div class="fix-section">
+            <h2>
+                <span class="icon">✅</span>
+                成功标志
+            </h2>
+            <p><strong>修复成功的标志：</strong></p>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li>控制台不再有 "Not found 'languages.xx' key" 警告</li>
+                <li>切换语言时页面不会刷新或跳转</li>
+                <li>可以连续选择多种语言进行测试</li>
+                <li>切换回中文时原文自动恢复，无需刷新</li>
+                <li>语言选择页面保持打开状态</li>
+                <li>翻译功能正常工作</li>
+            </ul>
+        </div>
+
+        <div class="fix-section">
+            <h2>
+                <span class="icon">🎊</span>
+                技术实现
+            </h2>
+            <p><strong>关键修复点：</strong></p>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>i18n翻译键：</strong>在 zh-CN.ts 中添加完整的 languages 对象</li>
+                <li><strong>移除页面刷新：</strong>替换 window.location.reload() 为 restoreOriginalText()</li>
+                <li><strong>原文备份：</strong>翻译时将原文保存到 __originalText 属性</li>
+                <li><strong>无刷新恢复：</strong>切换回中文时直接恢复备份的原文</li>
+                <li><strong>用户体验：</strong>保持页面状态，允许连续测试</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 监听控制台日志并显示在页面上
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addLogToPage(message, type = 'info') {
+            const logContainer = document.querySelector('.console-log');
+            if (logContainer) {
+                const logLine = document.createElement('div');
+                logLine.className = `log-${type}`;
+                logLine.textContent = message;
+                logContainer.appendChild(logLine);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.join(' ');
+            if (message.includes('翻译') || message.includes('🌍') || message.includes('🔄') || 
+                message.includes('✅') || message.includes('恢复') || message.includes('语言')) {
+                if (message.includes('✅') || message.includes('成功')) {
+                    addLogToPage(message, 'success');
+                } else if (message.includes('🔄') || message.includes('恢复')) {
+                    addLogToPage(message, 'info');
+                } else {
+                    addLogToPage(message, 'info');
+                }
+            }
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            const message = args.join(' ');
+            if (message.includes('翻译') || message.includes('语言')) {
+                addLogToPage('❌ ' + message, 'error');
+            }
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            const message = args.join(' ');
+            if (message.includes('intlify') || message.includes('Not found') || message.includes('key')) {
+                addLogToPage('⚠️ ' + message, 'warning');
+            }
+        };
+
+        // 页面加载完成后的检查
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addLogToPage('📄 无刷新语言切换测试页面加载完成', 'info');
+                addLogToPage('🎯 请按照测试步骤验证修复效果', 'info');
+                addLogToPage('🚫 现在切换语言不会刷新页面了', 'success');
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

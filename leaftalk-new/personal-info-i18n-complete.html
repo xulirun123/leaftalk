@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人信息页面国际化完成 - 叶语</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f8f8;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #07C160;
+        }
+        .header h1 {
+            color: #07C160;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .success-item {
+            background: #d4edda;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #28a745;
+        }
+        .success-item h3 {
+            margin: 0 0 8px;
+            color: #155724;
+            font-size: 16px;
+        }
+        .success-item p {
+            margin: 0;
+            color: #155724;
+            font-size: 14px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .test-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #dee2e6;
+        }
+        .test-card h3 {
+            margin: 0 0 12px;
+            color: #333;
+        }
+        .test-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 4px 4px 4px 0;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .language-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+        .language-table th,
+        .language-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .language-table th {
+            background: #f8f8f8;
+            font-weight: 600;
+            color: #333;
+        }
+        .language-table td {
+            color: #666;
+        }
+        .code-block {
+            background: #f4f4f4;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👤 个人信息页面国际化完成！</h1>
+            <p>修复了所有硬编码文本，完全支持多语言切换</p>
+        </div>
+
+        <div class="section">
+            <h2>✅ 修复完成的内容</h2>
+            <div class="success-item">
+                <h3>1. 个人信息字段标签完全国际化</h3>
+                <p><strong>修复的字段：</strong></p>
+                <ul>
+                    <li>头像 → {{ $t('settings.avatar') }}</li>
+                    <li>名字 → {{ $t('settings.name') }}</li>
+                    <li>手机号 → {{ $t('settings.phone') }}</li>
+                    <li>叶语号 → {{ $t('settings.yeyuId') }}</li>
+                    <li>我的二维码 → {{ $t('settings.myQRCode') }}</li>
+                    <li>拍一拍 → {{ $t('settings.paiYiPai') }}</li>
+                    <li>性别 → {{ $t('settings.gender') }}</li>
+                    <li>地区 → {{ $t('settings.region') }}</li>
+                    <li>个性签名 → {{ $t('settings.signature') }}</li>
+                </ul>
+            </div>
+            
+            <div class="success-item">
+                <h3>2. 性别显示动态国际化</h3>
+                <p><strong>修复的性别格式化函数：</strong></p>
+                <div class="code-block">
+// 修复前（硬编码）
+const genderMap = {
+  'male': '男',
+  'female': '女',
+  'unknown': '未设置'
+}
+
+// 修复后（国际化）
+const genderMap = {
+  'male': t('settings.male'),
+  'female': t('settings.female'),
+  'unknown': t('settings.notSet')
+}
+                </div>
+            </div>
+            
+            <div class="success-item">
+                <h3>3. 状态文本统一国际化</h3>
+                <p><strong>修复内容：</strong></p>
+                <ul>
+                    <li>所有 "未设置" → {{ $t('settings.notSet') }}</li>
+                    <li>叶语号修改提示 → {{ $t('settings.canModifyAfter') }}</li>
+                    <li>性别显示 → 动态翻译</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌍 新增翻译键对照表</h2>
+            
+            <h3>个人信息相关翻译键</h3>
+            <table class="language-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>🇨🇳 简体中文</th>
+                        <th>🇺🇸 English</th>
+                        <th>🇯🇵 日本語</th>
+                        <th>🇰🇷 한국어</th>
+                        <th>🇲🇾 Bahasa Malaysia</th>
+                        <th>🇹🇼 繁體中文</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>settings.myQRCode</td>
+                        <td>我的二维码</td>
+                        <td>My QR Code</td>
+                        <td>マイQRコード</td>
+                        <td>내 QR 코드</td>
+                        <td>Kod QR Saya</td>
+                        <td>我的二維碼</td>
+                    </tr>
+                    <tr>
+                        <td>settings.paiYiPai</td>
+                        <td>拍一拍</td>
+                        <td>Nudge</td>
+                        <td>つつく</td>
+                        <td>톡톡</td>
+                        <td>Sentuh</td>
+                        <td>拍一拍</td>
+                    </tr>
+                    <tr>
+                        <td>settings.male</td>
+                        <td>男</td>
+                        <td>Male</td>
+                        <td>男性</td>
+                        <td>남성</td>
+                        <td>Lelaki</td>
+                        <td>男</td>
+                    </tr>
+                    <tr>
+                        <td>settings.female</td>
+                        <td>女</td>
+                        <td>Female</td>
+                        <td>女性</td>
+                        <td>여성</td>
+                        <td>Perempuan</td>
+                        <td>女</td>
+                    </tr>
+                    <tr>
+                        <td>settings.gender</td>
+                        <td>性别</td>
+                        <td>Gender</td>
+                        <td>性別</td>
+                        <td>성별</td>
+                        <td>Jantina</td>
+                        <td>性別</td>
+                    </tr>
+                    <tr>
+                        <td>settings.signature</td>
+                        <td>个性签名</td>
+                        <td>Signature</td>
+                        <td>署名</td>
+                        <td>서명</td>
+                        <td>Tandatangan</td>
+                        <td>個性簽名</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>🧪 完整测试验证</h2>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h3>👤 个人信息页面测试</h3>
+                    <p>测试所有语言的个人信息页面：</p>
+                    <a href="http://127.0.0.1:5173/settings/personal-info" class="test-link">个人信息页面</a>
+                    <p><strong>测试步骤：</strong></p>
+                    <ol>
+                        <li>访问个人信息页面</li>
+                        <li>切换到不同语言</li>
+                        <li>检查所有字段标签是否正确翻译</li>
+                        <li>检查性别显示是否正确</li>
+                        <li>检查"未设置"状态是否正确翻译</li>
+                    </ol>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🌐 语言切换测试</h3>
+                    <p>完整的多语言测试：</p>
+                    <a href="http://127.0.0.1:5173/settings/language-selector" class="test-link">语言选择器</a>
+                    <p><strong>重点测试语言：</strong></p>
+                    <ul>
+                        <li>🇲🇾 马来语 - 之前有翻译键错误</li>
+                        <li>🇯🇵 日语 - 之前有翻译键错误</li>
+                        <li>🇰🇷 韩语 - 验证正常工作</li>
+                        <li>🇺🇸 英语 - 验证正常工作</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🔍 性别显示测试</h3>
+                    <p>测试性别字段的动态翻译：</p>
+                    <p><strong>测试内容：</strong></p>
+                    <ul>
+                        <li>切换到马来语：男性显示"Lelaki"，女性显示"Perempuan"</li>
+                        <li>切换到日语：男性显示"男性"，女性显示"女性"</li>
+                        <li>切换到韩语：男性显示"남성"，女性显示"여성"</li>
+                        <li>未设置状态在所有语言下正确显示</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>✅ 控制台验证</h3>
+                    <p>最终验证：</p>
+                    <p><strong>应该看到：</strong></p>
+                    <ul>
+                        <li>✅ 无任何翻译键缺失错误</li>
+                        <li>✅ 无"Fall back to translate"警告</li>
+                        <li>✅ 所有字段标签正确显示</li>
+                        <li>✅ 性别和状态文本正确翻译</li>
+                        <li>✅ 6种语言完全可用</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎉 修复总结</h2>
+            <div class="success-item">
+                <h3>个人信息页面国际化完全完成</h3>
+                <ul>
+                    <li>✅ <strong>字段标签完全国际化</strong>：所有9个字段标签都支持6种语言</li>
+                    <li>✅ <strong>动态内容国际化</strong>：性别显示根据语言动态翻译</li>
+                    <li>✅ <strong>状态文本国际化</strong>："未设置"等状态在所有语言下正确显示</li>
+                    <li>✅ <strong>函数逻辑国际化</strong>：formatGender函数使用翻译键而非硬编码</li>
+                    <li>✅ <strong>翻译键完整性</strong>：为所有6种语言添加了完整的翻译</li>
+                    <li>✅ <strong>用户体验优化</strong>：每个用户都能用母语查看个人信息</li>
+                </ul>
+                
+                <p><strong>技术改进：</strong></p>
+                <ul>
+                    <li>🔧 移除了所有硬编码的中文文本</li>
+                    <li>🔧 实现了动态性别显示翻译</li>
+                    <li>🔧 统一了状态文本的翻译键使用</li>
+                    <li>🔧 确保了翻译键在正确的命名空间中</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('👤 个人信息页面国际化验证页面已加载');
+            console.log('✅ 已完成：所有字段标签、性别显示、状态文本的国际化');
+            console.log('🔧 技术修复：硬编码文本替换、动态翻译函数、完整翻译键');
+            console.log('📍 请测试所有语言的个人信息页面，特别是性别和状态显示');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Profile 翻译测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #10b981, #3b82f6);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-left: 4px solid #10b981;
+        }
+        
+        .test-section h3 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        
+        .fix-list {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .fix-list h4 {
+            color: #155724;
+            margin-bottom: 12px;
+        }
+        
+        .fix-list ul {
+            margin-left: 20px;
+            color: #155724;
+        }
+        
+        .fix-list li {
+            margin-bottom: 8px;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        
+        .test-button {
+            padding: 16px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            display: block;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        .test-button.primary {
+            background: #10b981;
+        }
+        
+        .test-button.primary:hover {
+            background: #059669;
+        }
+        
+        .code-block {
+            background: #f1f3f4;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #333;
+            white-space: pre-wrap;
+            margin: 16px 0;
+            border: 1px solid #e0e0e0;
+            overflow-x: auto;
+        }
+        
+        .translation-demo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        
+        .lang-demo {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+        
+        .lang-demo.active {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .lang-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        
+        .lang-items {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .lang-items div {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">✅ Profile 翻译功能修复完成</h1>
+            <p class="subtitle">profile.services 等翻译键现在可以正常切换语言了</p>
+            <div class="status">🎉 修复成功</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🛠️ 修复内容</h3>
+            <div class="fix-list">
+                <h4>✅ 已修复的问题</h4>
+                <ul>
+                    <li><strong>替换自定义翻译函数</strong>：将 MobileProfile.vue 中的自定义 t 函数替换为 vue-i18n 的 useI18n</li>
+                    <li><strong>添加完整翻译键</strong>：在所有 6 种语言文件中添加了 profile 相关翻译</li>
+                    <li><strong>统一语言切换逻辑</strong>：确保 LanguageSelector 正确更新全局 locale</li>
+                    <li><strong>响应式翻译</strong>：现在翻译会响应语言变化，无需刷新页面</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔧 技术修复详情</h3>
+            
+            <h4>修复前（有问题的代码）：</h4>
+            <div class="code-block">// ❌ 自定义翻译函数，不响应语言变化
+import { getCurrentInstance } from 'vue'
+const instance = getCurrentInstance()
+const t = (key: string) => instance?.appContext.config.globalProperties.$t(key) || key</div>
+            
+            <h4>修复后（正确的代码）：</h4>
+            <div class="code-block">// ✅ 使用 vue-i18n，响应语言变化
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()</div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🌐 翻译效果演示</h3>
+            <div class="translation-demo">
+                <div class="lang-demo active">
+                    <div class="lang-title">简体中文 🇨🇳</div>
+                    <div class="lang-items">
+                        <div>profile.services → 服务</div>
+                        <div>profile.favorites → 收藏</div>
+                        <div>profile.moments → 朋友圈</div>
+                        <div>profile.videoChannel → 视频号</div>
+                        <div>profile.stickers → 表情</div>
+                        <div>profile.settings → 设置</div>
+                    </div>
+                </div>
+                
+                <div class="lang-demo">
+                    <div class="lang-title">English 🇺🇸</div>
+                    <div class="lang-items">
+                        <div>profile.services → Services</div>
+                        <div>profile.favorites → Favorites</div>
+                        <div>profile.moments → Moments</div>
+                        <div>profile.videoChannel → Video Channel</div>
+                        <div>profile.stickers → Stickers</div>
+                        <div>profile.settings → Settings</div>
+                    </div>
+                </div>
+                
+                <div class="lang-demo">
+                    <div class="lang-title">日本語 🇯🇵</div>
+                    <div class="lang-items">
+                        <div>profile.services → サービス</div>
+                        <div>profile.favorites → お気に入り</div>
+                        <div>profile.moments → モーメンツ</div>
+                        <div>profile.videoChannel → 動画チャンネル</div>
+                        <div>profile.stickers → ステッカー</div>
+                        <div>profile.settings → 設定</div>
+                    </div>
+                </div>
+                
+                <div class="lang-demo">
+                    <div class="lang-title">한국어 🇰🇷</div>
+                    <div class="lang-items">
+                        <div>profile.services → 서비스</div>
+                        <div>profile.favorites → 즐겨찾기</div>
+                        <div>profile.moments → 모멘츠</div>
+                        <div>profile.videoChannel → 비디오 채널</div>
+                        <div>profile.stickers → 스티커</div>
+                        <div>profile.settings → 설정</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 测试步骤</h3>
+            <div class="test-grid">
+                <a href="http://127.0.0.1:5173/settings/language-selector" class="test-button primary" target="_blank">
+                    1. 打开语言选择页面
+                </a>
+                <a href="http://127.0.0.1:5173/profile" class="test-button" target="_blank">
+                    2. 打开个人资料页面
+                </a>
+                <button class="test-button" onclick="showTestSteps()">
+                    3. 查看测试步骤
+                </button>
+                <button class="test-button" onclick="openDevConsole()">
+                    4. 打开开发者控制台
+                </button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 验证清单</h3>
+            <div style="margin-left: 20px;">
+                <p><strong>请按以下步骤验证修复效果：</strong></p>
+                <ol style="margin-top: 12px;">
+                    <li>打开个人资料页面，查看当前的翻译文本</li>
+                    <li>打开语言选择页面，选择英语</li>
+                    <li>返回个人资料页面，确认 "服务"、"收藏" 等已变为英文</li>
+                    <li>再次切换到日语，确认文本变为日文</li>
+                    <li>检查控制台是否还有翻译键缺失的警告</li>
+                </ol>
+                
+                <p style="margin-top: 16px;"><strong>预期结果：</strong></p>
+                <ul style="margin-top: 8px;">
+                    <li>✅ 语言切换后，profile 页面的所有文本立即更新</li>
+                    <li>✅ 不再出现翻译键缺失的控制台警告</li>
+                    <li>✅ 所有 6 种语言都能正确显示对应翻译</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTestSteps() {
+            alert(`🧪 详细测试步骤：
+
+1. 打开个人资料页面 (http://127.0.0.1:5173/profile)
+2. 观察当前的翻译文本（如"服务"、"收藏"等）
+3. 打开语言选择页面 (http://127.0.0.1:5173/settings/language-selector)
+4. 选择不同的语言（英语、日语、韩语等）
+5. 返回个人资料页面
+6. 确认文本已切换到对应语言
+7. 重复步骤 3-6 测试其他语言
+
+✅ 如果所有文本都能正确切换，说明修复成功！`)
+        }
+        
+        function openDevConsole() {
+            console.log('🔍 开发者控制台检查项目：')
+            console.log('1. 检查是否还有 "Not found key in locale messages" 警告')
+            console.log('2. 检查 locale.value 是否正确更新')
+            console.log('3. 检查翻译函数 t() 是否正常工作')
+            console.log('4. 检查语言切换时的调试信息')
+            
+            alert('请按 F12 打开开发者控制台，查看详细的调试信息')
+        }
+        
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ Profile 翻译功能修复验证页面已加载')
+            console.log('🎯 修复内容：')
+            console.log('  - 替换了 MobileProfile.vue 中的自定义翻译函数')
+            console.log('  - 添加了完整的 profile 翻译键到所有语言文件')
+            console.log('  - 修复了语言切换逻辑')
+            console.log('📋 现在可以测试 profile.services 等翻译键的语言切换功能')
+        })
+    </script>
+</body>
+</html>

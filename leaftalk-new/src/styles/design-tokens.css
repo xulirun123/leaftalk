@@ -1,0 +1,337 @@
+/**
+ * 叶语企业版设计令牌
+ * 统一的设计语言和视觉规范
+ */
+
+:root {
+  /* ================================
+   * 颜色系统 - 简洁现代的配色方案
+   * ================================ */
+  
+  /* 主色调 - 叶语绿 */
+  --color-primary: #07C160;
+  --color-primary-light: #1AAD19;
+  --color-primary-lighter: #4CC764;
+  --color-primary-lightest: #E8F5E8;
+  --color-primary-dark: #059748;
+  --color-primary-darker: #047857;
+  
+  /* 辅助色 */
+  --color-secondary: #576B95;
+  --color-secondary-light: #8B9DC3;
+  --color-secondary-lighter: #E1E7F0;
+  
+  /* 中性色 - 简化色阶 */
+  --color-white: #FFFFFF;
+  --color-gray-50: #FAFAFA;
+  --color-gray-100: #F5F5F5;
+  --color-gray-200: #EEEEEE;
+  --color-gray-300: #E0E0E0;
+  --color-gray-400: #BDBDBD;
+  --color-gray-500: #9E9E9E;
+  --color-gray-600: #757575;
+  --color-gray-700: #616161;
+  --color-gray-800: #424242;
+  --color-gray-900: #212121;
+  --color-black: #000000;
+  
+  /* 语义色 */
+  --color-success: #52C41A;
+  --color-warning: #FAAD14;
+  --color-error: #FF4D4F;
+  --color-info: #1890FF;
+  
+  /* 语义色浅色版本 */
+  --color-success-light: #F6FFED;
+  --color-warning-light: #FFFBE6;
+  --color-error-light: #FFF2F0;
+  --color-info-light: #E6F7FF;
+  
+  /* ================================
+   * 字体系统 - 清晰易读
+   * ================================ */
+  
+  /* 字体族 */
+  --font-family-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-family-mono: 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', 'Source Code Pro', monospace;
+  
+  /* 字体大小 - 简化层级 */
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+  
+  /* 字重 */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* 行高 */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.6;
+  
+  /* ================================
+   * 间距系统 - 8px 基准网格
+   * ================================ */
+  
+  --spacing-0: 0;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  
+  /* ================================
+   * 圆角系统 - 现代圆润
+   * ================================ */
+  
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-base: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  
+  /* ================================
+   * 阴影系统 - 轻量层次
+   * ================================ */
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* ================================
+   * 动画系统 - 流畅自然
+   * ================================ */
+  
+  /* 缓动函数 */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* 动画时长 */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  
+  /* ================================
+   * Z-index 层级系统
+   * ================================ */
+  
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+  
+  /* ================================
+   * 布局系统
+   * ================================ */
+  
+  /* 容器宽度 */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  
+  /* 导航栏高度 */
+  --navbar-height: 60px;
+  --tabbar-height: 50px;
+  
+  /* 侧边栏宽度 */
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 64px;
+  
+  /* ================================
+   * 组件特定变量
+   * ================================ */
+  
+  /* 按钮 */
+  --button-height-sm: 28px;
+  --button-height-base: 36px;
+  --button-height-lg: 44px;
+  
+  /* 输入框 */
+  --input-height-sm: 28px;
+  --input-height-base: 36px;
+  --input-height-lg: 44px;
+  
+  /* 头像 */
+  --avatar-size-xs: 24px;
+  --avatar-size-sm: 32px;
+  --avatar-size-base: 40px;
+  --avatar-size-lg: 56px;
+  --avatar-size-xl: 80px;
+  
+  /* ================================
+   * 响应式断点
+   * ================================ */
+  
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+/* ================================
+ * 深色模式支持
+ * ================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-white: #1A1A1A;
+    --color-gray-50: #262626;
+    --color-gray-100: #2D2D2D;
+    --color-gray-200: #404040;
+    --color-gray-300: #525252;
+    --color-gray-400: #737373;
+    --color-gray-500: #A3A3A3;
+    --color-gray-600: #D4D4D4;
+    --color-gray-700: #E5E5E5;
+    --color-gray-800: #F5F5F5;
+    --color-gray-900: #FAFAFA;
+    --color-black: #FFFFFF;
+  }
+}
+
+/* 手动深色模式切换 */
+[data-theme="dark"] {
+  --color-white: #1A1A1A;
+  --color-gray-50: #262626;
+  --color-gray-100: #2D2D2D;
+  --color-gray-200: #404040;
+  --color-gray-300: #525252;
+  --color-gray-400: #737373;
+  --color-gray-500: #A3A3A3;
+  --color-gray-600: #D4D4D4;
+  --color-gray-700: #E5E5E5;
+  --color-gray-800: #F5F5F5;
+  --color-gray-900: #FAFAFA;
+  --color-black: #FFFFFF;
+}
+
+/* ================================
+ * 实用工具类
+ * ================================ */
+
+/* 文本截断 */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 滚动条样式 */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: var(--color-gray-300);
+  border-radius: var(--radius-full);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-gray-400);
+}
+
+/* 隐藏滚动条 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 安全区域适配 */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* 触摸优化 */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* 硬件加速 */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* 焦点样式 */
+.focus-ring {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 无障碍隐藏 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

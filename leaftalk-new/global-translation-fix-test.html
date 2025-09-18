@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全局自动翻译修复测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #07c160;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 24px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #07c160;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .test-area {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 12px 0;
+            border: 1px solid #e9ecef;
+        }
+
+        .test-area h3 {
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .test-content {
+            color: #6c757d;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status.fixed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.testing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .test-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #07c160;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 8px 8px 8px 0;
+            transition: background-color 0.2s;
+        }
+
+        .test-link:hover {
+            background: #06a552;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+
+        .before-after {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .before, .after {
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .before {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .after {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .dynamic-content {
+            background: #e2e3e5;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border: 1px dashed #6c757d;
+        }
+
+        .add-content-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 8px 4px 8px 0;
+        }
+
+        .add-content-btn:hover {
+            background: #138496;
+        }
+
+        .translation-log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 8px 0;
+        }
+
+        .chinese-text {
+            color: #dc3545;
+            font-weight: 500;
+        }
+
+        .translated-text {
+            color: #28a745;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 全局自动翻译修复测试</h1>
+
+        <div class="section">
+            <h2>🔧 修复的核心问题</h2>
+            
+            <div class="test-area">
+                <h3>1. 中文检测范围扩展 <span class="status fixed">已修复</span></h3>
+                <div class="before-after">
+                    <div class="before">
+                        <strong>修复前：</strong><br>
+                        只检测汉字：/[\u4e00-\u9fff]/<br>
+                        遗漏：中文标点、全角字符
+                    </div>
+                    <div class="after">
+                        <strong>修复后：</strong><br>
+                        全面检测：/[\u4e00-\u9fff\u3400-\u4dbf\uff00-\uffef\u3000-\u303f]/<br>
+                        包含：汉字、中文标点、全角字符
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-area">
+                <h3>2. 文本节点遍历优化 <span class="status fixed">已修复</span></h3>
+                <div class="before-after">
+                    <div class="before">
+                        <strong>修复前：</strong><br>
+                        遍历元素节点，只翻译直接文本<br>
+                        遗漏嵌套文本内容
+                    </div>
+                    <div class="after">
+                        <strong>修复后：</strong><br>
+                        遍历所有文本节点<br>
+                        递归处理嵌套内容
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-area">
+                <h3>3. DOM观察器增强 <span class="status fixed">已修复</span></h3>
+                <div class="before-after">
+                    <div class="before">
+                        <strong>修复前：</strong><br>
+                        只监听新增元素<br>
+                        不监听文本变化
+                    </div>
+                    <div class="after">
+                        <strong>修复后：</strong><br>
+                        监听元素和文本变化<br>
+                        实时翻译动态内容
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 翻译测试内容</h2>
+            
+            <div class="test-area">
+                <h3>基础中文文本测试</h3>
+                <div class="test-content">
+                    <p class="chinese-text">这是一段普通的中文文本，应该被自动翻译。</p>
+                    <p class="chinese-text">包含标点符号：你好！这是测试，怎么样？</p>
+                    <p class="chinese-text">数字和中文：2024年叶语应用开发进展顺利。</p>
+                    <p class="chinese-text">混合内容：Hello 世界，Welcome 欢迎！</p>
+                </div>
+            </div>
+
+            <div class="test-area">
+                <h3>嵌套元素文本测试</h3>
+                <div class="test-content">
+                    <div>
+                        <span class="chinese-text">嵌套的</span>
+                        <strong class="chinese-text">中文文本</strong>
+                        <em class="chinese-text">应该被翻译</em>
+                    </div>
+                    <ul>
+                        <li class="chinese-text">列表项目一</li>
+                        <li class="chinese-text">列表项目二</li>
+                        <li class="chinese-text">列表项目三</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="test-area">
+                <h3>动态内容测试</h3>
+                <div class="test-content">
+                    <p>点击按钮添加动态中文内容，测试实时翻译：</p>
+                    <button class="add-content-btn" onclick="addDynamicContent()">添加中文段落</button>
+                    <button class="add-content-btn" onclick="addDynamicList()">添加中文列表</button>
+                    <button class="add-content-btn" onclick="modifyExistingText()">修改现有文本</button>
+                    
+                    <div id="dynamic-container" class="dynamic-content">
+                        <p class="chinese-text">这里将显示动态添加的内容</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 测试步骤</h2>
+            
+            <div class="test-area">
+                <h3>完整测试流程：</h3>
+                <div class="test-content">
+                    <p><strong>1. 打开叶语应用</strong></p>
+                    <a href="http://localhost:5173/settings/general" class="test-link" target="_blank">
+                        ⚙️ 打开通用设置
+                    </a>
+                    
+                    <p><strong>2. 切换语言</strong></p>
+                    <p>点击"语言"选项，选择英语或其他非中文语言</p>
+                    
+                    <p><strong>3. 观察翻译效果</strong></p>
+                    <p>检查页面中的所有中文文本是否被翻译</p>
+                    
+                    <p><strong>4. 测试动态内容</strong></p>
+                    <p>在应用中进行操作，观察新加载的内容是否自动翻译</p>
+                    
+                    <p><strong>5. 检查控制台日志</strong></p>
+                    <p>打开浏览器开发者工具，查看翻译日志</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📊 预期翻译效果</h2>
+            
+            <div class="test-area">
+                <h3>应该被翻译的内容：</h3>
+                <div class="test-content">
+                    <p>✅ 按钮文字：<span class="chinese-text">确定</span>、<span class="chinese-text">取消</span>、<span class="chinese-text">保存</span></p>
+                    <p>✅ 标签文字：<span class="chinese-text">用户名</span>、<span class="chinese-text">密码</span>、<span class="chinese-text">设置</span></p>
+                    <p>✅ 提示信息：<span class="chinese-text">请输入内容</span>、<span class="chinese-text">操作成功</span></p>
+                    <p>✅ 菜单项目：<span class="chinese-text">个人信息</span>、<span class="chinese-text">通用</span>、<span class="chinese-text">隐私</span></p>
+                    <p>✅ 页面标题：<span class="chinese-text">叶语</span>、<span class="chinese-text">设置</span>、<span class="chinese-text">通讯录</span></p>
+                </div>
+            </div>
+
+            <div class="test-area">
+                <h3>不应该被翻译的内容：</h3>
+                <div class="test-content">
+                    <p>❌ 代码内容：<code>console.log('测试')</code></p>
+                    <p>❌ 输入框内容：<input type="text" value="用户输入的内容" readonly></p>
+                    <p>❌ 英文文本：Hello World, Welcome to YeYu</p>
+                    <p>❌ 数字和符号：123456, @#$%^&*()</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔍 调试信息</h2>
+            
+            <div class="test-area">
+                <h3>控制台日志示例：</h3>
+                <div class="translation-log">
+🌍 启用自动翻译到: en
+🔍 找到 45 个可翻译的文本节点
+🔄 翻译文本: 这是一段普通的中文文本，应该被自动翻译。
+✅ 翻译完成: This is a normal Chinese text that should be automatically translated.
+🔄 翻译文本: 包含标点符号：你好！这是测试，怎么样？
+✅ 翻译完成: Contains punctuation: Hello! This is a test, how about it?
+🌍 页面翻译完成，成功翻译 42 个文本节点
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dynamicCounter = 1;
+
+        function addDynamicContent() {
+            const container = document.getElementById('dynamic-container');
+            const newParagraph = document.createElement('p');
+            newParagraph.className = 'chinese-text';
+            newParagraph.textContent = `动态添加的中文段落 ${dynamicCounter++}：这应该被自动翻译。`;
+            container.appendChild(newParagraph);
+        }
+
+        function addDynamicList() {
+            const container = document.getElementById('dynamic-container');
+            const newList = document.createElement('ul');
+            for (let i = 1; i <= 3; i++) {
+                const listItem = document.createElement('li');
+                listItem.className = 'chinese-text';
+                listItem.textContent = `动态列表项 ${i}`;
+                newList.appendChild(listItem);
+            }
+            container.appendChild(newList);
+        }
+
+        function modifyExistingText() {
+            const container = document.getElementById('dynamic-container');
+            const firstP = container.querySelector('p');
+            if (firstP) {
+                firstP.textContent = `文本已修改 ${new Date().toLocaleTimeString()}：这是修改后的中文内容。`;
+            }
+        }
+
+        // 监听翻译相关的控制台日志
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            
+            // 如果是翻译相关的日志，显示在页面上
+            const message = args.join(' ');
+            if (message.includes('翻译') || message.includes('🌍') || message.includes('🔄') || message.includes('✅')) {
+                const logContainer = document.querySelector('.translation-log');
+                if (logContainer) {
+                    logContainer.innerHTML += message + '\n';
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                }
+            }
+        };
+    </script>
+</body>
+</html>

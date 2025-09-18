@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通话结束测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background: #07C160;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #06AD56;
+        }
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>📞 通话结束功能测试</h1>
+    
+    <div class="container">
+        <h3>测试步骤</h3>
+        <p>1. 用户1发起通话</p>
+        <p>2. 立即挂断通话</p>
+        <p>3. 再次发起通话（验证不会出现"您正在拨打电话"错误）</p>
+    </div>
+
+    <div class="container">
+        <h3>操作面板</h3>
+        <button class="button" onclick="setUserOnline()">用户2上线</button>
+        <button class="button" onclick="initiateCall()">用户1发起通话</button>
+        <button class="button" onclick="endCall()" id="endCallBtn" disabled>结束通话</button>
+        <button class="button" onclick="clearAllCalls()">清理所有通话</button>
+        <button class="button" onclick="getActiveSessions()">查看活跃会话</button>
+        <button class="button" onclick="clearLog()">清空日志</button>
+    </div>
+
+    <div class="container">
+        <h3>状态信息</h3>
+        <div id="status" class="status info">准备就绪</div>
+        <div>当前通话ID: <span id="currentCallId">无</span></div>
+    </div>
+
+    <div class="container">
+        <h3>操作日志</h3>
+        <div id="log" class="log">等待操作...\n</div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8893/api';
+        const TOKEN = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInBob25lIjoiMTM4MDAxMzgwMDAiLCJ1c2VybmFtZSI6InRlc3R1c2VyIiwiaWF0IjoxNzU4MDExMzA4LCJleHAiOjE3NjA2MDMzMDh9.5C2camREXLQbHw0bjRzq70K4mDzr6DjK2KtFgrUvsbE';
+        
+        let currentCallId = null;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('log');
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            if (type === 'error') {
+                console.error(message);
+            } else {
+                console.log(message);
+            }
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+        }
+
+        function updateCallId(callId) {
+            currentCallId = callId;
+            document.getElementById('currentCallId').textContent = callId || '无';
+            document.getElementById('endCallBtn').disabled = !callId;
+        }
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': TOKEN
+                    }
+                };
+                
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${result.message || '请求失败'}`);
+                }
+                
+                return result;
+            } catch (error) {
+                log(`API调用失败: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function setUserOnline() {
+            try {
+                log('设置用户2上线...');
+                const result = await apiCall('/calls/online', 'POST', { userId: '2' });
+                log(`✅ ${result.message}`);
+                updateStatus('用户2已上线', 'success');
+            } catch (error) {
+                updateStatus('用户2上线失败', 'error');
+            }
+        }
+
+        async function initiateCall() {
+            try {
+                log('用户1发起视频通话...');
+                const result = await apiCall('/calls/initiate', 'POST', { 
+                    toUserId: '2', 
+                    type: 'video' 
+                });
+                
+                if (result.success) {
+                    const callId = result.data.callId;
+                    updateCallId(callId);
+                    log(`✅ 通话邀请发送成功: ${callId}`);
+                    updateStatus('通话进行中', 'info');
+                } else {
+                    log(`❌ 通话发起失败: ${result.message}`, 'error');
+                    updateStatus(`通话发起失败: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('通话发起失败', 'error');
+            }
+        }
+
+        async function endCall() {
+            if (!currentCallId) {
+                log('❌ 没有活跃的通话', 'error');
+                return;
+            }
+            
+            try {
+                log(`结束通话: ${currentCallId}...`);
+                const result = await apiCall('/calls/end', 'POST', { 
+                    callId: currentCallId 
+                });
+                
+                if (result.success) {
+                    log(`✅ ${result.message}`);
+                    updateStatus('通话已结束', 'success');
+                    updateCallId(null);
+                } else {
+                    log(`❌ 结束通话失败: ${result.message}`, 'error');
+                    updateStatus(`结束通话失败: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('结束通话失败', 'error');
+            }
+        }
+
+        async function clearAllCalls() {
+            try {
+                log('清理所有通话会话...');
+                const result = await apiCall('/calls/clear-all', 'POST');
+                log(`✅ ${result.message}`);
+                updateStatus('所有通话已清理', 'success');
+                updateCallId(null);
+            } catch (error) {
+                updateStatus('清理通话失败', 'error');
+            }
+        }
+
+        async function getActiveSessions() {
+            try {
+                log('获取活跃通话会话...');
+                const result = await apiCall('/calls/active-sessions');
+                log(`📊 活跃会话数量: ${result.data.count}`);
+                
+                if (result.data.sessions.length > 0) {
+                    result.data.sessions.forEach(session => {
+                        log(`  - ${session.id}: ${session.status} (${session.type})`);
+                    });
+                } else {
+                    log('  无活跃会话');
+                }
+            } catch (error) {
+                updateStatus('获取会话失败', 'error');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '日志已清空...\n';
+        }
+
+        // 页面加载完成后的初始化
+        window.onload = function() {
+            log('📞 通话结束功能测试页面已加载');
+            log('请按顺序执行测试步骤');
+        };
+    </script>
+</body>
+</html>

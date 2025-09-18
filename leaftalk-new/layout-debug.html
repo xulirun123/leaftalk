@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布局调试 - 统一间距方案</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .demo-phone {
+            width: 300px;
+            height: 500px;
+            background: #000;
+            border-radius: 20px;
+            padding: 4px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+        
+        .demo-screen {
+            width: 100%;
+            height: 100%;
+            background: #f5f5f5;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .demo-topbar {
+            position: fixed;
+            top: 4px;
+            left: 4px;
+            right: 4px;
+            height: 65px;
+            background: #e5e5e5;
+            border-radius: 16px 16px 0 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .demo-status {
+            height: 25px;
+            background: #e5e5e5;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            font-size: 10px;
+            color: #333;
+        }
+        
+        .demo-nav {
+            height: 40px;
+            background: #07C160;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .demo-content {
+            height: 100%;
+            padding-top: 65px; /* MobileApp 统一间距 */
+            overflow-y: auto;
+        }
+        
+        .demo-item {
+            height: 25px;
+            background: #e5e5e5;
+            border-bottom: 1px solid #d0d0d0;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .demo-item.white {
+            background: white;
+            height: 36px;
+        }
+        
+        .demo-item.list {
+            background: white;
+            height: 40px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .explanation {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .explanation h3 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .explanation p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .explanation code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #495057;
+        }
+        
+        .correct {
+            border-left: 4px solid #28a745;
+        }
+        
+        .wrong {
+            border-left: 4px solid #dc3545;
+        }
+        
+        .test-link {
+            display: inline-block;
+            background: #07C160;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 8px 8px 8px 0;
+            transition: background 0.2s;
+        }
+        
+        .test-link:hover {
+            background: #06a552;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">📱 布局调试 - 统一间距方案</h1>
+        
+        <div class="demo-phone">
+            <div class="demo-screen">
+                <div class="demo-topbar">
+                    <div class="demo-status">
+                        <span>13:31</span>
+                        <span>🔋 100%</span>
+                    </div>
+                    <div class="demo-nav">
+                        ← 国家和地区
+                    </div>
+                </div>
+                
+                <div class="demo-content">
+                    <div class="demo-item">当前位置：中国</div>
+                    <div class="demo-item white">📍 正在定位...</div>
+                    <div class="demo-item">选择地区</div>
+                    <div class="demo-item list">中国大陆 →</div>
+                    <div class="demo-item list">中国香港 →</div>
+                    <div class="demo-item list">中国澳门 →</div>
+                    <div class="demo-item list">中国台湾 →</div>
+                    <div class="demo-item list">日本 →</div>
+                    <div class="demo-item list">韩国 →</div>
+                    <div class="demo-item list">美国 →</div>
+                    <div class="demo-item list">新加坡 →</div>
+                    <div class="demo-item list">马来西亚 →</div>
+                    <div class="demo-item list">越南 →</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="explanation correct">
+            <h3>✅ 正确的布局方案</h3>
+            <p><strong>统一使用 MobileApp 的间距：</strong></p>
+            <p>• <code>MobileApp</code>: <code>padding-top: 65px</code> (唯一的顶部间距)</p>
+            <p>• <code>页面级别</code>: 不设置任何 <code>margin-top</code> 或 <code>padding-top</code></p>
+            <p>• <code>内容区域</code>: <code>overflow-y: auto</code> (可滚动)</p>
+            <p>• <code>第一项</code>: 正常显示，不被遮挡</p>
+        </div>
+        
+        <div class="explanation wrong">
+            <h3>❌ 之前的错误方案</h3>
+            <p><strong>双重间距导致问题：</strong></p>
+            <p>• <code>MobileApp</code>: <code>padding-top: 65px</code></p>
+            <p>• <code>页面级别</code>: <code>margin-top: 65px</code> 或 <code>padding-top: 67px</code></p>
+            <p>• <strong>结果</strong>: 总间距 130px+，第一项被推到很下面</p>
+            <p>• <strong>问题</strong>: 滚动异常，内容被遮挡</p>
+        </div>
+        
+        <div class="explanation">
+            <h3>🔧 修复要点</h3>
+            <p><strong>1. 统一间距策略：</strong></p>
+            <p>只使用 <code>MobileApp</code> 的 <code>padding-top: 65px</code>，所有页面都不设置额外间距</p>
+            
+            <p><strong>2. 内容区域设置：</strong></p>
+            <p><code>.content-area { flex: 1; overflow-y: auto; }</code></p>
+            
+            <p><strong>3. 第一项样式：</strong></p>
+            <p><code>.current-location { margin: 0; flex-shrink: 0; }</code></p>
+            
+            <p><strong>4. 容器高度：</strong></p>
+            <p><code>.region-selector { height: 100vh; }</code></p>
+        </div>
+        
+        <a href="http://127.0.0.1:5173/settings/region-selector" class="test-link" target="_blank">
+            🧪 测试地区选择页面
+        </a>
+        
+        <div style="margin-top: 16px; padding: 12px; background: #e8f5e8; border-radius: 6px;">
+            <strong>测试要点：</strong>
+            <ul style="margin-left: 20px; margin-top: 8px; font-size: 14px;">
+                <li>✅ 当前位置文本完全可见</li>
+                <li>✅ 实时位置区域完全可见</li>
+                <li>✅ 页面可以正常滚动</li>
+                <li>✅ 没有双重间距</li>
+                <li>✅ 内容不被导航栏遮挡</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        console.log('📱 布局调试 - 统一间距方案');
+        console.log('✅ 修复策略：');
+        console.log('  1. 只使用 MobileApp 的 padding-top: 65px');
+        console.log('  2. 页面级别不设置任何额外间距');
+        console.log('  3. 内容区域设置 overflow-y: auto');
+        console.log('  4. 第一项正常显示，不尝试重合');
+        console.log('🧪 请测试地区选择页面是否正常');
+    </script>
+</body>
+</html>

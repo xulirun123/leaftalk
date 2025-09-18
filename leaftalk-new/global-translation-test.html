@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叶语全局自动翻译测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #07C160 0%, #06a552 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .control-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .control-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .language-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .lang-btn {
+            padding: 12px 24px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lang-btn:hover {
+            border-color: #07C160;
+            background: rgba(7, 193, 96, 0.05);
+        }
+
+        .lang-btn.active {
+            border-color: #07C160;
+            background: #07C160;
+            color: white;
+        }
+
+        .toggle-btn {
+            background: linear-gradient(135deg, #07C160, #06a552);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+        }
+
+        .toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(7, 193, 96, 0.3);
+        }
+
+        .toggle-btn.disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .test-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #07C160;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .test-text {
+            line-height: 1.6;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-dot.active {
+            background: #07C160;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.translating {
+            background: #ff9500;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .demo-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .demo-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .demo-list li:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .language-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .test-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 叶语全局自动翻译测试</h1>
+            <p>测试页面 - 验证全局翻译功能</p>
+        </div>
+
+        <div class="content">
+            <!-- 控制面板 -->
+            <div class="control-panel">
+                <div class="control-title">翻译控制面板</div>
+                
+                <div class="language-buttons">
+                    <button class="lang-btn" data-lang="en" onclick="switchLanguage('en')">
+                        🇺🇸 English
+                    </button>
+                    <button class="lang-btn" data-lang="ja" onclick="switchLanguage('ja')">
+                        🇯🇵 日本語
+                    </button>
+                    <button class="lang-btn" data-lang="ko" onclick="switchLanguage('ko')">
+                        🇰🇷 한국어
+                    </button>
+                    <button class="lang-btn" data-lang="ms" onclick="switchLanguage('ms')">
+                        🇲🇾 Bahasa Malaysia
+                    </button>
+                    <button class="lang-btn" data-lang="zh-TW" onclick="switchLanguage('zh-TW')">
+                        🇹🇼 繁體中文
+                    </button>
+                </div>
+
+                <div>
+                    <button class="toggle-btn" onclick="enableTranslation()">启用全局翻译</button>
+                    <button class="toggle-btn" onclick="disableTranslation()">禁用翻译</button>
+                    <button class="toggle-btn" onclick="refreshPage()">刷新页面</button>
+                </div>
+            </div>
+
+            <!-- 测试内容 -->
+            <div class="test-content">
+                <div class="test-section">
+                    <div class="section-title">基本文本测试</div>
+                    <div class="test-text">你好，欢迎使用叶语应用！</div>
+                    <div class="test-text">这是一个社交聊天应用。</div>
+                    <div class="test-text">支持多语言自动翻译功能。</div>
+                    <div class="test-text">让沟通无国界！</div>
+                </div>
+
+                <div class="test-section">
+                    <div class="section-title">功能介绍</div>
+                    <div class="test-text">叶语提供以下功能：</div>
+                    <ul class="demo-list">
+                        <li>实时聊天</li>
+                        <li>语音通话</li>
+                        <li>视频通话</li>
+                        <li>朋友圈</li>
+                        <li>家谱管理</li>
+                        <li>支付功能</li>
+                        <li>自动翻译</li>
+                    </ul>
+                </div>
+
+                <div class="test-section">
+                    <div class="section-title">设置选项</div>
+                    <div class="test-text">个人信息</div>
+                    <div class="test-text">账号安全</div>
+                    <div class="test-text">未成年模式</div>
+                    <div class="test-text">通知设置</div>
+                    <div class="test-text">通用设置</div>
+                    <div class="test-text">隐私设置</div>
+                </div>
+
+                <div class="test-section">
+                    <div class="section-title">常用短语</div>
+                    <div class="test-text">早上好</div>
+                    <div class="test-text">晚安</div>
+                    <div class="test-text">谢谢</div>
+                    <div class="test-text">对不起</div>
+                    <div class="test-text">再见</div>
+                    <div class="test-text">我爱你</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 状态指示器 -->
+    <div class="status-indicator" id="statusIndicator">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">翻译未启用</span>
+    </div>
+
+    <script>
+        let currentLanguage = 'zh-CN';
+        let isTranslationEnabled = false;
+
+        // 模拟翻译字典
+        const translations = {
+            'en': {
+                '你好，欢迎使用叶语应用！': 'Hello, welcome to YeYu app!',
+                '这是一个社交聊天应用。': 'This is a social chat application.',
+                '支持多语言自动翻译功能。': 'Supports multilingual automatic translation.',
+                '让沟通无国界！': 'Make communication borderless!',
+                '基本文本测试': 'Basic Text Test',
+                '功能介绍': 'Feature Introduction',
+                '设置选项': 'Settings Options',
+                '常用短语': 'Common Phrases',
+                '叶语提供以下功能：': 'YeYu provides the following features:',
+                '实时聊天': 'Real-time Chat',
+                '语音通话': 'Voice Call',
+                '视频通话': 'Video Call',
+                '朋友圈': 'Moments',
+                '家谱管理': 'Genealogy Management',
+                '支付功能': 'Payment Function',
+                '自动翻译': 'Auto Translation',
+                '个人信息': 'Personal Information',
+                '账号安全': 'Account Security',
+                '未成年模式': 'Youth Mode',
+                '通知设置': 'Notification Settings',
+                '通用设置': 'General Settings',
+                '隐私设置': 'Privacy Settings',
+                '早上好': 'Good Morning',
+                '晚安': 'Good Night',
+                '谢谢': 'Thank You',
+                '对不起': 'Sorry',
+                '再见': 'Goodbye',
+                '我爱你': 'I Love You'
+            },
+            'ja': {
+                '你好，欢迎使用叶语应用！': 'こんにちは、YeYuアプリへようこそ！',
+                '这是一个社交聊天应用。': 'これはソーシャルチャットアプリです。',
+                '支持多语言自动翻译功能。': '多言語自動翻訳機能をサポートしています。',
+                '让沟通无国界！': 'コミュニケーションに国境はありません！',
+                '基本文本测试': '基本テキストテスト',
+                '功能介绍': '機能紹介',
+                '设置选项': '設定オプション',
+                '常用短语': '常用フレーズ',
+                '早上好': 'おはようございます',
+                '晚安': 'おやすみなさい',
+                '谢谢': 'ありがとうございます',
+                '对不起': 'すみません',
+                '再见': 'さようなら',
+                '我爱你': '愛しています'
+            }
+        };
+
+        function switchLanguage(lang) {
+            currentLanguage = lang;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-lang="${lang}"]`).classList.add('active');
+            
+            if (isTranslationEnabled) {
+                translatePage(lang);
+            }
+            
+            console.log('🌍 切换语言:', lang);
+        }
+
+        function enableTranslation() {
+            isTranslationEnabled = true;
+            updateStatus('active', '翻译已启用');
+            translatePage(currentLanguage);
+            console.log('🌍 启用全局翻译');
+        }
+
+        function disableTranslation() {
+            isTranslationEnabled = false;
+            updateStatus('inactive', '翻译已禁用');
+            refreshPage();
+            console.log('🌍 禁用全局翻译');
+        }
+
+        function refreshPage() {
+            window.location.reload();
+        }
+
+        function updateStatus(status, text) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            statusDot.className = `status-dot ${status}`;
+            statusText.textContent = text;
+        }
+
+        function translatePage(targetLang) {
+            if (!isTranslationEnabled || targetLang === 'zh-CN') return;
+            
+            updateStatus('translating', '翻译中...');
+            
+            const dictionary = translations[targetLang];
+            if (!dictionary) {
+                updateStatus('active', '翻译已启用（无字典）');
+                return;
+            }
+
+            // 翻译所有文本节点
+            const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: function(node) {
+                        // 跳过脚本和样式
+                        if (node.parentElement.tagName === 'SCRIPT' || 
+                            node.parentElement.tagName === 'STYLE') {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        
+                        const text = node.textContent.trim();
+                        if (text && dictionary[text]) {
+                            return NodeFilter.FILTER_ACCEPT;
+                        }
+                        return NodeFilter.FILTER_SKIP;
+                    }
+                }
+            );
+
+            let node;
+            while (node = walker.nextNode()) {
+                const originalText = node.textContent.trim();
+                if (dictionary[originalText]) {
+                    node.textContent = dictionary[originalText];
+                }
+            }
+
+            setTimeout(() => {
+                updateStatus('active', `翻译已启用 (${targetLang})`);
+            }, 500);
+        }
+
+        // 页面加载完成后初始化
+        window.onload = function() {
+            console.log('🌍 叶语全局翻译测试页面已加载');
+            console.log('💡 使用说明:');
+            console.log('1. 点击语言按钮选择目标语言');
+            console.log('2. 点击"启用全局翻译"开始翻译');
+            console.log('3. 观察页面文本的变化');
+            console.log('4. 点击"禁用翻译"或"刷新页面"恢复原文');
+        };
+    </script>
+</body>
+</html>

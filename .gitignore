@@ -203,3 +203,7 @@ pnpm-lock.yaml
 # Electron specific
 app/
 release-builds/
+
+
+# Large local backups (do not version)
+leaftalk-new/database/backups/**

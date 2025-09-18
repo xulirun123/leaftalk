@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试支付API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 3px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>支付API测试</h1>
+    
+    <div class="section">
+        <h3>1. 登录获取Token</h3>
+        <input type="text" id="loginPhone" placeholder="手机号" value="13800138000">
+        <input type="password" id="loginPassword" placeholder="密码" value="123456">
+        <button onclick="login()">登录</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. 检查支付密码状态</h3>
+        <button onclick="checkPayPassword()">检查支付密码状态</button>
+        <div id="checkResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>3. 设置支付密码</h3>
+        <input type="password" id="oldPayPassword" placeholder="原支付密码(首次设置留空)">
+        <input type="password" id="newPayPassword" placeholder="新支付密码(6位数字)" value="123456">
+        <button onclick="setPayPassword()">设置支付密码</button>
+        <div id="setResult" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>4. 验证支付密码</h3>
+        <input type="password" id="verifyPayPassword" placeholder="支付密码" value="123456">
+        <button onclick="verifyPayPassword()">验证支付密码</button>
+        <div id="verifyResult" class="result"></div>
+    </div>
+
+    <script>
+        let authToken = '';
+        const API_BASE = 'http://localhost:8893/api';
+
+        async function login() {
+            const phone = document.getElementById('loginPhone').value;
+            const password = document.getElementById('loginPassword').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: phone, password })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    authToken = result.token;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `登录成功！Token: ${authToken.substring(0, 20)}...`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `登录失败: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        async function checkPayPassword() {
+            const resultDiv = document.getElementById('checkResult');
+
+            if (!authToken) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '请先登录获取Token';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/payment/check-password`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `检查成功！是否已设置支付密码: ${result.hasPayPassword}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `检查失败: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        async function setPayPassword() {
+            const oldPassword = document.getElementById('oldPayPassword').value;
+            const newPassword = document.getElementById('newPayPassword').value;
+            const resultDiv = document.getElementById('setResult');
+
+            if (!authToken) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '请先登录获取Token';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/payment/set-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ 
+                        oldPassword: oldPassword || undefined, 
+                        newPassword 
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `设置成功！${result.message}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `设置失败: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `请求失败: ${error.message}`;
+            }
+        }
+
+        async function verifyPayPassword() {
+            const password = document.getElementById('verifyPayPassword').value;
+            const resultDiv = document.getElementById('verifyResult');
+
+            if (!authToken) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = '请先登录获取Token';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/payment/verify-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `验证成功！${result.message}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `验证失败: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `请求失败: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

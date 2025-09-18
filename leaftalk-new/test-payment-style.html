@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支付密码样式测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #07C160;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #06a552;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .style-preview {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .style-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .style-option:hover {
+            border-color: #07C160;
+        }
+        .style-option.selected {
+            border-color: #07C160;
+            background-color: #f0f9ff;
+        }
+        .style-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .style-desc {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .numeric-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+        }
+        .dot.filled {
+            background-color: #07C160;
+            border-color: #07C160;
+        }
+        .gesture-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            max-width: 80px;
+            margin: 0 auto;
+        }
+        .gesture-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+        }
+        .gesture-dot.active {
+            background-color: #07C160;
+            border-color: #07C160;
+        }
+    </style>
+</head>
+<body>
+    <h1>支付密码样式测试</h1>
+    
+    <!-- 登录区域 -->
+    <div class="container">
+        <h3>1. 用户登录</h3>
+        <div class="form-group">
+            <label for="username">用户名:</label>
+            <input type="text" id="username" value="testlogin">
+        </div>
+        <div class="form-group">
+            <label for="password">密码:</label>
+            <input type="password" id="password" value="123456">
+        </div>
+        <button onclick="login()">登录</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <!-- 支付密码设置区域 -->
+    <div class="container">
+        <h3>2. 支付密码管理</h3>
+        <div class="form-group">
+            <label for="payPassword">支付密码 (6位数字):</label>
+            <input type="password" id="payPassword" value="123456" maxlength="6">
+        </div>
+        <button onclick="setPayPassword()">设置支付密码</button>
+        <button onclick="verifyPayPassword()">验证支付密码</button>
+        <div id="payPasswordResult"></div>
+    </div>
+
+    <!-- 密码样式选择区域 -->
+    <div class="container">
+        <h3>3. 支付密码输入样式选择</h3>
+        <div class="style-preview">
+            <div class="style-option" id="numericStyle" onclick="selectStyle('numeric')">
+                <div class="style-title">数字键盘</div>
+                <div class="style-desc">使用数字键盘输入6位数字密码</div>
+                <div class="numeric-dots">
+                    <div class="dot filled"></div>
+                    <div class="dot filled"></div>
+                    <div class="dot filled"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+            </div>
+            <div class="style-option" id="gestureStyle" onclick="selectStyle('gesture')">
+                <div class="style-title">手势密码</div>
+                <div class="style-desc">通过连接9个点绘制手势密码</div>
+                <div class="gesture-grid">
+                    <div class="gesture-dot active"></div>
+                    <div class="gesture-dot active"></div>
+                    <div class="gesture-dot"></div>
+                    <div class="gesture-dot"></div>
+                    <div class="gesture-dot active"></div>
+                    <div class="gesture-dot"></div>
+                    <div class="gesture-dot"></div>
+                    <div class="gesture-dot active"></div>
+                    <div class="gesture-dot active"></div>
+                </div>
+            </div>
+        </div>
+        <button onclick="getCurrentStyle()">获取当前样式</button>
+        <button onclick="saveSelectedStyle()">保存选择的样式</button>
+        <div id="styleResult"></div>
+    </div>
+
+    <script>
+        let authToken = '';
+        let selectedPasswordStyle = 'numeric';
+
+        // 登录
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            try {
+                const response = await fetch('http://localhost:8893/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    authToken = result.data.token;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ 登录成功！用户: ${result.data.user.nickname}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 登录失败: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 网络错误: ${error.message}`;
+            }
+        }
+
+        // 设置支付密码
+        async function setPayPassword() {
+            if (!authToken) {
+                alert('请先登录');
+                return;
+            }
+            
+            const payPassword = document.getElementById('payPassword').value;
+            const resultDiv = document.getElementById('payPasswordResult');
+            
+            try {
+                const response = await fetch('http://localhost:8893/api/payment/set-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ newPassword: payPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ 支付密码设置成功`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 设置失败: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 网络错误: ${error.message}`;
+            }
+        }
+
+        // 验证支付密码
+        async function verifyPayPassword() {
+            if (!authToken) {
+                alert('请先登录');
+                return;
+            }
+            
+            const payPassword = document.getElementById('payPassword').value;
+            const resultDiv = document.getElementById('payPasswordResult');
+            
+            try {
+                const response = await fetch('http://localhost:8893/api/payment/verify-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ password: payPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ 支付密码验证成功`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 验证失败: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 网络错误: ${error.message}`;
+            }
+        }
+
+        // 选择样式
+        function selectStyle(style) {
+            selectedPasswordStyle = style;
+            
+            // 更新UI
+            document.querySelectorAll('.style-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            if (style === 'numeric') {
+                document.getElementById('numericStyle').classList.add('selected');
+            } else if (style === 'gesture') {
+                document.getElementById('gestureStyle').classList.add('selected');
+            }
+        }
+
+        // 获取当前样式
+        async function getCurrentStyle() {
+            if (!authToken) {
+                alert('请先登录');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('styleResult');
+            
+            try {
+                const response = await fetch('http://localhost:8893/api/payment/password-style', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.className = 'result info';
+                    resultDiv.textContent = `📋 当前密码样式: ${result.style}`;
+                    selectStyle(result.style);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 获取失败: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 网络错误: ${error.message}`;
+            }
+        }
+
+        // 保存选择的样式
+        async function saveSelectedStyle() {
+            if (!authToken) {
+                alert('请先登录');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('styleResult');
+            
+            try {
+                const response = await fetch('http://localhost:8893/api/payment/password-style', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ style: selectedPasswordStyle })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ 密码样式设置成功: ${selectedPasswordStyle}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    let errorMsg = `❌ 设置失败: ${result.error}`;
+                    if (result.needSetup) {
+                        errorMsg += `\n💡 提示: 需要先设置${result.setupType === 'numeric' ? '数字' : '手势'}密码`;
+                    }
+                    resultDiv.textContent = errorMsg;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ 网络错误: ${error.message}`;
+            }
+        }
+
+        // 初始化
+        selectStyle('numeric');
+    </script>
+</body>
+</html>

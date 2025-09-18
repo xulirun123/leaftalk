@@ -1,0 +1,90 @@
+{
+  "database": {
+    "name": "leaftalk_enterprise",
+    "version": "3.0",
+    "engine": "MySQL",
+    "minVersion": "8.0",
+    "charset": "utf8mb4",
+    "collation": "utf8mb4_unicode_ci"
+  },
+  "tables": {
+    "users": {
+      "description": "用户基础信息表",
+      "primaryKey": "id",
+      "uniqueKeys": ["yeyu_id", "username", "phone"]
+    },
+    "user_settings": {
+      "description": "用户设置表",
+      "primaryKey": "id",
+      "foreignKeys": ["user_id"]
+    },
+    "user_friends": {
+      "description": "用户好友关系表",
+      "primaryKey": "id",
+      "foreignKeys": ["user_id", "friend_id"]
+    },
+    "chat_conversations": {
+      "description": "聊天会话表",
+      "primaryKey": "id",
+      "uniqueKeys": ["conversation_id"]
+    },
+    "group_members": {
+      "description": "群组成员表",
+      "primaryKey": "id",
+      "foreignKeys": ["conversation_id", "user_id"]
+    },
+    "chat_messages": {
+      "description": "聊天消息表",
+      "primaryKey": "id",
+      "uniqueKeys": ["message_id"]
+    },
+    "videos": {
+      "description": "视频表",
+      "primaryKey": "id",
+      "uniqueKeys": ["video_id"]
+    },
+    "video_likes": {
+      "description": "视频点赞表",
+      "primaryKey": "id",
+      "foreignKeys": ["video_id", "user_id"]
+    },
+    "video_comments": {
+      "description": "视频评论表",
+      "primaryKey": "id",
+      "uniqueKeys": ["comment_id"]
+    },
+    "genealogy_surnames": {
+      "description": "族谱姓氏表",
+      "primaryKey": "id",
+      "uniqueKeys": ["surname"]
+    },
+    "genealogy_families": {
+      "description": "族谱家族表",
+      "primaryKey": "id",
+      "uniqueKeys": ["family_id"]
+    },
+    "genealogy_members": {
+      "description": "族谱成员表",
+      "primaryKey": "id",
+      "uniqueKeys": ["member_id"]
+    }
+  },
+  "views": {
+    "user_friends_view": "用户好友列表视图",
+    "conversation_list_view": "会话列表视图"
+  },
+  "testData": {
+    "users": 4,
+    "friendships": 8,
+    "conversations": 4,
+    "messages": 6
+  },
+  "features": [
+    "用户管理",
+    "好友系统", 
+    "私聊功能",
+    "群聊功能",
+    "消息类型支持",
+    "消息状态管理"
+  ]
+}

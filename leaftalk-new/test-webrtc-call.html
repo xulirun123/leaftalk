@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebRTC通话测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebRTC通话测试</h1>
+    
+    <div class="section">
+        <h3>1. 登录测试</h3>
+        <input type="text" id="username" placeholder="用户名" value="user1">
+        <input type="password" id="password" placeholder="密码" value="123456">
+        <button onclick="login()">登录</button>
+        <div id="loginStatus"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. 发起通话</h3>
+        <input type="text" id="targetUserId" placeholder="目标用户ID" value="2">
+        <button onclick="initiateVideoCall()">发起视频通话</button>
+        <button onclick="initiateVoiceCall()">发起语音通话</button>
+    </div>
+
+    <div class="section">
+        <h3>3. 调试日志</h3>
+        <button onclick="clearLog()">清空日志</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let token = null;
+        let socket = null;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                log(`尝试登录: ${username}`);
+                
+                const response = await fetch('http://localhost:8893/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    token = data.token;
+                    log(`✅ 登录成功，用户ID: ${data.user.id}`);
+                    document.getElementById('loginStatus').innerHTML = `已登录: ${data.user.username} (ID: ${data.user.id})`;
+                    
+                    // 连接Socket.IO
+                    connectSocket(data.user.id);
+                } else {
+                    log(`❌ 登录失败: ${data.error}`);
+                }
+            } catch (error) {
+                log(`❌ 登录错误: ${error.message}`);
+            }
+        }
+
+        function connectSocket(userId) {
+            log(`连接Socket.IO，用户ID: ${userId}`);
+            
+            // 加载Socket.IO
+            const script = document.createElement('script');
+            script.src = '/socket.io/socket.io.js';
+            script.onload = () => {
+                socket = io('http://localhost:8893');
+                
+                socket.on('connect', () => {
+                    log(`✅ Socket.IO连接成功: ${socket.id}`);
+                    
+                    // 加入用户房间
+                    socket.emit('join_user_room', { userId: String(userId) });
+                    log(`📞 发送加入用户房间请求: ${userId}`);
+                });
+
+                socket.on('webrtc:incoming-call', (data) => {
+                    log(`📞 收到来电通知: ${JSON.stringify(data)}`);
+                });
+
+                socket.on('disconnect', () => {
+                    log(`❌ Socket.IO连接断开`);
+                });
+
+                socket.on('error', (error) => {
+                    log(`❌ Socket.IO错误: ${error}`);
+                });
+            };
+            document.head.appendChild(script);
+        }
+
+        async function initiateVideoCall() {
+            const targetUserId = document.getElementById('targetUserId').value;
+            await initiateCall(targetUserId, 'video');
+        }
+
+        async function initiateVoiceCall() {
+            const targetUserId = document.getElementById('targetUserId').value;
+            await initiateCall(targetUserId, 'voice');
+        }
+
+        async function initiateCall(targetUserId, type) {
+            if (!token) {
+                log('❌ 请先登录');
+                return;
+            }
+
+            try {
+                log(`📞 发起${type}通话给用户 ${targetUserId}`);
+                
+                const response = await fetch('http://localhost:8893/api/webrtc-calls/initiate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        toUserId: targetUserId,
+                        type: type
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ 通话发起成功，通话ID: ${data.data.callId}`);
+                } else {
+                    log(`❌ 通话发起失败: ${data.error}`);
+                }
+            } catch (error) {
+                log(`❌ 发起通话错误: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

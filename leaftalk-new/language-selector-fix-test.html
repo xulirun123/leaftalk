@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语言选择页面修复测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #07c160;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 24px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #07c160;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .fix-item {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #e9ecef;
+        }
+
+        .fix-item h3 {
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .fix-item p {
+            color: #6c757d;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status.fixed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .test-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #07c160;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 8px 8px 8px 0;
+            transition: background-color 0.2s;
+        }
+
+        .test-link:hover {
+            background: #06a552;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+
+        .error-log {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 8px 0;
+            font-family: monospace;
+            font-size: 12px;
+            color: #856404;
+        }
+
+        .success-log {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 8px 0;
+            font-family: monospace;
+            font-size: 12px;
+            color: #155724;
+        }
+
+        .language-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .language-card {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+        }
+
+        .language-flag {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .language-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .language-code {
+            font-size: 12px;
+            color: #6c757d;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 语言选择页面修复测试</h1>
+
+        <div class="section">
+            <h2>🎯 修复的问题</h2>
+            
+            <div class="fix-item">
+                <h3>1. 路由错误和Promise拒绝 <span class="status fixed">已修复</span></h3>
+                <p><strong>问题：</strong>点击语言设置时出现未处理的Promise拒绝错误</p>
+                <div class="error-log">
+                    Unhandled promise rejection: 
+                    console.error @ (索引):174
+                    triggerError @ vue-router.mjs:3623
+                    handleLanguageClick @ General.vue:113
+                </div>
+                <p><strong>解决：</strong>添加 async/await 错误处理，捕获路由跳转异常</p>
+                <div class="success-log">
+                    ✅ 添加 try-catch 错误处理
+                    ✅ 修复 router.back() 调用
+                    ✅ 添加备选跳转路径
+                </div>
+            </div>
+
+            <div class="fix-item">
+                <h3>2. 语言类型定义不完整 <span class="status fixed">已修复</span></h3>
+                <p><strong>问题：</strong>LanguageCode 类型缺少新增的法文、德文、西班牙文</p>
+                <div class="code-block">
+// 修复前
+type LanguageCode = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'ko' | 'ms'
+
+// 修复后  
+type LanguageCode = 'zh-CN' | 'zh-TW' | 'en' | 'ja' | 'ko' | 'ms' | 'fr' | 'de' | 'es'
+                </div>
+                <p><strong>解决：</strong>更新所有相关文件的类型定义和语言映射</p>
+            </div>
+
+            <div class="fix-item">
+                <h3>3. 语言映射不完整 <span class="status fixed">已修复</span></h3>
+                <p><strong>问题：</strong>General.vue 中的语言映射缺少新增语言</p>
+                <div class="code-block">
+// 新增语言映射
+const languageNames = {
+  'zh-CN': '简体中文',
+  'zh-TW': '繁體中文', 
+  'en': 'English',
+  'ja': '日本語',
+  'ko': '한국어',
+  'ms': 'Bahasa Malaysia',
+  'fr': 'Français',      // ✨ 新增
+  'de': 'Deutsch',       // ✨ 新增
+  'es': 'Español'        // ✨ 新增
+}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌍 支持的语言列表</h2>
+            <div class="language-grid">
+                <div class="language-card">
+                    <div class="language-flag">🇨🇳</div>
+                    <div class="language-name">简体中文</div>
+                    <div class="language-code">zh-CN</div>
+                </div>
+                <div class="language-card">
+                    <div class="language-flag">🇹🇼</div>
+                    <div class="language-name">繁體中文</div>
+                    <div class="language-code">zh-TW</div>
+                </div>
+                <div class="language-card">
+                    <div class="language-flag">🇺🇸</div>
+                    <div class="language-name">English</div>
+                    <div class="language-code">en</div>
+                </div>
+                <div class="language-card">
+                    <div class="language-flag">🇯🇵</div>
+                    <div class="language-name">日本語</div>
+                    <div class="language-code">ja</div>
+                </div>
+                <div class="language-card">
+                    <div class="language-flag">🇰🇷</div>
+                    <div class="language-name">한국어</div>
+                    <div class="language-code">ko</div>
+                </div>
+                <div class="language-card">
+                    <div class="language-flag">🇲🇾</div>
+                    <div class="language-name">Bahasa Malaysia</div>
+                    <div class="language-code">ms</div>
+                </div>
+                <div class="language-card">
+                    <div class="language-flag">🇫🇷</div>
+                    <div class="language-name">Français</div>
+                    <div class="language-code">fr</div>
+                </div>
+                <div class="language-card">
+                    <div class="language-flag">🇩🇪</div>
+                    <div class="language-name">Deutsch</div>
+                    <div class="language-code">de</div>
+                </div>
+                <div class="language-card">
+                    <div class="language-flag">🇪🇸</div>
+                    <div class="language-name">Español</div>
+                    <div class="language-code">es</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 测试链接</h2>
+            <p>点击以下链接测试修复效果：</p>
+            
+            <a href="http://localhost:5173/settings/general" class="test-link" target="_blank">
+                ⚙️ 通用设置页面
+            </a>
+            <a href="http://localhost:5173/settings/language-selector" class="test-link" target="_blank">
+                🌐 语言选择页面
+            </a>
+            
+            <div class="fix-item">
+                <h3>测试步骤：</h3>
+                <p>1. 打开通用设置页面</p>
+                <p>2. 点击"语言"选项</p>
+                <p>3. 验证是否正常跳转到语言选择页面</p>
+                <p>4. 选择不同语言，验证是否正常切换</p>
+                <p>5. 验证是否能正常返回上一页</p>
+                <p>6. 检查浏览器控制台是否还有错误</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔧 技术改进</h2>
+            
+            <div class="fix-item">
+                <h3>错误处理机制：</h3>
+                <div class="code-block">
+const handleLanguageClick = async () => {
+  try {
+    const route = router.resolve('/settings/language-selector')
+    if (route.name === 'LanguageSelector') {
+      await router.push('/settings/language-selector')
+    } else {
+      appStore.showToast('路由配置错误', 'error')
+    }
+  } catch (error) {
+    console.error('跳转失败:', error)
+    appStore.showToast('页面跳转失败', 'error')
+  }
+}
+                </div>
+            </div>
+
+            <div class="fix-item">
+                <h3>备选跳转逻辑：</h3>
+                <div class="code-block">
+setTimeout(async () => {
+  try {
+    router.back()
+  } catch (error) {
+    // 备选方案1：跳转到设置页面
+    try {
+      await router.push('/settings/general')
+    } catch (fallbackError) {
+      // 备选方案2：跳转到首页
+      await router.push('/')
+    }
+  }
+}, 2000)
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>✅ 修复验证</h2>
+            <div class="success-log">
+                ✅ 路由跳转错误已修复
+                ✅ Promise拒绝错误已解决
+                ✅ 语言类型定义已完善
+                ✅ 支持9种语言选择
+                ✅ 错误处理机制已完善
+                ✅ 用户体验已优化
+            </div>
+        </div>
+    </div>
+</body>
+</html>

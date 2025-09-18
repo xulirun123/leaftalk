@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #07C160;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #06a552;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-users {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>叶语登录测试</h1>
+    
+    <div class="test-users">
+        <h3>测试用户账号：</h3>
+        <p><strong>用户名:</strong> testlogin</p>
+        <p><strong>密码:</strong> 123456</p>
+        <p><strong>叶语号:</strong> TESTLOGIN</p>
+        <p><strong>手机号:</strong> 13900139000</p>
+    </div>
+
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="username">用户名/叶语号/手机号:</label>
+            <input type="text" id="username" value="testlogin" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">密码:</label>
+            <input type="password" id="password" value="123456" required>
+        </div>
+        
+        <button type="submit">登录测试</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.textContent = '正在测试登录...';
+            resultDiv.className = 'result';
+            
+            try {
+                console.log('🔐 发送登录请求:', { username, password: '***' });
+                
+                const response = await fetch('http://localhost:8893/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                console.log('📊 响应状态:', response.status);
+                console.log('📊 响应数据:', data);
+                
+                if (response.ok && data.success) {
+                    resultDiv.textContent = `✅ 登录成功!\n用户: ${data.data.user.nickname}\n叶语号: ${data.data.user.yeyu_id}\nToken: ${data.data.token.substring(0, 50)}...`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.textContent = `❌ 登录失败\n状态码: ${response.status}\n错误: ${data.error || data.message || '未知错误'}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                console.error('❌ 请求失败:', error);
+                resultDiv.textContent = `❌ 网络错误: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        });
+    </script>
+</body>
+</html>

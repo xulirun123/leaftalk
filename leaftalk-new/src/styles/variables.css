@@ -1,0 +1,237 @@
+/**
+ * 叶语聊天系统 - 全局CSS变量
+ * 所有组件都应该使用这些变量，确保样式统一
+ */
+
+:root {
+  /* ========== 主色调 ========== */
+  --primary-color: #07c160;
+  --primary-light: #e8f5e8;
+  --primary-dark: #06a552;
+  --primary-hover: #06ad56;
+  
+  /* ========== 背景色 ========== */
+  --bg-primary: #e5e5e5;
+  --bg-secondary: #e5e5e5;
+  --bg-tertiary: #e5e5e5;
+  --bg-quaternary: #e5e5e5;
+  
+  /* ========== 文字颜色 ========== */
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --text-quaternary: #cccccc;
+  --text-white: #ffffff;
+  
+  /* ========== 状态颜色 ========== */
+  --success-color: #07c160;
+  --warning-color: #fa8c16;
+  --error-color: #ff4757;
+  --info-color: #1890ff;
+  
+  /* ========== 状态背景色 ========== */
+  --success-bg: #e8f5e8;
+  --warning-bg: #fff7e6;
+  --error-bg: #fef0f0;
+  --info-bg: #e6f7ff;
+  
+  /* ========== 间距 ========== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+  
+  /* ========== 圆角 ========== */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 50%;
+  
+  /* ========== 阴影 ========== */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.1);
+  
+  /* ========== 边框 ========== */
+  --border-width: 1px;
+  --border-color: #e5e5e5;
+  --border-color-light: #f0f0f0;
+  --border-color-dark: #d9d9d9;
+  
+  /* ========== 字体 ========== */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-xxl: 24px;
+  
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-loose: 1.8;
+  
+  /* ========== 层级 ========== */
+  --z-index-dropdown: 1000;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+  --z-index-toast: 1080;
+  
+  /* ========== 动画 ========== */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  
+  /* ========== 移动端特定 ========== */
+  --mobile-header-height: 65px; /* 状态栏25px + 导航栏40px = 65px */
+  --mobile-nav-bar-height: 40px;
+  --mobile-status-bar-height: 25px;
+  --mobile-tabbar-height: 50px;
+  --mobile-safe-area-top: env(safe-area-inset-top);
+  --mobile-safe-area-bottom: env(safe-area-inset-bottom);
+  --mobile-safe-area-left: env(safe-area-inset-left);
+  --mobile-safe-area-right: env(safe-area-inset-right);
+  
+  /* ========== 聊天特定颜色 ========== */
+  --chat-bubble-own: var(--primary-color);
+  --chat-bubble-other: var(--bg-primary);
+  --chat-bubble-system: var(--bg-quaternary);
+  --chat-text-own: var(--text-white);
+  --chat-text-other: var(--text-primary);
+  --chat-text-system: var(--text-secondary);
+  
+  /* ========== 头像尺寸 ========== */
+  --avatar-size-xs: 24px;
+  --avatar-size-sm: 32px;
+  --avatar-size-md: 44px;
+  --avatar-size-lg: 60px;
+  --avatar-size-xl: 80px;
+  --avatar-size-xxl: 120px;
+  
+  /* ========== 按钮尺寸 ========== */
+  --button-height-sm: 32px;
+  --button-height-md: 44px;
+  --button-height-lg: 52px;
+  
+  /* ========== 输入框尺寸 ========== */
+  --input-height-sm: 32px;
+  --input-height-md: 44px;
+  --input-height-lg: 52px;
+}
+
+/* ========== 深色模式支持 ========== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3a3a3a;
+    --bg-quaternary: #4a4a4a;
+    
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --text-tertiary: #999999;
+    --text-quaternary: #666666;
+    
+    --border-color: #3a3a3a;
+    --border-color-light: #2d2d2d;
+    --border-color-dark: #4a4a4a;
+    
+    --chat-bubble-other: #2d2d2d;
+    --chat-text-other: var(--text-primary);
+  }
+}
+
+/* ========== 全局重置 ========== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== 移动端优化 ========== */
+@media (max-width: 768px) {
+  body {
+    /* 禁用选择和高亮 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    
+    /* 禁用点击高亮 */
+    -webkit-tap-highlight-color: transparent;
+    
+    /* 优化滚动 */
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 输入框防止缩放 */
+  input, textarea {
+    font-size: 16px;
+  }
+}
+
+/* ========== 工具类 ========== */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.flex { display: flex; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-column { display: flex; flex-direction: column; }
+.flex-1 { flex: 1; }
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+.hidden { display: none !important; }
+.invisible { visibility: hidden; }
+
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow: auto; }
+.overflow-scroll { overflow: scroll; }
+
+/* ========== 滚动条样式 ========== */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-quaternary);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}

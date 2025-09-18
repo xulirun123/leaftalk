@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叶语自动翻译系统演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #07C160 0%, #06a552 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .demo-section {
+            padding: 40px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: #07C160;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(7, 193, 96, 0.1);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #07C160, #06a552);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: white;
+        }
+
+        .feature-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .feature-desc {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .demo-button {
+            background: linear-gradient(135deg, #07C160, #06a552);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .demo-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(7, 193, 96, 0.3);
+        }
+
+        .voice-demo {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .voice-demo h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .voice-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .voice-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .voice-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .voice-button.active {
+            background: #07C160;
+            border-color: #07C160;
+        }
+
+        .translation-display {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .translation-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .original-text {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .translated-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #07C160;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #ccc;
+        }
+
+        .status-indicator.listening {
+            background: #07C160;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-indicator.translating {
+            background: #ff9500;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .tech-specs {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 40px;
+        }
+
+        .tech-specs h3 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .spec-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .spec-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #07C160;
+        }
+
+        .spec-icon {
+            margin-right: 10px;
+            color: #07C160;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .demo-section {
+                padding: 20px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .voice-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌍 叶语自动翻译系统</h1>
+            <p>实时语音翻译 • 智能文本翻译 • 视频通话翻译</p>
+        </div>
+
+        <div class="demo-section">
+            <!-- 功能特性 -->
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎤</div>
+                    <div class="feature-title">实时语音翻译</div>
+                    <div class="feature-desc">
+                        支持实时语音识别和翻译，您说中文，对方听到英文。支持6种语言互译，语音合成播放。
+                    </div>
+                    <button class="demo-button" onclick="startVoiceDemo()">开始语音翻译</button>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-title">智能文本翻译</div>
+                    <div class="feature-desc">
+                        自动检测页面文本语言，无需手动设置翻译键。支持离线翻译和在线API翻译。
+                    </div>
+                    <button class="demo-button" onclick="showTextDemo()">查看文本翻译</button>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📹</div>
+                    <div class="feature-title">视频通话翻译</div>
+                    <div class="feature-desc">
+                        视频通话中实时翻译对话，支持字幕显示和双向语音翻译。让语言不再是沟通障碍。
+                    </div>
+                    <button class="demo-button" onclick="showVideoDemo()">体验视频翻译</button>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <div class="feature-title">聊天消息翻译</div>
+                    <div class="feature-desc">
+                        聊天消息自动翻译，根据用户语言偏好智能翻译。支持群聊多语言环境。
+                    </div>
+                    <button class="demo-button" onclick="showChatDemo()">查看聊天翻译</button>
+                </div>
+            </div>
+
+            <!-- 语音翻译演示 -->
+            <div class="voice-demo">
+                <h2>🎤 实时语音翻译演示</h2>
+                <p>点击开始按钮，说出您想翻译的话</p>
+                
+                <div class="voice-controls">
+                    <button class="voice-button" id="startBtn" onclick="toggleVoiceTranslation()">
+                        <span class="status-indicator" id="statusIndicator"></span>
+                        开始翻译
+                    </button>
+                    <button class="voice-button" onclick="swapLanguages()">🔄 切换语言</button>
+                    <button class="voice-button" onclick="clearHistory()">🗑️ 清空记录</button>
+                </div>
+
+                <div class="translation-display" id="translationDisplay" style="display: none;">
+                    <div id="currentTranslation"></div>
+                    <div id="translationHistory"></div>
+                </div>
+            </div>
+
+            <!-- 技术规格 -->
+            <div class="tech-specs">
+                <h3>🔧 技术特性</h3>
+                <div class="spec-list">
+                    <div class="spec-item">
+                        <span class="spec-icon">🌐</span>
+                        <span>支持6种语言互译</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-icon">⚡</span>
+                        <span>实时语音识别</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-icon">🎯</span>
+                        <span>智能语言检测</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-icon">💾</span>
+                        <span>翻译结果缓存</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-icon">📱</span>
+                        <span>离线翻译支持</span>
+                    </div>
+                    <div class="spec-item">
+                        <span class="spec-icon">🔊</span>
+                        <span>语音合成播放</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isTranslating = false;
+        let recognition = null;
+        let currentLanguage = 'zh-CN';
+        let targetLanguage = 'en';
+        
+        // 语言映射
+        const languages = {
+            'zh-CN': '简体中文',
+            'en': 'English',
+            'ja': '日本語',
+            'ko': '한국어',
+            'ms': 'Bahasa Malaysia',
+            'zh-TW': '繁体中文'
+        };
+
+        // 初始化语音识别
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = currentLanguage;
+                
+                recognition.onstart = () => {
+                    updateStatus('listening');
+                    console.log('🎤 语音识别开始');
+                };
+                
+                recognition.onend = () => {
+                    updateStatus('idle');
+                    console.log('🎤 语音识别结束');
+                };
+                
+                recognition.onresult = (event) => {
+                    const result = event.results[event.results.length - 1];
+                    if (result.isFinal) {
+                        const text = result[0].transcript;
+                        console.log('🎤 识别到语音:', text);
+                        translateAndDisplay(text);
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('🎤 语音识别错误:', event.error);
+                    updateStatus('error');
+                };
+            } else {
+                alert('您的浏览器不支持语音识别功能');
+            }
+        }
+
+        // 切换语音翻译
+        function toggleVoiceTranslation() {
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+            
+            if (isTranslating) {
+                recognition.stop();
+                isTranslating = false;
+                document.getElementById('startBtn').innerHTML = '<span class="status-indicator" id="statusIndicator"></span>开始翻译';
+            } else {
+                recognition.start();
+                isTranslating = true;
+                document.getElementById('startBtn').innerHTML = '<span class="status-indicator" id="statusIndicator"></span>停止翻译';
+                document.getElementById('translationDisplay').style.display = 'block';
+            }
+        }
+
+        // 更新状态指示器
+        function updateStatus(status) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.className = 'status-indicator ' + status;
+        }
+
+        // 翻译并显示
+        function translateAndDisplay(text) {
+            updateStatus('translating');
+            
+            // 模拟翻译过程
+            setTimeout(() => {
+                const translatedText = mockTranslate(text, currentLanguage, targetLanguage);
+                displayTranslation(text, translatedText);
+                speakText(translatedText, targetLanguage);
+                updateStatus('idle');
+            }, 1000);
+        }
+
+        // 模拟翻译
+        function mockTranslate(text, from, to) {
+            const translations = {
+                'zh-CN': {
+                    'en': {
+                        '你好': 'Hello',
+                        '再见': 'Goodbye',
+                        '谢谢': 'Thank you',
+                        '对不起': 'Sorry',
+                        '我爱你': 'I love you',
+                        '早上好': 'Good morning',
+                        '晚安': 'Good night'
+                    }
+                },
+                'en': {
+                    'zh-CN': {
+                        'Hello': '你好',
+                        'Goodbye': '再见',
+                        'Thank you': '谢谢',
+                        'Sorry': '对不起',
+                        'I love you': '我爱你',
+                        'Good morning': '早上好',
+                        'Good night': '晚安'
+                    }
+                }
+            };
+            
+            if (translations[from] && translations[from][to] && translations[from][to][text]) {
+                return translations[from][to][text];
+            }
+            
+            return `[${to}] ${text}`;
+        }
+
+        // 显示翻译结果
+        function displayTranslation(original, translated) {
+            const currentDiv = document.getElementById('currentTranslation');
+            const historyDiv = document.getElementById('translationHistory');
+            
+            // 显示当前翻译
+            currentDiv.innerHTML = `
+                <div class="translation-item">
+                    <div class="original-text">${languages[currentLanguage]}: ${original}</div>
+                    <div class="translated-text">${languages[targetLanguage]}: ${translated}</div>
+                </div>
+            `;
+            
+            // 添加到历史记录
+            const historyItem = document.createElement('div');
+            historyItem.className = 'translation-item';
+            historyItem.innerHTML = `
+                <div class="original-text">${original}</div>
+                <div class="translated-text">${translated}</div>
+            `;
+            historyDiv.insertBefore(historyItem, historyDiv.firstChild);
+            
+            // 限制历史记录数量
+            while (historyDiv.children.length > 5) {
+                historyDiv.removeChild(historyDiv.lastChild);
+            }
+        }
+
+        // 语音播放
+        function speakText(text, language) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = language;
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // 切换语言
+        function swapLanguages() {
+            const temp = currentLanguage;
+            currentLanguage = targetLanguage;
+            targetLanguage = temp;
+            
+            if (recognition) {
+                recognition.lang = currentLanguage;
+            }
+            
+            alert(`语言已切换: ${languages[currentLanguage]} → ${languages[targetLanguage]}`);
+        }
+
+        // 清空历史记录
+        function clearHistory() {
+            document.getElementById('translationHistory').innerHTML = '';
+            document.getElementById('currentTranslation').innerHTML = '';
+        }
+
+        // 其他演示功能
+        function startVoiceDemo() {
+            alert('🎤 语音翻译功能已集成到叶语应用中！\n\n功能特点：\n• 实时语音识别\n• 多语言互译\n• 语音合成播放\n• 离线翻译支持');
+        }
+
+        function showTextDemo() {
+            alert('📱 智能文本翻译功能：\n\n• 自动检测语言\n• 无需手动设置翻译键\n• 支持页面文本自动翻译\n• 翻译结果缓存');
+        }
+
+        function showVideoDemo() {
+            alert('📹 视频通话翻译功能：\n\n• 实时语音翻译\n• 字幕显示\n• 双向翻译\n• 语音合成播放');
+        }
+
+        function showChatDemo() {
+            alert('💬 聊天消息翻译功能：\n\n• 自动翻译聊天消息\n• 根据用户语言偏好\n• 支持群聊多语言\n• 实时翻译显示');
+        }
+
+        // 页面加载完成后初始化
+        window.onload = function() {
+            console.log('🌍 叶语自动翻译系统演示页面已加载');
+        };
+    </script>
+</body>
+</html>

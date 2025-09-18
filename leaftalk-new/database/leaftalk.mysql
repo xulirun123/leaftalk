@@ -1,0 +1,643 @@
+-- 叶语企业版数据库架构
+-- LeafTalk Enterprise Database Schema
+-- 版本: v3.0
+-- 数据库: MySQL 8.0+
+-- 字符集: utf8mb4
+
+-- 创建数据库
+CREATE DATABASE IF NOT EXISTS leaftalk_enterprise 
+CHARACTER SET utf8mb4 
+COLLATE utf8mb4_unicode_ci;
+
+USE leaftalk_enterprise;
+
+-- 删除已存在的表（按依赖关系倒序）
+DROP TABLE IF EXISTS genealogy_members;
+DROP TABLE IF EXISTS genealogy_families;
+DROP TABLE IF EXISTS genealogy_surnames;
+DROP TABLE IF EXISTS video_comments;
+DROP TABLE IF EXISTS video_likes;
+DROP TABLE IF EXISTS videos;
+DROP TABLE IF EXISTS group_members;
+DROP TABLE IF EXISTS chat_messages;
+DROP TABLE IF EXISTS chat_conversations;
+DROP TABLE IF EXISTS user_settings;
+DROP TABLE IF EXISTS user_friends;
+DROP TABLE IF EXISTS users;
+
+-- ================================
+-- 1. 用户表
+-- ================================
+CREATE TABLE users (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
+    yeyu_id VARCHAR(20) UNIQUE NOT NULL COMMENT '叶语ID',
+    username VARCHAR(50) UNIQUE NOT NULL COMMENT '用户名',
+    password VARCHAR(255) NOT NULL COMMENT '密码',
+    nickname VARCHAR(50) COMMENT '昵称',
+    avatar VARCHAR(500) COMMENT '头像URL',
+    phone VARCHAR(20) UNIQUE COMMENT '手机号',
+    email VARCHAR(100) COMMENT '邮箱',
+    gender ENUM('male', 'female', 'unknown') DEFAULT 'unknown' COMMENT '性别',
+    birthday DATE COMMENT '生日',
+    region VARCHAR(100) COMMENT '地区',
+    -- 实名认证相关字段
+    real_name VARCHAR(50) COMMENT '真实姓名',
+    id_card VARCHAR(18) COMMENT '身份证号',
+    id_card_address TEXT COMMENT '身份证地址（户籍地址）',
+    household_province VARCHAR(50) COMMENT '户籍省份',
+    household_city VARCHAR(50) COMMENT '户籍城市',
+    household_district VARCHAR(50) COMMENT '户籍区县',
+    household_detail VARCHAR(200) COMMENT '户籍详细地址',
+    is_verified BOOLEAN DEFAULT FALSE COMMENT '是否实名认证',
+    verification_date TIMESTAMP NULL COMMENT '认证时间',
+    signature VARCHAR(200) COMMENT '个性签名',
+    status ENUM('active', 'inactive', 'banned') DEFAULT 'active' COMMENT '状态',
+    last_login_time TIMESTAMP NULL COMMENT '最后登录时间',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
+    INDEX idx_yeyu_id (yeyu_id),
+    INDEX idx_username (username),
+    INDEX idx_phone (phone),
+    INDEX idx_status (status)
+) COMMENT '用户基础信息表';
+
+-- ================================
+-- 2. 好友关系表
+-- ================================
+CREATE TABLE user_friends (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '关系ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    friend_id BIGINT NOT NULL COMMENT '好友ID',
+    remark VARCHAR(50) COMMENT '备注名',
+    status ENUM('pending', 'accepted', 'blocked') DEFAULT 'pending' COMMENT '关系状态',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '添加时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_user_friend (user_id, friend_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_friend_id (friend_id),
+    INDEX idx_status (status)
+) COMMENT '用户好友关系表';
+
+-- ================================
+-- 3. 用户设置表
+-- ================================
+CREATE TABLE user_settings (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '设置ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    notification_enabled BOOLEAN DEFAULT TRUE COMMENT '是否开启通知',
+    sound_enabled BOOLEAN DEFAULT TRUE COMMENT '是否开启声音',
+    vibration_enabled BOOLEAN DEFAULT TRUE COMMENT '是否开启震动',
+    privacy_level ENUM('public', 'friends', 'private') DEFAULT 'friends' COMMENT '隐私级别',
+    auto_download_images BOOLEAN DEFAULT TRUE COMMENT '自动下载图片',
+    auto_download_videos BOOLEAN DEFAULT FALSE COMMENT '自动下载视频',
+    font_size ENUM('small', 'medium', 'large') DEFAULT 'medium' COMMENT '字体大小',
+    theme ENUM('light', 'dark', 'auto') DEFAULT 'light' COMMENT '主题',
+    language VARCHAR(10) DEFAULT 'zh-CN' COMMENT '语言',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_user_settings (user_id)
+) COMMENT '用户设置表';
+
+-- ================================
+-- 4. 聊天会话表
+-- ================================
+CREATE TABLE chat_conversations (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '会话ID',
+    conversation_id VARCHAR(50) UNIQUE NOT NULL COMMENT '会话唯一标识',
+    type ENUM('private', 'group') DEFAULT 'private' COMMENT '会话类型',
+    name VARCHAR(100) COMMENT '会话名称（群聊）',
+    avatar VARCHAR(500) COMMENT '会话头像',
+    creator_id BIGINT COMMENT '创建者ID',
+    member_count INT DEFAULT 2 COMMENT '成员数量',
+    last_message_id BIGINT COMMENT '最后一条消息ID',
+    last_message_time TIMESTAMP NULL COMMENT '最后消息时间',
+    is_muted BOOLEAN DEFAULT FALSE COMMENT '是否免打扰',
+    is_pinned BOOLEAN DEFAULT FALSE COMMENT '是否置顶',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    
+    FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_conversation_id (conversation_id),
+    INDEX idx_type (type),
+    INDEX idx_creator_id (creator_id),
+    INDEX idx_last_message_time (last_message_time)
+) COMMENT '聊天会话表';
+
+-- ================================
+-- 5. 群组成员表
+-- ================================
+CREATE TABLE group_members (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '成员ID',
+    conversation_id VARCHAR(50) NOT NULL COMMENT '会话ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    role ENUM('owner', 'admin', 'member') DEFAULT 'member' COMMENT '角色',
+    nickname VARCHAR(50) COMMENT '群内昵称',
+    is_muted BOOLEAN DEFAULT FALSE COMMENT '是否被禁言',
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
+
+    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(conversation_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_group_member (conversation_id, user_id),
+    INDEX idx_conversation_id (conversation_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_role (role)
+) COMMENT '群组成员表';
+
+-- ================================
+-- 6. 聊天消息表
+-- ================================
+CREATE TABLE chat_messages (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息ID',
+    message_id VARCHAR(50) UNIQUE NOT NULL COMMENT '消息唯一标识',
+    conversation_id VARCHAR(50) NOT NULL COMMENT '会话ID',
+    sender_id BIGINT NOT NULL COMMENT '发送者ID',
+    message_type ENUM('text', 'image', 'voice', 'video', 'file', 'system', 'redpacket', 'transfer') DEFAULT 'text' COMMENT '消息类型',
+    content TEXT COMMENT '消息内容',
+    file_url VARCHAR(500) COMMENT '文件URL',
+    file_size BIGINT COMMENT '文件大小',
+    duration INT COMMENT '音视频时长（秒）',
+    reply_to_id BIGINT COMMENT '回复的消息ID',
+    is_recalled BOOLEAN DEFAULT FALSE COMMENT '是否撤回',
+    is_read BOOLEAN DEFAULT FALSE COMMENT '是否已读',
+    redpacket_id BIGINT COMMENT '红包ID（消息类型为红包时）',
+    transfer_id BIGINT COMMENT '转账ID（消息类型为转账时）',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+
+    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(conversation_id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reply_to_id) REFERENCES chat_messages(id) ON DELETE SET NULL,
+    FOREIGN KEY (redpacket_id) REFERENCES redpackets(id) ON DELETE SET NULL,
+    FOREIGN KEY (transfer_id) REFERENCES transfers(id) ON DELETE SET NULL,
+    INDEX idx_message_id (message_id),
+    INDEX idx_conversation_id (conversation_id),
+    INDEX idx_sender_id (sender_id),
+    INDEX idx_created_at (created_at),
+    INDEX idx_message_type (message_type),
+    INDEX idx_redpacket_id (redpacket_id),
+    INDEX idx_transfer_id (transfer_id)
+) COMMENT '聊天消息表';
+
+-- ================================
+-- 7. 红包表
+-- ================================
+CREATE TABLE redpackets (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '红包ID',
+    redpacket_id VARCHAR(50) UNIQUE NOT NULL COMMENT '红包唯一标识',
+    sender_id BIGINT NOT NULL COMMENT '发送者ID',
+    conversation_id VARCHAR(50) NOT NULL COMMENT '会话ID',
+    type ENUM('normal', 'lucky') NOT NULL COMMENT '红包类型：normal=普通红包，lucky=拼手气红包',
+    total_amount DECIMAL(10,2) NOT NULL COMMENT '红包总金额',
+    total_count INT NOT NULL COMMENT '红包总个数',
+    remaining_amount DECIMAL(10,2) NOT NULL COMMENT '剩余金额',
+    remaining_count INT NOT NULL COMMENT '剩余个数',
+    blessing_message VARCHAR(200) COMMENT '祝福语',
+    status ENUM('active', 'expired', 'finished') DEFAULT 'active' COMMENT '红包状态',
+    expires_at TIMESTAMP NOT NULL COMMENT '过期时间',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(conversation_id) ON DELETE CASCADE,
+    INDEX idx_redpacket_id (redpacket_id),
+    INDEX idx_sender_id (sender_id),
+    INDEX idx_conversation_id (conversation_id),
+    INDEX idx_status (status),
+    INDEX idx_expires_at (expires_at)
+) COMMENT '红包表';
+
+-- ================================
+-- 8. 红包领取记录表
+-- ================================
+CREATE TABLE redpacket_records (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '记录ID',
+    redpacket_id BIGINT NOT NULL COMMENT '红包ID',
+    user_id BIGINT NOT NULL COMMENT '领取者ID',
+    amount DECIMAL(10,2) NOT NULL COMMENT '领取金额',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '领取时间',
+
+    FOREIGN KEY (redpacket_id) REFERENCES redpackets(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_redpacket_user (redpacket_id, user_id),
+    INDEX idx_redpacket_id (redpacket_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at)
+) COMMENT '红包领取记录表';
+
+-- ================================
+-- 9. 转账表
+-- ================================
+CREATE TABLE transfers (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '转账ID',
+    transfer_id VARCHAR(50) UNIQUE NOT NULL COMMENT '转账唯一标识',
+    sender_id BIGINT NOT NULL COMMENT '发送者ID',
+    receiver_id BIGINT NOT NULL COMMENT '接收者ID',
+    conversation_id VARCHAR(50) NOT NULL COMMENT '会话ID',
+    amount DECIMAL(10,2) NOT NULL COMMENT '转账金额',
+    message VARCHAR(200) COMMENT '转账留言',
+    status ENUM('pending', 'completed', 'expired', 'cancelled') DEFAULT 'pending' COMMENT '转账状态',
+    expires_at TIMESTAMP NOT NULL COMMENT '过期时间',
+    completed_at TIMESTAMP NULL COMMENT '完成时间',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (conversation_id) REFERENCES chat_conversations(conversation_id) ON DELETE CASCADE,
+    INDEX idx_transfer_id (transfer_id),
+    INDEX idx_sender_id (sender_id),
+    INDEX idx_receiver_id (receiver_id),
+    INDEX idx_conversation_id (conversation_id),
+    INDEX idx_status (status),
+    INDEX idx_expires_at (expires_at)
+) COMMENT '转账表';
+
+-- ================================
+-- 7. 视频表
+-- ================================
+CREATE TABLE videos (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '视频ID',
+    video_id VARCHAR(50) UNIQUE NOT NULL COMMENT '视频唯一标识',
+    user_id BIGINT NOT NULL COMMENT '发布者ID',
+    title VARCHAR(200) COMMENT '视频标题',
+    description TEXT COMMENT '视频描述',
+    video_url VARCHAR(500) NOT NULL COMMENT '视频URL',
+    cover_url VARCHAR(500) COMMENT '封面URL',
+    duration INT COMMENT '视频时长（秒）',
+    file_size BIGINT COMMENT '文件大小',
+    width INT COMMENT '视频宽度',
+    height INT COMMENT '视频高度',
+    view_count INT DEFAULT 0 COMMENT '观看次数',
+    like_count INT DEFAULT 0 COMMENT '点赞次数',
+    comment_count INT DEFAULT 0 COMMENT '评论次数',
+    share_count INT DEFAULT 0 COMMENT '分享次数',
+    status ENUM('draft', 'published', 'private', 'deleted') DEFAULT 'published' COMMENT '状态',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_video_id (video_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status),
+    INDEX idx_created_at (created_at)
+) COMMENT '视频表';
+
+-- ================================
+-- 8. 视频点赞表
+-- ================================
+CREATE TABLE video_likes (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '点赞ID',
+    video_id VARCHAR(50) NOT NULL COMMENT '视频ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '点赞时间',
+
+    FOREIGN KEY (video_id) REFERENCES videos(video_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_video_like (video_id, user_id),
+    INDEX idx_video_id (video_id),
+    INDEX idx_user_id (user_id)
+) COMMENT '视频点赞表';
+
+-- ================================
+-- 9. 视频评论表
+-- ================================
+CREATE TABLE video_comments (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '评论ID',
+    comment_id VARCHAR(50) UNIQUE NOT NULL COMMENT '评论唯一标识',
+    video_id VARCHAR(50) NOT NULL COMMENT '视频ID',
+    user_id BIGINT NOT NULL COMMENT '评论者ID',
+    parent_id BIGINT COMMENT '父评论ID（回复）',
+    content TEXT NOT NULL COMMENT '评论内容',
+    like_count INT DEFAULT 0 COMMENT '点赞次数',
+    reply_count INT DEFAULT 0 COMMENT '回复次数',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '评论时间',
+
+    FOREIGN KEY (video_id) REFERENCES videos(video_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES video_comments(id) ON DELETE CASCADE,
+    INDEX idx_comment_id (comment_id),
+    INDEX idx_video_id (video_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_parent_id (parent_id),
+    INDEX idx_created_at (created_at)
+) COMMENT '视频评论表';
+
+-- ================================
+-- 10. 族谱姓氏表
+-- ================================
+CREATE TABLE genealogy_surnames (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '姓氏ID',
+    surname VARCHAR(50) UNIQUE NOT NULL COMMENT '姓氏',
+    origin_story TEXT COMMENT '姓氏起源故事',
+    famous_people JSON COMMENT '历史名人信息（已废弃，使用genealogy_famous_people表）',
+    distribution_areas VARCHAR(500) COMMENT '主要分布地区',
+    distribution_map JSON COMMENT '分布地图数据',
+    total_families INT DEFAULT 0 COMMENT '家族总数',
+    total_members INT DEFAULT 0 COMMENT '成员总数',
+    ranking INT DEFAULT 0 COMMENT '姓氏排名（百家姓排名）',
+    population_estimate BIGINT DEFAULT 0 COMMENT '人口估计',
+    main_origins JSON COMMENT '主要起源地',
+    migration_history JSON COMMENT '迁徙历史',
+    cultural_symbols JSON COMMENT '文化符号（堂号、家训等）',
+    is_system_generated BOOLEAN DEFAULT TRUE COMMENT '是否系统生成',
+    last_updated_by BIGINT NULL COMMENT '最后更新者',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    INDEX idx_surname (surname),
+    INDEX idx_ranking (ranking)
+) COMMENT '族谱姓氏表（支持100家姓）';
+
+-- ================================
+-- 10.1 姓氏历史名人表（支持手动修改和添加）
+-- ================================
+CREATE TABLE genealogy_famous_people (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '名人ID',
+    surname_id BIGINT NOT NULL COMMENT '姓氏ID',
+    name VARCHAR(100) NOT NULL COMMENT '姓名',
+    title VARCHAR(200) COMMENT '称号/职位',
+    dynasty VARCHAR(100) COMMENT '朝代/时期',
+    birth_year INT COMMENT '出生年份',
+    death_year INT COMMENT '逝世年份',
+    achievements TEXT COMMENT '主要成就',
+    description TEXT COMMENT '详细描述',
+    category VARCHAR(50) COMMENT '分类：政治、文化、军事、科技等',
+    importance_level INT DEFAULT 1 COMMENT '重要程度 1-5',
+    is_verified BOOLEAN DEFAULT FALSE COMMENT '是否经过验证',
+    source VARCHAR(500) COMMENT '信息来源',
+    added_by BIGINT COMMENT '添加者用户ID',
+    verified_by BIGINT COMMENT '验证者用户ID',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    FOREIGN KEY (surname_id) REFERENCES genealogy_surnames(id) ON DELETE CASCADE,
+    INDEX idx_surname_id (surname_id),
+    INDEX idx_category (category),
+    INDEX idx_importance (importance_level),
+    INDEX idx_dynasty (dynasty)
+) COMMENT '姓氏历史名人表';
+
+-- ================================
+-- 10.2 姓氏分布统计表（根据注册地址自动统计）
+-- ================================
+CREATE TABLE genealogy_distribution_stats (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '分布统计ID',
+    surname_id BIGINT NOT NULL COMMENT '姓氏ID',
+    province VARCHAR(100) NOT NULL COMMENT '省份',
+    city VARCHAR(100) COMMENT '城市',
+    district VARCHAR(100) COMMENT '区县',
+    member_count INT DEFAULT 0 COMMENT '成员数量',
+    family_count INT DEFAULT 0 COMMENT '家族数量',
+    percentage DECIMAL(5,2) DEFAULT 0.00 COMMENT '在该地区的占比',
+    coordinates JSON COMMENT '地理坐标 {lat, lng}',
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+
+    FOREIGN KEY (surname_id) REFERENCES genealogy_surnames(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_location (surname_id, province, city, district),
+    INDEX idx_surname_province (surname_id, province),
+    INDEX idx_member_count (member_count),
+    INDEX idx_percentage (percentage)
+) COMMENT '姓氏分布统计表';
+
+-- ================================
+-- 11. 族谱家族表
+-- ================================
+CREATE TABLE genealogy_families (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '家族ID',
+    family_id VARCHAR(50) UNIQUE NOT NULL COMMENT '家族唯一标识',
+    surname_id BIGINT NOT NULL COMMENT '姓氏ID',
+    family_name VARCHAR(100) NOT NULL COMMENT '家族名称',
+    hall_name VARCHAR(100) COMMENT '堂号',
+    origin_location VARCHAR(200) COMMENT '发源地',
+    current_location VARCHAR(200) COMMENT '现居地',
+    patriarch_name VARCHAR(50) COMMENT '始祖姓名',
+    patriarch_generation VARCHAR(20) COMMENT '始祖世代',
+    family_motto VARCHAR(200) COMMENT '家训',
+    family_rules TEXT COMMENT '家规',
+    member_count INT DEFAULT 0 COMMENT '成员数量',
+    generation_count INT DEFAULT 0 COMMENT '世代数量',
+    status ENUM('active', 'inactive', 'pending') DEFAULT 'active' COMMENT '状态',
+    created_by BIGINT COMMENT '创建者用户ID',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    FOREIGN KEY (surname_id) REFERENCES genealogy_surnames(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_family_id (family_id),
+    INDEX idx_surname_id (surname_id),
+    INDEX idx_created_by (created_by),
+    INDEX idx_status (status)
+) COMMENT '族谱家族表';
+
+-- ================================
+-- 12. 族谱成员表
+-- ================================
+CREATE TABLE genealogy_members (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '成员ID',
+    member_id VARCHAR(50) UNIQUE NOT NULL COMMENT '成员唯一标识',
+    family_id VARCHAR(50) NOT NULL COMMENT '家族ID',
+    user_id BIGINT COMMENT '关联用户ID',
+    real_name VARCHAR(50) NOT NULL COMMENT '真实姓名',
+    nickname VARCHAR(50) COMMENT '昵称/字号',
+    generation_order INT COMMENT '世代序号',
+    generation_name VARCHAR(20) COMMENT '世代名称',
+    gender ENUM('male', 'female', 'unknown') DEFAULT 'unknown' COMMENT '性别',
+    birth_date DATE COMMENT '出生日期',
+    death_date DATE COMMENT '去世日期',
+    birth_location VARCHAR(200) COMMENT '出生地',
+    household_province VARCHAR(50) COMMENT '户籍省份',
+    household_city VARCHAR(50) COMMENT '户籍城市',
+    household_district VARCHAR(50) COMMENT '户籍区县',
+    household_address VARCHAR(200) COMMENT '户籍详细地址',
+    current_location VARCHAR(200) COMMENT '现居地',
+    occupation VARCHAR(100) COMMENT '职业',
+    education VARCHAR(100) COMMENT '学历',
+    achievements TEXT COMMENT '主要成就',
+    biography TEXT COMMENT '人物传记',
+    avatar_url VARCHAR(500) COMMENT '头像URL',
+    father_id VARCHAR(50) COMMENT '父亲ID',
+    mother_id VARCHAR(50) COMMENT '母亲ID',
+    spouse_ids JSON COMMENT '配偶ID列表',
+    children_ids JSON COMMENT '子女ID列表',
+    is_patriarch BOOLEAN DEFAULT FALSE COMMENT '是否为始祖',
+    status ENUM('alive', 'deceased', 'unknown') DEFAULT 'alive' COMMENT '生存状态',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    FOREIGN KEY (family_id) REFERENCES genealogy_families(family_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_member_id (member_id),
+    INDEX idx_family_id (family_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_real_name (real_name),
+    INDEX idx_generation_order (generation_order),
+    INDEX idx_father_id (father_id),
+    INDEX idx_mother_id (mother_id)
+) COMMENT '族谱成员表';
+
+-- ================================
+-- 插入测试数据
+-- ================================
+
+-- 插入测试用户 (密码都是: 123456)
+INSERT INTO users (yeyu_id, username, password, nickname, avatar, phone, gender, signature) VALUES
+('YY001001', 'admin', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '系统管理员', 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin', '13800138001', 'unknown', '叶语企业版管理员'),
+('YY001002', 'zhangsan', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '张三', 'https://api.dicebear.com/7.x/avataaars/svg?seed=zhangsan', '13800138002', 'male', '努力工作，快乐生活'),
+('YY001003', 'lisi', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '李四', 'https://api.dicebear.com/7.x/avataaars/svg?seed=lisi', '13800138003', 'female', '做最好的自己'),
+('YY001004', 'wangwu', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '王五', 'https://api.dicebear.com/7.x/avataaars/svg?seed=wangwu', '13800138004', 'male', '技术改变世界');
+
+-- 插入用户设置
+INSERT INTO user_settings (user_id, notification_enabled, sound_enabled, theme, language) VALUES
+(1, TRUE, TRUE, 'light', 'zh-CN'),
+(2, TRUE, TRUE, 'light', 'zh-CN'),
+(3, TRUE, FALSE, 'dark', 'zh-CN'),
+(4, TRUE, TRUE, 'auto', 'zh-CN');
+
+-- 插入好友关系
+INSERT INTO user_friends (user_id, friend_id, remark, status) VALUES
+(1, 2, '张三同事', 'accepted'),
+(1, 3, '李四朋友', 'accepted'),
+(1, 4, '王五技术', 'accepted'),
+(2, 1, '管理员', 'accepted'),
+(2, 3, '李四', 'accepted'),
+(3, 1, '老板', 'accepted'),
+(3, 2, '张三', 'accepted'),
+(4, 1, '管理员', 'accepted');
+
+-- 插入聊天会话
+INSERT INTO chat_conversations (conversation_id, type, name, creator_id, member_count) VALUES
+('conv_admin_zhangsan', 'private', NULL, 1, 2),
+('conv_admin_lisi', 'private', NULL, 1, 2),
+('conv_admin_wangwu', 'private', NULL, 1, 2),
+('conv_group_tech', 'group', '技术讨论组', 1, 4);
+
+-- 插入群组成员
+INSERT INTO group_members (conversation_id, user_id, role, joined_at) VALUES
+('conv_group_tech', 1, 'owner', NOW()),
+('conv_group_tech', 2, 'member', NOW()),
+('conv_group_tech', 3, 'member', NOW()),
+('conv_group_tech', 4, 'admin', NOW());
+
+-- 插入聊天消息
+INSERT INTO chat_messages (message_id, conversation_id, sender_id, message_type, content) VALUES
+('msg_001', 'conv_admin_zhangsan', 1, 'text', '你好，张三！'),
+('msg_002', 'conv_admin_zhangsan', 2, 'text', '管理员好！'),
+('msg_003', 'conv_admin_lisi', 1, 'text', '李四，最近工作怎么样？'),
+('msg_004', 'conv_admin_lisi', 3, 'text', '很好，谢谢关心！'),
+('msg_005', 'conv_group_tech', 1, 'text', '欢迎大家加入技术讨论组'),
+('msg_006', 'conv_group_tech', 4, 'text', '谢谢管理员，很高兴加入！');
+
+-- 插入族谱姓氏
+INSERT INTO genealogy_surnames (surname, origin_story, distribution_areas, total_families, total_members) VALUES
+('张', '张姓起源于古代弓箭制造，是中华民族最古老的姓氏之一', '河北、河南、山东、江苏', 2, 8),
+('李', '李姓源于古代理官，是中国第一大姓', '河南、山东、四川、河北', 1, 4),
+('王', '王姓源于古代王室，历史悠久', '山东、河南、河北、四川', 1, 3);
+
+-- 插入族谱家族
+INSERT INTO genealogy_families (family_id, surname_id, family_name, hall_name, origin_location, patriarch_name, created_by) VALUES
+('zhang_001', 1, '张氏清河堂', '清河堂', '河北清河', '张挥', 2),
+('li_001', 2, '李氏陇西堂', '陇西堂', '甘肃陇西', '李利贞', 3),
+('wang_001', 3, '王氏太原堂', '太原堂', '山西太原', '王子乔', 4);
+
+-- 插入族谱成员
+INSERT INTO genealogy_members (member_id, family_id, user_id, real_name, generation_order, gender, status) VALUES
+('zhang_001_001', 'zhang_001', 2, '张三', 1, 'male', 'alive'),
+('zhang_001_002', 'zhang_001', NULL, '张父', 0, 'male', 'deceased'),
+('li_001_001', 'li_001', 3, '李四', 1, 'female', 'alive'),
+('li_001_002', 'li_001', NULL, '李母', 0, 'female', 'deceased'),
+('wang_001_001', 'wang_001', 4, '王五', 1, 'male', 'alive');
+
+-- 更新会话的最后消息信息
+UPDATE chat_conversations SET 
+    last_message_id = (SELECT id FROM chat_messages WHERE conversation_id = chat_conversations.conversation_id ORDER BY created_at DESC LIMIT 1),
+    last_message_time = (SELECT created_at FROM chat_messages WHERE conversation_id = chat_conversations.conversation_id ORDER BY created_at DESC LIMIT 1);
+
+-- ================================
+-- 创建视图
+-- ================================
+
+-- 用户好友列表视图
+CREATE VIEW user_friends_view AS
+SELECT 
+    uf.user_id,
+    uf.friend_id,
+    u.yeyu_id AS friend_yeyu_id,
+    u.username AS friend_username,
+    COALESCE(uf.remark, u.nickname, u.username) AS display_name,
+    u.avatar AS friend_avatar,
+    u.signature AS friend_signature,
+    uf.status AS friendship_status,
+    uf.created_at AS friend_since
+FROM user_friends uf
+JOIN users u ON uf.friend_id = u.id
+WHERE uf.status = 'accepted';
+
+-- 会话列表视图
+CREATE VIEW conversation_list_view AS
+SELECT 
+    cc.id,
+    cc.conversation_id,
+    cc.type,
+    cc.name,
+    cc.avatar,
+    cc.member_count,
+    cc.is_muted,
+    cc.is_pinned,
+    cm.content AS last_message,
+    cm.message_type AS last_message_type,
+    cm.sender_id AS last_sender_id,
+    u.nickname AS last_sender_name,
+    cc.last_message_time,
+    cc.created_at
+FROM chat_conversations cc
+LEFT JOIN chat_messages cm ON cc.last_message_id = cm.id
+LEFT JOIN users u ON cm.sender_id = u.id
+ORDER BY cc.is_pinned DESC, cc.last_message_time DESC;
+
+-- 族谱家族视图
+CREATE VIEW genealogy_families_view AS
+SELECT
+    gf.id,
+    gf.family_id,
+    gf.family_name,
+    gf.hall_name,
+    gs.surname,
+    gf.origin_location,
+    gf.patriarch_name,
+    gf.member_count,
+    gf.generation_count,
+    gf.status,
+    u.nickname AS creator_name,
+    gf.created_at
+FROM genealogy_families gf
+JOIN genealogy_surnames gs ON gf.surname_id = gs.id
+LEFT JOIN users u ON gf.created_by = u.id
+WHERE gf.status = 'active';
+
+-- 视频列表视图
+CREATE VIEW videos_view AS
+SELECT
+    v.id,
+    v.video_id,
+    v.title,
+    v.description,
+    v.video_url,
+    v.cover_url,
+    v.duration,
+    v.view_count,
+    v.like_count,
+    v.comment_count,
+    v.share_count,
+    u.nickname AS author_name,
+    u.avatar AS author_avatar,
+    v.created_at
+FROM videos v
+JOIN users u ON v.user_id = u.id
+WHERE v.status = 'published'
+ORDER BY v.created_at DESC;
+
+-- 数据库架构创建完成
+SELECT '叶语企业版完整数据库架构创建完成！' AS message;

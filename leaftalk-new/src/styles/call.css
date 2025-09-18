@@ -1,0 +1,1049 @@
+/* 音视频通话样式 */
+
+/* 通话界面基础样式 */
+.call-interface {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #000;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 音频通话界面 */
+.audio-call {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-align: center;
+}
+
+.call-header {
+  padding: 40px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.call-status {
+  font-size: 16px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.call-quality {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quality-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.quality-indicator.excellent {
+  color: #52c41a;
+}
+
+.quality-indicator.good {
+  color: #1890ff;
+}
+
+.quality-indicator.fair {
+  color: #faad14;
+}
+
+.quality-indicator.poor {
+  color: #ff4d4f;
+}
+
+/* 参与者信息 */
+.participant-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.participant-avatar {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: 20px;
+}
+
+.participant-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+}
+
+.mute-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 32px;
+  height: 32px;
+  background: #ff4d4f;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.participant-name {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.connection-status {
+  font-size: 14px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+/* 通话控制按钮 */
+.call-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 40px 20px;
+}
+
+.control-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.mute-btn {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.mute-btn.active {
+  background: #ff4d4f;
+}
+
+.speaker-btn {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.end-btn {
+  background: #ff4d4f;
+}
+
+.add-btn {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+}
+
+/* 视频通话界面 */
+.video-call {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #000;
+}
+
+.video-container {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 远端视频 */
+.remote-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #1a1a1a;
+}
+
+.remote-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.placeholder-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 16px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.placeholder-name {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.placeholder-status {
+  font-size: 14px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+/* 远端状态指示器 */
+.remote-indicators {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.indicator {
+  padding: 6px 8px;
+  border-radius: 16px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: white;
+}
+
+.indicator.muted {
+  background: rgba(255, 77, 79, 0.9);
+}
+
+.indicator.video-off {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* 本地视频 */
+.local-video {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 120px;
+  height: 160px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #333;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.local-video.minimized {
+  width: 80px;
+  height: 106px;
+}
+
+.local-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* 镜像显示 */
+}
+
+.local-video-controls {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.mini-control-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.local-indicators {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+.local-indicators .indicator {
+  padding: 2px 4px;
+  font-size: 10px;
+}
+
+/* 视频通话控制栏 */
+.video-call-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.call-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  font-size: 14px;
+}
+
+.call-duration {
+  font-weight: 500;
+}
+
+.control-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+}
+
+.video-call-controls .control-btn {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.video-call-controls .control-btn.active {
+  background: #ff4d4f;
+}
+
+.video-call-controls .end-btn {
+  background: #ff4d4f;
+}
+
+/* 更多选项菜单 */
+.more-options {
+  position: absolute;
+  bottom: 100px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 12px;
+  padding: 8px;
+  min-width: 160px;
+  backdrop-filter: blur(10px);
+}
+
+.option-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  background: none;
+  color: white;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.option-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* 来电界面 */
+.incoming-call {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-align: center;
+}
+
+.incoming-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.caller-avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 24px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.caller-name {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.call-type {
+  font-size: 16px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.incoming-controls {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 40px 60px;
+}
+
+.answer-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  background: #52c41a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.reject-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  background: #ff4d4f;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.answer-btn:hover,
+.reject-btn:hover {
+  transform: scale(1.1);
+}
+
+/* 通话设置弹窗 */
+.settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4000;
+}
+
+.settings-content {
+  width: 90%;
+  max-width: 400px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.settings-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.close-btn {
+  padding: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #666;
+}
+
+.settings-body {
+  padding: 20px;
+}
+
+.setting-group {
+  margin-bottom: 20px;
+}
+
+.setting-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.setting-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.setting-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.toggle-item input[type="checkbox"] {
+  margin: 0;
+}
+
+/* 通话历史样式 */
+.call-history {
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.history-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn,
+.clear-btn {
+  padding: 8px;
+  border: none;
+  background: none;
+  color: #666;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.filter-btn:hover,
+.clear-btn:hover {
+  background: #f0f0f0;
+}
+
+/* 筛选器 */
+.filter-section {
+  background: white;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.filter-tabs {
+  display: flex;
+  padding: 12px 20px;
+  gap: 16px;
+  overflow-x: auto;
+}
+
+.filter-tab {
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 12px;
+}
+
+.filter-tab.active {
+  background: #07C160;
+  color: white;
+}
+
+/* 历史记录列表 */
+.history-list {
+  padding: 8px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.history-item:hover {
+  background: #f8f8f8;
+}
+
+.call-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.participant-avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.participant-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.call-type-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 8px;
+}
+
+.call-type-badge.voice {
+  background: #52c41a;
+}
+
+.call-type-badge.video {
+  background: #1890ff;
+}
+
+.call-details {
+  flex: 1;
+}
+
+.participant-name {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 4px 0;
+}
+
+.call-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #999;
+}
+
+.call-status.ended {
+  color: #52c41a;
+}
+
+.call-status.missed {
+  color: #ff4d4f;
+}
+
+.call-status.rejected {
+  color: #ff4d4f;
+}
+
+.call-duration {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.call-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f0f0f0;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  background: #e0e0e0;
+}
+
+.call-back-btn:hover {
+  background: #07C160;
+  color: white;
+}
+
+/* 通话详情弹窗 */
+.call-detail-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.detail-content {
+  width: 90%;
+  max-width: 400px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.detail-body {
+  padding: 20px;
+}
+
+.detail-participant {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.detail-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 12px;
+}
+
+.detail-participant h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.detail-info {
+  margin-bottom: 24px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 14px;
+  color: #666;
+}
+
+.value {
+  font-size: 14px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.value.status.ended {
+  color: #52c41a;
+}
+
+.value.status.missed {
+  color: #ff4d4f;
+}
+
+.value.quality.excellent {
+  color: #52c41a;
+}
+
+.value.quality.good {
+  color: #1890ff;
+}
+
+.value.quality.fair {
+  color: #faad14;
+}
+
+.value.quality.poor {
+  color: #ff4d4f;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.detail-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e5e5e5;
+  background: white;
+  color: #333;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.detail-action-btn:hover {
+  background: #f8f8f8;
+}
+
+/* 选项菜单 */
+.options-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: flex-end;
+  z-index: 2000;
+}
+
+.options-content {
+  width: 100%;
+  background: white;
+  border-radius: 12px 12px 0 0;
+  padding: 20px;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 0;
+  border: none;
+  background: none;
+  color: #333;
+  text-align: left;
+  cursor: pointer;
+  font-size: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* 保留所有分隔线，包括最后一个项目 */
+/* .option-item:last-child { border-bottom: none; } */
+
+.option-item.danger {
+  color: #ff4d4f;
+}
+
+.option-item:hover {
+  background: #f8f8f8;
+}
+
+/* 清空确认对话框 */
+.clear-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.dialog-content {
+  width: 90%;
+  max-width: 320px;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dialog-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.dialog-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.dialog-body {
+  padding: 20px;
+}
+
+.dialog-body p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.dialog-actions {
+  display: flex;
+  border-top: 1px solid #e5e5e5;
+}
+
+.cancel-btn,
+.confirm-btn {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.cancel-btn {
+  color: #666;
+  border-right: 1px solid #e5e5e5;
+}
+
+.confirm-btn {
+  color: #ff4d4f;
+  font-weight: 500;
+}
+
+/* 添加参与者弹窗 */
+.add-participant-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.add-participant-content {
+  width: 90%;
+  max-width: 400px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.modal-body {
+  padding: 40px 20px;
+  text-align: center;
+  color: #666;
+}

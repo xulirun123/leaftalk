@@ -1,0 +1,70 @@
+# Filebeat 配置文件
+# 收集叶语企业版微服务日志
+
+filebeat.inputs:
+# 收集应用日志文件
+- type: log
+  enabled: true
+  paths:
+    - /var/log/leaftalk/*.log
+  fields:
+    logtype: application
+    service: leaftalk
+  fields_under_root: true
+  json.keys_under_root: true
+  json.add_error_key: true
+  multiline.pattern: '^\{'
+  multiline.negate: true
+  multiline.match: after
+
+# 收集Docker容器日志
+- type: container
+  enabled: true
+  paths:
+    - '/var/lib/docker/containers/*/*.log'
+  processors:
+    - add_docker_metadata:
+        host: "unix:///var/run/docker.sock"
+
+# 处理器配置
+processors:
+  # 添加主机信息
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  
+  # 添加Docker元数据
+  - add_docker_metadata: ~
+  
+  # 删除不需要的字段
+  - drop_fields:
+      fields: ["agent", "ecs", "host.architecture", "host.os"]
+
+# 输出配置
+output.logstash:
+  hosts: ["logstash:5044"]
+
+# 日志级别
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+# 监控配置
+monitoring.enabled: false
+
+# 设置模板
+setup.template.settings:
+  index.number_of_shards: 1
+  index.codec: best_compression
+
+# Kibana配置
+setup.kibana:
+  host: "kibana:5601"
+
+# Elasticsearch配置（用于设置模板）
+setup.ilm.enabled: false
+setup.template.enabled: true
+setup.template.pattern: "leaftalk-*"

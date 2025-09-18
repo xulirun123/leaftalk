@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置页面国际化修复 - 叶语</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8f8f8;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #07C160;
+        }
+        .header h1 {
+            color: #07C160;
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-left: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .fix-item {
+            background: #f0fff4;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #07C160;
+        }
+        .fix-item h3 {
+            margin: 0 0 8px;
+            color: #333;
+            font-size: 16px;
+        }
+        .fix-item p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .test-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #dee2e6;
+        }
+        .test-card h3 {
+            margin: 0 0 12px;
+            color: #333;
+        }
+        .test-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            margin: 4px 4px 4px 0;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .translation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+        .translation-table th,
+        .translation-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .translation-table th {
+            background: #f8f8f8;
+            font-weight: 600;
+            color: #333;
+        }
+        .translation-table td {
+            color: #666;
+        }
+        .code-block {
+            background: #f4f4f4;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #333;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+        .progress-item {
+            background: #fff3cd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ 设置页面国际化修复进行中</h1>
+            <p>修复设置页面及其子页面的语种切换功能</p>
+        </div>
+
+        <div class="section">
+            <h2>🎯 已修复的问题</h2>
+            <div class="fix-item">
+                <h3>1. 主设置页面国际化</h3>
+                <p><strong>修复内容：</strong></p>
+                <ul>
+                    <li>页面标题：设置 → {{ $t('settings.title') }}</li>
+                    <li>个人资料 → {{ $t('settings.personalInfo') }}</li>
+                    <li>账号安全 → {{ $t('settings.accountSecurity') }}</li>
+                    <li>未成年模式 → {{ $t('settings.youthMode') }}</li>
+                    <li>消息通知 → {{ $t('settings.notifications') }}</li>
+                    <li>通用 → {{ $t('settings.general') }}</li>
+                    <li>隐私 → {{ $t('settings.privacy') }}</li>
+                    <li>朋友权限 → {{ $t('settings.friendPermissions') }}</li>
+                    <li>退出登录 → {{ $t('settings.logout') }}</li>
+                </ul>
+            </div>
+            
+            <div class="fix-item">
+                <h3>2. 个人信息页面国际化</h3>
+                <p><strong>修复内容：</strong></p>
+                <ul>
+                    <li>头像 → {{ $t('settings.avatar') }}</li>
+                    <li>名字 → {{ $t('settings.name') }}</li>
+                    <li>手机号 → {{ $t('settings.phone') }}</li>
+                    <li>叶语号 → {{ $t('settings.yeyuId') }}</li>
+                    <li>未设置 → {{ $t('settings.notSet') }}</li>
+                    <li>可修改 → {{ $t('settings.canModifyAfter') }}</li>
+                </ul>
+            </div>
+            
+            <div class="fix-item">
+                <h3>3. 通用设置页面优化</h3>
+                <p><strong>已完成：</strong> 语言选项动态显示当前语言名称</p>
+                <div class="code-block">
+修复前：&lt;span&gt;简体中文&lt;/span&gt; （固定显示）
+修复后：&lt;span&gt;{{ currentLanguageName }}&lt;/span&gt; （动态显示）
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🚧 进行中的工作</h2>
+            <div class="progress-item">
+                <h3>需要完成的其他语言翻译</h3>
+                <p>目前已完成简体中文和英文的翻译键，还需要添加到：</p>
+                <ul>
+                    <li>🇯🇵 日语 (ja.json)</li>
+                    <li>🇰🇷 韩语 (ko.json)</li>
+                    <li>🇲🇾 马来语 (ms.json)</li>
+                    <li>🇹🇼 繁体中文 (zh-TW.json)</li>
+                </ul>
+            </div>
+            
+            <div class="progress-item">
+                <h3>需要修复的其他设置子页面</h3>
+                <p>以下页面可能还有硬编码文本需要修复：</p>
+                <ul>
+                    <li>账户安全页面 (AccountSecurity.vue)</li>
+                    <li>通知设置页面 (NotificationSettings.vue)</li>
+                    <li>隐私设置页面 (Privacy.vue)</li>
+                    <li>帮助页面 (Help.vue)</li>
+                    <li>关于页面 (About.vue)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 新增翻译键</h2>
+            
+            <h3>设置页面主要翻译键</h3>
+            <table class="translation-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>简体中文</th>
+                        <th>English</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>settings.title</td><td>设置</td><td>Settings</td><td>页面标题</td></tr>
+                    <tr><td>settings.personalInfo</td><td>个人资料</td><td>Personal Information</td><td>个人信息入口</td></tr>
+                    <tr><td>settings.accountSecurity</td><td>账号安全</td><td>Account & Security</td><td>安全设置入口</td></tr>
+                    <tr><td>settings.youthMode</td><td>未成年模式</td><td>Youth Mode</td><td>青少年模式</td></tr>
+                    <tr><td>settings.friendPermissions</td><td>朋友权限</td><td>Friend Permissions</td><td>好友权限设置</td></tr>
+                    <tr><td>settings.logout</td><td>退出登录</td><td>Logout</td><td>退出登录按钮</td></tr>
+                    <tr><td>settings.logoutConfirm</td><td>确定要退出登录吗？</td><td>Are you sure you want to logout?</td><td>退出确认对话框</td></tr>
+                </tbody>
+            </table>
+
+            <h3>个人信息页面翻译键</h3>
+            <table class="translation-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>简体中文</th>
+                        <th>English</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>settings.avatar</td><td>头像</td><td>Avatar</td><td>用户头像</td></tr>
+                    <tr><td>settings.name</td><td>名字</td><td>Name</td><td>用户姓名</td></tr>
+                    <tr><td>settings.phone</td><td>手机号</td><td>Phone</td><td>手机号码</td></tr>
+                    <tr><td>settings.yeyuId</td><td>叶语号</td><td>YeYu ID</td><td>叶语唯一标识</td></tr>
+                    <tr><td>settings.notSet</td><td>未设置</td><td>Not Set</td><td>未设置状态</td></tr>
+                    <tr><td>settings.canModifyAfter</td><td>可修改</td><td> can be modified</td><td>修改时间提示</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>🧪 测试验证</h2>
+            <div class="test-grid">
+                <div class="test-card">
+                    <h3>⚙️ 主设置页面</h3>
+                    <p>测试主设置页面的语种切换：</p>
+                    <a href="http://127.0.0.1:5173/settings" class="test-link">设置页面</a>
+                    <p><strong>检查项目：</strong></p>
+                    <ul>
+                        <li>页面标题是否能切换语言</li>
+                        <li>所有设置项是否能切换语言</li>
+                        <li>退出登录对话框是否能切换语言</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>👤 个人信息页面</h3>
+                    <p>测试个人信息页面的语种切换：</p>
+                    <a href="http://127.0.0.1:5173/settings/personal-info" class="test-link">个人信息</a>
+                    <p><strong>检查项目：</strong></p>
+                    <ul>
+                        <li>"头像"、"名字"、"手机号" 等标签</li>
+                        <li>"未设置" 状态文本</li>
+                        <li>叶语号修改时间提示</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🌐 通用设置页面</h3>
+                    <p>测试通用设置页面：</p>
+                    <a href="http://127.0.0.1:5173/settings/general" class="test-link">通用设置</a>
+                    <p><strong>检查项目：</strong></p>
+                    <ul>
+                        <li>语言选项显示当前语言</li>
+                        <li>点击语言能跳转到语言选择器</li>
+                        <li>其他设置项的文本</li>
+                    </ul>
+                </div>
+                
+                <div class="test-card">
+                    <h3>🔧 语言选择器</h3>
+                    <p>测试语言切换功能：</p>
+                    <a href="http://127.0.0.1:5173/settings/language-selector" class="test-link">语言选择器</a>
+                    <p><strong>测试步骤：</strong></p>
+                    <ol>
+                        <li>选择英语</li>
+                        <li>返回设置页面</li>
+                        <li>检查所有文本是否变为英文</li>
+                        <li>测试其他语言</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📋 下一步计划</h2>
+            <div class="progress-item">
+                <h3>需要完成的工作</h3>
+                <ol>
+                    <li><strong>完成其他语言翻译：</strong> 为日语、韩语、马来语、繁体中文添加新的翻译键</li>
+                    <li><strong>修复其他设置子页面：</strong> 检查并修复账户安全、通知设置等页面的硬编码文本</li>
+                    <li><strong>全面测试：</strong> 在所有6种语言下测试所有设置页面</li>
+                    <li><strong>修复遗漏的文本：</strong> 查找并修复任何剩余的硬编码文本</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🎉 当前进度</h2>
+            <div class="fix-item">
+                <h3>已完成的改进</h3>
+                <ul>
+                    <li>✅ <strong>主设置页面完全国际化</strong>：所有主要设置项都支持语种切换</li>
+                    <li>✅ <strong>个人信息页面部分国际化</strong>：主要字段标签已支持语种切换</li>
+                    <li>✅ <strong>通用设置页面优化</strong>：语言选项动态显示</li>
+                    <li>✅ <strong>退出登录对话框国际化</strong>：确认对话框支持语种切换</li>
+                    <li>🚧 <strong>其他语言翻译</strong>：需要完成日语、韩语等翻译</li>
+                    <li>🚧 <strong>其他子页面</strong>：需要修复更多设置子页面</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('⚙️ 设置页面国际化修复验证页面已加载');
+            console.log('📍 当前进度：主要页面已修复，需要完成其他语言翻译');
+        });
+    </script>
+</body>
+</html>

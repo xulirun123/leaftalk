@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ 发现页面翻译键修复完成</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .fix-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .fix-section h3 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+        
+        .error-list {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .error-list h4 {
+            color: #c53030;
+            margin-bottom: 12px;
+        }
+        
+        .error-list ul {
+            margin-left: 20px;
+            color: #c53030;
+        }
+        
+        .error-list li {
+            margin-bottom: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+        }
+        
+        .fix-list {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .fix-list h4 {
+            color: #2f855a;
+            margin-bottom: 12px;
+        }
+        
+        .fix-list ul {
+            margin-left: 20px;
+            color: #2f855a;
+        }
+        
+        .fix-list li {
+            margin-bottom: 8px;
+        }
+        
+        .translation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        
+        .translation-table th,
+        .translation-table td {
+            border: 1px solid #e5e7eb;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .translation-table th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .translation-table tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        
+        .test-button {
+            padding: 16px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            display: block;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        .test-button.primary {
+            background: #48bb78;
+        }
+        
+        .test-button.primary:hover {
+            background: #38a169;
+        }
+        
+        .code-block {
+            background: #f1f3f4;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #333;
+            white-space: pre-wrap;
+            margin: 16px 0;
+            border: 1px solid #e0e0e0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">✅ 发现页面翻译键修复完成</h1>
+            <p class="subtitle">修复了 MobileDiscover.vue 中缺失的 discover 翻译键</p>
+            <div class="status">🎉 修复成功</div>
+        </div>
+        
+        <div class="fix-section">
+            <h3>❌ 修复前的问题</h3>
+            <div class="error-list">
+                <h4>控制台错误信息：</h4>
+                <ul>
+                    <li>[intlify] Not found 'discover.aiAssistant' key in 'ko' locale messages.</li>
+                    <li>[intlify] Not found 'discover.liveStream' key in 'ko' locale messages.</li>
+                    <li>[intlify] Not found 'discover.miniPrograms' key in 'ko' locale messages.</li>
+                    <li>类似错误在日语、马来语、繁体中文等语言中也存在</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="fix-section">
+            <h3>✅ 修复内容</h3>
+            <div class="fix-list">
+                <h4>已添加的翻译键：</h4>
+                <ul>
+                    <li><strong>discover.aiAssistant</strong> - AI助手/AI Assistant/AIアシスタント/AI 어시스턴트</li>
+                    <li><strong>discover.liveStream</strong> - 直播/Live Stream/ライブ配信/라이브 스트림</li>
+                    <li><strong>discover.miniPrograms</strong> - 小程序/Mini Programs/ミニプログラム/미니 프로그램</li>
+                    <li><strong>discover.moments</strong> - 朋友圈/Moments/モーメンツ/모멘츠</li>
+                    <li><strong>discover.videoChannel</strong> - 视频号/Video Channel/動画チャンネル/비디오 채널</li>
+                    <li><strong>discover.scan</strong> - 扫一扫/Scan/スキャン/스캔</li>
+                    <li><strong>discover.nearby</strong> - 附近的人/Nearby/近くの人/근처 사람들</li>
+                    <li><strong>discover.games</strong> - 游戏/Games/ゲーム/게임</li>
+                    <li><strong>discover.payment</strong> - 收付款/Payment/支払い/결제</li>
+                    <li><strong>discover.shopping</strong> - 购物/Shopping/ショッピング/쇼핑</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="fix-section">
+            <h3>🌐 完整的翻译对照表</h3>
+            <table class="translation-table">
+                <thead>
+                    <tr>
+                        <th>翻译键</th>
+                        <th>简体中文</th>
+                        <th>English</th>
+                        <th>日本語</th>
+                        <th>한국어</th>
+                        <th>Bahasa Malaysia</th>
+                        <th>繁體中文</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>discover.aiAssistant</strong></td>
+                        <td>AI助手</td>
+                        <td>AI Assistant</td>
+                        <td>AIアシスタント</td>
+                        <td>AI 어시스턴트</td>
+                        <td>Pembantu AI</td>
+                        <td>AI助手</td>
+                    </tr>
+                    <tr>
+                        <td><strong>discover.liveStream</strong></td>
+                        <td>直播</td>
+                        <td>Live Stream</td>
+                        <td>ライブ配信</td>
+                        <td>라이브 스트림</td>
+                        <td>Siaran Langsung</td>
+                        <td>直播</td>
+                    </tr>
+                    <tr>
+                        <td><strong>discover.miniPrograms</strong></td>
+                        <td>小程序</td>
+                        <td>Mini Programs</td>
+                        <td>ミニプログラム</td>
+                        <td>미니 프로그램</td>
+                        <td>Program Mini</td>
+                        <td>小程序</td>
+                    </tr>
+                    <tr>
+                        <td><strong>discover.moments</strong></td>
+                        <td>朋友圈</td>
+                        <td>Moments</td>
+                        <td>モーメンツ</td>
+                        <td>모멘츠</td>
+                        <td>Momen</td>
+                        <td>朋友圈</td>
+                    </tr>
+                    <tr>
+                        <td><strong>discover.videoChannel</strong></td>
+                        <td>视频号</td>
+                        <td>Video Channel</td>
+                        <td>動画チャンネル</td>
+                        <td>비디오 채널</td>
+                        <td>Saluran Video</td>
+                        <td>視頻號</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="fix-section">
+            <h3>🧪 测试验证</h3>
+            <div class="test-grid">
+                <a href="http://127.0.0.1:5174/discover" class="test-button primary" target="_blank">
+                    🔍 打开发现页面
+                </a>
+                <a href="http://127.0.0.1:5174/settings/language-selector" class="test-button" target="_blank">
+                    🌐 打开语言选择页面
+                </a>
+                <button class="test-button" onclick="showTestSteps()">
+                    📋 查看测试步骤
+                </button>
+                <button class="test-button" onclick="openDevConsole()">
+                    🛠️ 打开开发者控制台
+                </button>
+            </div>
+        </div>
+        
+        <div class="fix-section">
+            <h3>✅ 验证清单</h3>
+            <div style="margin-left: 20px;">
+                <p><strong>请按以下步骤验证修复效果：</strong></p>
+                <ol style="margin-top: 12px; line-height: 1.6;">
+                    <li><strong>检查控制台</strong>：打开开发者控制台，确认没有 discover 相关的翻译键缺失警告</li>
+                    <li><strong>测试发现页面</strong>：
+                        <ul style="margin-left: 20px; margin-top: 8px;">
+                            <li>打开发现页面，观察 "AI助手"、"直播"、"小程序" 等项目</li>
+                            <li>切换到韩语，确认显示为 "AI 어시스턴트"、"라이브 스트림"、"미니 프로그램"</li>
+                            <li>切换到日语，确认显示为 "AIアシスタント"、"ライブ配信"、"ミニプログラム"</li>
+                            <li>切换到英语，确认显示为 "AI Assistant"、"Live Stream"、"Mini Programs"</li>
+                        </ul>
+                    </li>
+                    <li><strong>验证语言切换</strong>：在发现页面切换语言，确认所有项目都能正确翻译</li>
+                    <li><strong>跨页面测试</strong>：在不同页面间导航，确认发现页面翻译保持一致</li>
+                </ol>
+                
+                <p style="margin-top: 16px;"><strong>预期结果：</strong></p>
+                <ul style="margin-top: 8px; line-height: 1.6;">
+                    <li>✅ 控制台不再出现 discover 相关的翻译键缺失警告</li>
+                    <li>✅ 发现页面在所有语言下都能正确显示</li>
+                    <li>✅ AI助手、直播、小程序等项目都有对应的翻译文本</li>
+                    <li>✅ 语言切换时发现页面立即更新</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTestSteps() {
+            alert(`🧪 发现页面翻译修复验证步骤：
+
+1. 🛠️ 打开开发者控制台
+   - 按 F12 或右键选择"检查"
+   - 查看 Console 标签页
+   - 确认没有 discover 相关的翻译键缺失错误
+
+2. 🔍 测试发现页面
+   - 打开发现页面
+   - 观察 AI助手、直播、小程序等项目的显示
+
+3. 🌐 测试语言切换
+   - 切换到韩语：AI 어시스턴트, 라이브 스트림, 미니 프로그램
+   - 切换到日语：AIアシスタント, ライブ配信, ミニプログラム
+   - 切换到英语：AI Assistant, Live Stream, Mini Programs
+
+4. 🔄 验证实时更新
+   - 在发现页面直接切换语言
+   - 观察页面内容是否立即更新
+
+✅ 如果所有步骤都通过，说明发现页面翻译键修复成功！`)
+        }
+        
+        function openDevConsole() {
+            console.log('🔍 发现页面翻译键修复验证：')
+            console.log('✅ 已添加的翻译键：')
+            console.log('  - discover.aiAssistant: AI助手/AI Assistant/AIアシスタント/AI 어시스턴트')
+            console.log('  - discover.liveStream: 直播/Live Stream/ライブ配信/라이브 스트림')
+            console.log('  - discover.miniPrograms: 小程序/Mini Programs/ミニプログラム/미니 프로그램')
+            console.log('📋 现在应该不会再出现 discover 相关的翻译键缺失警告了！')
+            
+            alert('请按 F12 打开开发者控制台，查看详细的验证信息')
+        }
+        
+        // 页面加载时的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ 发现页面翻译键修复验证页面已加载')
+            console.log('🎯 修复内容：')
+            console.log('  - 在所有 6 种语言文件中添加了完整的 discover 翻译对象')
+            console.log('  - 修复了 discover.aiAssistant、discover.liveStream、discover.miniPrograms 等缺失的翻译键')
+            console.log('  - 统一了翻译键结构')
+            console.log('📋 现在可以测试发现页面的翻译是否正常工作！')
+        })
+    </script>
+</body>
+</html>
