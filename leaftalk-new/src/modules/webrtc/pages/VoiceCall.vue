@@ -246,6 +246,15 @@ const keypadKeys = [
 // 定时器
 let durationTimer: number | null = null
 
+
+// 信令事件处理器引用（用于在卸载时解除绑定，避免重复触发）
+let onOfferHandler: ((data: any) => any) | null = null
+let onAnswerHandler: ((data: any) => any) | null = null
+let onIceHandler: ((data: any) => any) | null = null
+let onCallStatusHandler: ((data: any) => any) | null = null
+let onErrorHandler: ((data: any) => any) | null = null
+let onCallEndedHandler: ((data: any) => any) | null = null
+
 // 计算属性
 const callStatusText = computed(() => {
   switch (callStatus.value) {
@@ -372,29 +381,42 @@ async function initializeMedia(): Promise<void> {
  * 设置信令监听
  */
 function setupSignalingListeners(): void {
+  // 先清理旧监听，避免重复注册导致事件多次触发
+  try {
+    if (onOfferHandler) signalingService.off('offer', onOfferHandler)
+    if (onAnswerHandler) signalingService.off('answer', onAnswerHandler)
+    if (onIceHandler) signalingService.off('ice-candidate', onIceHandler)
+    if (onCallStatusHandler) signalingService.off('call-status', onCallStatusHandler)
+    if (onErrorHandler) signalingService.off('error', onErrorHandler)
+    if (onCallEndedHandler) signalingService.off('call-ended', onCallEndedHandler)
+  } catch {}
+
   // 收到 Offer
-  signalingService.on('offer', async (data) => {
+  onOfferHandler = async (data: any) => {
     if (data.callId === callId.value) {
       await handleOffer(data.offer)
     }
-  })
+  }
+  signalingService.on('offer', onOfferHandler)
 
   // 收到 Answer
-  signalingService.on('answer', async (data) => {
+  onAnswerHandler = async (data: any) => {
     if (data.callId === callId.value) {
       await handleAnswer(data.answer)
     }
-  })
+  }
+  signalingService.on('answer', onAnswerHandler)
 
   // 收到 ICE 候选者
-  signalingService.on('ice-candidate', async (data) => {
+  onIceHandler = async (data: any) => {
     if (data.callId === callId.value) {
       await handleIceCandidate(data.candidate)
     }
-  })
+  }
+  signalingService.on('ice-candidate', onIceHandler)
 
   // 被叫方接听后，主叫再进入连接流程并发送 Offer
-  signalingService.on('call-status', async (data: any) => {
+  onCallStatusHandler = async (data: any) => {
     if (data.callId === callId.value && data.status === 'answered') {
       callStatus.value = 'connecting'
       isConnecting.value = true
@@ -407,10 +429,11 @@ function setupSignalingListeners(): void {
         }
       }
     }
-  })
+  }
+  signalingService.on('call-status', onCallStatusHandler)
 
   // 信令错误（如对方不在线）
-  signalingService.on('error', (data: any) => {
+  onErrorHandler = (data: any) => {
     try {
       if (data?.callId && data.callId !== callId.value) return
       const code = data?.error || ''
@@ -421,14 +444,16 @@ function setupSignalingListeners(): void {
         appStore.showToast(String(data.message), 'error')
       }
     } catch {}
-  })
+  }
+  signalingService.on('error', onErrorHandler)
 
   // 通话结束
-  signalingService.on('call-ended', (data) => {
+  onCallEndedHandler = (data: any) => {
     if (data.callId === callId.value) {
       handleCallEnded(data.reason)
     }
-  })
+  }
+  signalingService.on('call-ended', onCallEndedHandler)
 }
 
 /**
@@ -760,6 +785,16 @@ function getNetworkText(): string {
  * 清理资源
  */
 function cleanup(): void {
+  // 解除信令监听，防止重复触发
+  try {
+    if (onOfferHandler) { signalingService.off('offer', onOfferHandler); onOfferHandler = null }
+    if (onAnswerHandler) { signalingService.off('answer', onAnswerHandler); onAnswerHandler = null }
+    if (onIceHandler) { signalingService.off('ice-candidate', onIceHandler); onIceHandler = null }
+    if (onCallStatusHandler) { signalingService.off('call-status', onCallStatusHandler); onCallStatusHandler = null }
+    if (onErrorHandler) { signalingService.off('error', onErrorHandler); onErrorHandler = null }
+    if (onCallEndedHandler) { signalingService.off('call-ended', onCallEndedHandler); onCallEndedHandler = null }
+  } catch {}
+
   if (durationTimer) {
     clearInterval(durationTimer)
     durationTimer = null
