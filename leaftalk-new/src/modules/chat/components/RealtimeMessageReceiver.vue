@@ -131,7 +131,7 @@ const initializeConnection = async () => {
     })
 
 // 移除事件监听器（避免重复绑定）
-const removeEventListeners = () => {
+function removeEventListeners() {
   const s = socket.value
   if (!s) return
   try {
@@ -425,6 +425,8 @@ const handleIncomingCall = (callData: any) => {
     // 跳转到来电页面
     console.log('📞 收到来电，跳转到来电页面')
     try {
+      // 标记通话流程中，保持聊天实时连接
+      try { sessionStorage.setItem('keep_realtime_ws', '1') } catch {}
       router.push({
         name: 'IncomingCall',
         params: { callerId: fromUserId },
@@ -748,8 +750,9 @@ onUnmounted(() => {
     }
   } catch {}
 
-  if (callStore?.isInCall?.value) {
-    console.log('🛡️ 组件卸载但通话中：仅移除监听，不断开 WebSocket')
+  const keep = (() => { try { return sessionStorage.getItem('keep_realtime_ws') === '1' } catch { return false } })()
+  if (keep || (callStore?.isInCall?.value)) {
+    console.log('🛡️ 组件卸载但通话中/保持标记为真：仅移除监听，不断开 WebSocket')
     return
   }
   disconnect(true)

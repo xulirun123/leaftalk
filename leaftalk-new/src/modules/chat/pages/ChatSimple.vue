@@ -329,7 +329,8 @@ const makeVoiceCall = async () => {
     if (response.ok) {
       const result = await response.json()
       if (result.success) {
-        // 跳转到语音通话页面
+        // 跳转到语音通话页面（并在会话期间保持聊天实时连接）
+        try { sessionStorage.setItem('keep_realtime_ws', '1') } catch {}
         router.push({
           name: 'VoiceCall',
           params: { id: otherUserId },
