@@ -529,11 +529,10 @@ const handleOffer = async (offer: RTCSessionDescriptionInit) => {
     callStatus.value = 'connecting'
     isConnecting.value = true
 
-    // 已存在连接则视为重复Offer，忽略，避免重复初始化/重协商
+    // 已存在连接则可能是重复 Offer：不再重复初始化，但继续交给 createAnswer 内部按状态幂等处理
     const existing = peerConnectionService.getPeerConnection()
     if (existing) {
-      console.warn('⚠️ 已存在 PeerConnection，忽略重复 Offer。state:', existing.signalingState)
-      return
+      console.warn('⚠️ 已存在 PeerConnection，按现有连接处理 Offer。state:', existing.signalingState)
     }
 
     // 初始化 PeerConnection（接收方）
@@ -551,9 +550,11 @@ const handleOffer = async (offer: RTCSessionDescriptionInit) => {
 
     // 监听由统一通话流程内部完成
 
-    // 创建并发送 Answer
+    // 创建并发送 Answer（内部已做状态校验/幂等保护）
     const answer = await peerConnectionService.createAnswer(offer)
-    signalingService.sendAnswer(callId.value, contactInfo.value.id, answer)
+    if (answer && (answer as any).type === 'answer') {
+      signalingService.sendAnswer(callId.value, contactInfo.value.id, answer)
+    }
 
   } catch (error) {
     console.error('❌ 处理 Offer 失败:', error)
