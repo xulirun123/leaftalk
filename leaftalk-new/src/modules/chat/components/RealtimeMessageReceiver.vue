@@ -24,6 +24,7 @@ import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../../../stores/auth'
 import { useUnreadStore } from '../stores/unread'
 import { useContactStore } from '../../contacts/stores/contactsStore'
+import { useCallStore } from '../stores/callStore'
 
 import ConnectionStatus from './ConnectionStatus.vue'
 
@@ -40,6 +41,9 @@ const props = withDefaults(defineProps<Props>(), {
   showStatus: false
 })
 
+// 共享 Socket（跨组件生命周期保持连接）
+let sharedSocket: Socket | null = null
+
 // 状态管理
 const socket = ref<Socket | null>(null)
 const isConnected = ref(false)
@@ -53,6 +57,7 @@ const router = useRouter()
 // Stores
 const chatStore = useChatStore()
 const contactStore = useContactStore()
+const callStore = useCallStore()
 
 const authStore = useAuthStore()
 const unreadStore = useUnreadStore()
@@ -81,16 +86,21 @@ const initializeConnection = async () => {
       return
     }
 
-    // 如果已经有连接且正在连接中，跳过
-    if (isConnecting.value || (socket.value && socket.value.connected)) {
-      console.log('🔌 WebSocket已连接或正在连接中，跳过重复初始化')
+    // 如果已有共享连接并且处于连接状态，则复用，不重复初始化
+    if (sharedSocket && sharedSocket.connected) {
+      console.log('🔌 复用共享 WebSocket 连接')
+      socket.value = sharedSocket
+      isConnected.value = true
+      isConnecting.value = false
+      reconnectAttempts.value = 0
+      joinUserRoom()
       return
     }
 
-    // 如果有旧连接，先断开
-    if (socket.value) {
-      console.log('🔌 断开旧的WebSocket连接')
-      socket.value.disconnect()
+    // 如果组件内有旧连接，先断开（共享连接不动）
+    if (socket.value && socket.value.connected && socket.value !== sharedSocket) {
+      console.log('🔌 断开组件内旧的WebSocket连接（非共享）')
+      try { socket.value.disconnect() } catch {}
       socket.value = null
     }
 
@@ -106,19 +116,33 @@ const initializeConnection = async () => {
       return
     }
 
-    socket.value = io('http://localhost:8893', {
+      socket.value = io('http://localhost:8893', {
       auth: { token, userId },
       transports: ['websocket', 'polling'],
-      timeout: 15000, // 增加超时时间
+      timeout: 15000,
       reconnection: true,
-      reconnectionAttempts: 3, // 减少重连次数，避免过度重连
-      reconnectionDelay: 3000, // 增加重连延迟
-      reconnectionDelayMax: 15000, // 最大重连延迟
-      randomizationFactor: 0.5, // 随机化重连时间
-      forceNew: true, // 强制新连接，避免复用问题
-      upgrade: true, // 允许协议升级
-      rememberUpgrade: true // 记住升级状态
+      reconnectionAttempts: 3,
+      reconnectionDelay: 3000,
+      reconnectionDelayMax: 15000,
+      randomizationFactor: 0.5,
+      forceNew: true,
+      upgrade: true,
+      rememberUpgrade: true
     })
+
+// 移除事件监听器（避免重复绑定）
+const removeEventListeners = () => {
+  const s = socket.value
+  if (!s) return
+  try {
+    const events = ['connect','disconnect','connect_error','new_message','system_message','message_status','user_status','blacklist_updated','incoming_call','webrtc:incoming-call','call_timeout','call_answered','call_ended','unread_update']
+    events.forEach(evt => { try { (s as any).off(evt) } catch {} })
+  } catch {}
+}
+
+
+    // 设置为共享连接
+    sharedSocket = socket.value
 
     setupEventListeners()
 
@@ -132,6 +156,9 @@ const initializeConnection = async () => {
 // 设置事件监听器
 const setupEventListeners = () => {
   if (!socket.value) return
+
+  // 注册前先清空可能存在的旧监听，避免重复
+  removeEventListeners()
 
   // 连接成功
   socket.value.on('connect', () => {
@@ -664,10 +691,23 @@ const sendMessage = async (message: any): Promise<boolean> => {
 }
 
 // 断开连接
-const disconnect = () => {
+const disconnect = (force = false) => {
+  // 在通话中且非强制，不断开，保持聊天实时连接
+  try {
+    if (!force && callStore?.isInCall?.value) {
+      console.log('🛡️ 保持实时连接：当前处于通话中，跳过断开')
+      return
+    }
+  } catch {}
+
   if (socket.value) {
-    socket.value.disconnect()
+    try { socket.value.disconnect() } catch {}
     socket.value = null
+  }
+  // 同步清理共享连接
+  if (sharedSocket) {
+    try { sharedSocket.disconnect() } catch {}
+    sharedSocket = null
   }
   isConnected.value = false
   isConnecting.value = false
@@ -677,7 +717,7 @@ const disconnect = () => {
 // 切换离线模式
 const toggleOfflineMode = () => {
   if (isConnected.value) {
-    disconnect()
+    disconnect(true)
     enableOfflineMode()
   } else {
     initializeConnection()
@@ -693,7 +733,26 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  disconnect()
+  // 仅移除事件监听；若处于通话中则保持连接，否则断开
+  try {
+    if (socket.value) {
+      removeEventListeners()
+    } else if (sharedSocket) {
+      // 若当前实例没有引用，但存在共享连接，也移除其事件监听，防止重复绑定
+      try {
+        const s = sharedSocket
+        s?.off && ['connect','disconnect','connect_error','new_message','system_message','message_status','user_status','blacklist_updated','incoming_call','webrtc:incoming-call','call_timeout','call_answered','call_ended','unread_update'].forEach(evt => {
+          try { (s as any).off(evt) } catch {}
+        })
+      } catch {}
+    }
+  } catch {}
+
+  if (callStore?.isInCall?.value) {
+    console.log('🛡️ 组件卸载但通话中：仅移除监听，不断开 WebSocket')
+    return
+  }
+  disconnect(true)
 })
 
 // 等待连接就绪
