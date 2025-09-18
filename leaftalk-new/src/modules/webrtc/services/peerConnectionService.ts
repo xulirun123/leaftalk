@@ -260,13 +260,17 @@ class PeerConnectionService {
       const pc = this.peerConnection
       const state = pc.signalingState
 
-      // 已经应用过远端Answer或已稳定则直接忽略
+      // 若已进入稳定态或已存在远端Answer，静默忽略
+      if (state === 'stable') {
+        console.info('ℹ️ 已处于 stable，忽略设置远程 Answer')
+        return
+      }
       if (pc.remoteDescription?.type === 'answer') {
-        console.warn('⚠️ 已存在远端 Answer，忽略重复设置')
+        console.info('ℹ️ 已存在远端 Answer，忽略重复设置')
         return
       }
       if (state !== 'have-local-offer') {
-        console.warn('⚠️ 当前信令状态非 have-local-offer，忽略设置远程 Answer:', state)
+        console.info('ℹ️ 当前信令状态非 have-local-offer，忽略设置远程 Answer:', state)
         return
       }
 
@@ -277,7 +281,7 @@ class PeerConnectionService {
       // 时序竞争下可能在 setRemoteDescription 期间变为 stable，属可忽略情况
       const msg = String(error?.message || '')
       if (error?.name === 'InvalidStateError' || /Wrong state|Called in wrong state|stable/i.test(msg)) {
-        console.warn('⚠️ 设置远程 Answer 时机已过（已稳定/重复），忽略')
+        console.info('ℹ️ 设置远程 Answer 时机已过（已稳定/重复），忽略')
         return
       }
       console.error('❌ 设置远程 Answer 失败:', error)

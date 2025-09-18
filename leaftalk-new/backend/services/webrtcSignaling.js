@@ -8,7 +8,10 @@ class WebRTCSignalingService {
     this.io = io
     this.activeCalls = new Map() // callId -> { caller, callee, status, startTime }
     this.userSockets = new Map() // userId -> socketId
-    
+    // 去重缓存：按通话记录最近一次的 offer/answer sdp
+    this.lastOfferSdpByCall = new Map()
+    this.lastAnswerSdpByCall = new Map()
+
     console.log('🎯 WebRTC信令服务已初始化')
   }
 
@@ -56,6 +59,15 @@ class WebRTCSignalingService {
         return
       }
 
+      // Offer 去重（避免重复触发）
+      const offerSdp = (offer && offer.sdp) ? String(offer.sdp) : ''
+      const prevOfferSdp = this.lastOfferSdpByCall.get(callId)
+      if (prevOfferSdp && prevOfferSdp === offerSdp) {
+        console.log(`ℹ️ 检测到重复 Offer，已忽略: callId=${callId}`)
+        return
+      }
+      this.lastOfferSdpByCall.set(callId, offerSdp)
+
       // 转发 Offer 给目标用户
       const targetSocketId = this.userSockets.get(String(targetUserId))
       if (targetSocketId) {
@@ -89,6 +101,15 @@ class WebRTCSignalingService {
       const fromUserId = socket.userId
       console.log(`📞 收到通话 Answer:`, { callId, fromUserId, targetUserId })
 
+      // Answer 去重（避免重复触发）
+      const answerSdp = (answer && answer.sdp) ? String(answer.sdp) : ''
+      const prevAnswerSdp = this.lastAnswerSdpByCall.get(callId)
+      if (prevAnswerSdp && prevAnswerSdp === answerSdp) {
+        console.log(`ℹ️ 检测到重复 Answer，已忽略: callId=${callId}`)
+        return
+      }
+      this.lastAnswerSdpByCall.set(callId, answerSdp)
+
       // 转发 Answer 给目标用户
       const targetSocketId = this.userSockets.get(String(targetUserId))
       if (targetSocketId) {
@@ -97,7 +118,7 @@ class WebRTCSignalingService {
           fromUserId,
           answer
         })
-        
+
         // 更新通话状态为已连接
         if (this.activeCalls.has(callId)) {
           const call = this.activeCalls.get(callId)
@@ -106,7 +127,7 @@ class WebRTCSignalingService {
           console.log(`✅ 通话 ${callId} 已连接`)
         }
       } else {
-        console.warn(`⚠️ 用户 ${targetUserId} 不在线，无法转发 Answer`)
+        console.warn(`⚠️ 用户 ${targetUserId} 不在线，无法转发 Answer`)}
       }
     } catch (error) {
       console.error('❌ 处理 Answer 失败:', error)
