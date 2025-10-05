@@ -102,6 +102,8 @@
         @delete="handleEmojiDelete"
         :custom-emojis="customEmojis"
         @update:custom-emojis="updateCustomEmojis"
+        :recent-emojis="recentEmojis"
+        @update:recent-emojis="updateRecentEmojis"
       />
     </div>
 
@@ -287,15 +289,25 @@ const tempInput = ref('')
 
 // 自定义表情（从 localStorage 加载）
 const customEmojis = ref<any[]>([])
+const recentEmojis = ref<any[]>([])
 
-// 加载自定义表情
+// 加载自定义表情和最近表情
 onMounted(() => {
-  const saved = localStorage.getItem('custom_emojis')
-  if (saved) {
+  const savedCustom = localStorage.getItem('custom_emojis')
+  if (savedCustom) {
     try {
-      customEmojis.value = JSON.parse(saved)
+      customEmojis.value = JSON.parse(savedCustom)
     } catch (e) {
       console.error('加载自定义表情失败:', e)
+    }
+  }
+
+  const savedRecent = localStorage.getItem('recent_emojis')
+  if (savedRecent) {
+    try {
+      recentEmojis.value = JSON.parse(savedRecent)
+    } catch (e) {
+      console.error('加载最近表情失败:', e)
     }
   }
 })
@@ -304,6 +316,12 @@ onMounted(() => {
 const updateCustomEmojis = (emojis: any[]) => {
   customEmojis.value = emojis
   localStorage.setItem('custom_emojis', JSON.stringify(emojis))
+}
+
+// 更新最近表情
+const updateRecentEmojis = (emojis: any[]) => {
+  recentEmojis.value = emojis
+  localStorage.setItem('recent_emojis', JSON.stringify(emojis))
 }
 
 // 表情相关
@@ -554,7 +572,16 @@ const insertEmoji = (emoji: any) => {
   // 如果是自定义表情，直接发送
   if (emoji.isCustom) {
     console.log('📷 发送自定义表情')
-    emit('send', { type: 'custom_emoji', content: emoji.char, name: emoji.name })
+    // 构造消息对象
+    const message = {
+      type: 'custom_emoji',
+      content: emoji.char,
+      name: emoji.name
+    }
+    // 发送消息
+    emit('send', message)
+    // 关闭表情面板
+    closePanels()
     return
   }
 

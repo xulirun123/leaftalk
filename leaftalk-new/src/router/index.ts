@@ -67,6 +67,18 @@ const routes = [
     }
   },
   {
+    path: '/add-custom-emoji',
+    name: 'AddCustomEmoji',
+    component: () => import('../modules/chat/pages/AddCustomEmoji.vue'),
+    meta: {
+      title: '添加表情',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTopBar: true,
+      hideTabBar: true
+    }
+  },
+  {
     path: '/chat-search/:chatId?',
     name: 'ChatSearch',
     component: () => import('../modules/chat/pages/ChatSearchMain.vue'),

@@ -41,8 +41,19 @@
       </div>
 
       <!-- 表情分类内容 -->
-      <div v-else-if="currentEmojis.length > 0" class="emoji-section">
+      <div v-else-if="currentEmojis.length > 0 || activeCategory === 'custom'" class="emoji-section">
         <div class="emoji-grid">
+          <!-- 自定义表情分类显示添加按钮 -->
+          <div
+            v-if="activeCategory === 'custom'"
+            class="emoji-item add-custom-emoji-btn"
+            @click="goToAddCustomEmoji"
+            title="添加表情"
+          >
+            <iconify-icon icon="heroicons:plus" width="24" color="#07C160"></iconify-icon>
+          </div>
+
+          <!-- 表情列表 -->
           <div
             v-for="emoji in currentEmojis"
             :key="emoji.code"
@@ -111,6 +122,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 // Props
 interface Props {
@@ -496,6 +510,11 @@ const deleteLastChar = () => {
   emit('delete')
 }
 
+// 跳转到添加自定义表情页面
+const goToAddCustomEmoji = () => {
+  router.push('/add-custom-emoji')
+}
+
 // 鼠标拖动滚动处理
 const handleTabsMouseDown = (e: MouseEvent) => {
   if (!emojiTabsRef.value) return
@@ -628,7 +647,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.2s;
   color: #666;
-  margin-right: 4px;
+  margin-right: 12px; /* 增大间距 */
   flex-shrink: 0;
 }
 
@@ -699,6 +718,16 @@ onMounted(() => {
   border-radius: 4px;
 }
 
+.add-custom-emoji-btn {
+  border: 2px dashed #07C160;
+  background: #f0f8f0;
+}
+
+.add-custom-emoji-btn:hover {
+  background: #e0f0e0;
+  border-color: #06a552;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -717,6 +746,8 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   align-items: center;
+  position: relative;
+  z-index: 10; /* 确保在表情上方 */
 }
 
 .upload-btn {
