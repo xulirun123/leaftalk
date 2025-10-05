@@ -19,7 +19,7 @@
       <!-- 空状态 -->
       <div v-else-if="monthsData.length === 0" class="empty-container">
         <iconify-icon icon="heroicons:photo" width="48" color="#666"></iconify-icon>
-        <p>最近三个月没有图片消息</p>
+        <p>没有图片消息</p>
       </div>
 
       <!-- 按月份显示图片 -->
@@ -107,9 +107,6 @@ const loadImageMessages = async () => {
     console.log('📨 加载到消息数量:', messages.length)
 
     // 过滤出图片类型的消息
-    const now = getToday()
-    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1) // 三个月前的第一天
-
     const images = messages.filter(msg => {
       // 只保留图片类型的消息
       if (msg.type !== 'image') return false
@@ -117,13 +114,13 @@ const loadImageMessages = async () => {
       const timestamp = Number(msg.timestamp)
       if (!timestamp) return false
 
-      const date = new Date(timestamp)
-
-      // 只统计最近三个月的消息
-      return date >= threeMonthsAgo && date <= now
+      return true
     })
 
-    console.log('🖼️ 最近三个月的图片消息数量:', images.length)
+    console.log('🖼️ 图片消息数量:', images.length)
+    if (images.length > 0) {
+      console.log('🖼️ 第一张图片示例:', images[0])
+    }
 
     imageMessages.value = images
   } catch (error) {

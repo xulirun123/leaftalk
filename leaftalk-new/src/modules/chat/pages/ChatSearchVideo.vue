@@ -15,7 +15,7 @@
       
       <div v-else-if="monthsData.length === 0" class="empty-container">
         <iconify-icon icon="heroicons:video-camera" width="48" color="#666"></iconify-icon>
-        <p>最近三个月没有视频消息</p>
+        <p>没有视频消息</p>
       </div>
       
       <div v-else class="videos-scroll-area">
@@ -88,25 +88,26 @@ const loadVideoMessages = async () => {
     console.log('🎬 开始加载视频消息，chatId:', chatId)
     
     const messages = await messagePersistenceService.getLatestMessages(chatId, 1000)
-    
+
     if (!messages || messages.length === 0) {
       console.log('📭 该会话没有消息记录')
       videoMessages.value = []
       return
     }
-    
-    const now = getToday()
-    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
-    
+
+    console.log('📨 加载到消息数量:', messages.length)
+
     const videos = messages.filter(msg => {
       if (msg.type !== 'video') return false
       const timestamp = Number(msg.timestamp)
       if (!timestamp) return false
-      const date = new Date(timestamp)
-      return date >= threeMonthsAgo && date <= now
+      return true
     })
-    
-    console.log('🎬 找到视频消息数量:', videos.length)
+
+    console.log('🎬 视频消息数量:', videos.length)
+    if (videos.length > 0) {
+      console.log('🎬 第一个视频示例:', videos[0])
+    }
     videoMessages.value = videos
   } catch (error) {
     console.error('❌ 加载视频消息失败:', error)
