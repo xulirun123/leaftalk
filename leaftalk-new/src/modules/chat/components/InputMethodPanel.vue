@@ -967,6 +967,8 @@ onMounted(() => {
   background: #f7f7f7;
   border-top: 1px solid #d9d9d9;    /* 添加顶部边框，与输入框底部边框重合 */
   z-index: 1100;          /* 提高z-index，确保在ChatInput之上 */
+  transform: translateY(0);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   height: auto;       /* 自动高度，跟随内部内容 */
   /* 移除max-height限制，让面板高度完全跟随内部三个区域 */
   overflow: visible;   /* 改为visible，不裁剪内容 */
@@ -1981,21 +1983,7 @@ onMounted(() => {
   }
 }
 
-/* 动画效果 */
-.input-method-panel {
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
+/* 动画效果 - 移除，使用 transition 代替 */
 
 /* 文字渲染优化 */
 .input-method-panel * {

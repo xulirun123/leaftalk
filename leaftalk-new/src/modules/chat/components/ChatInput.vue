@@ -782,6 +782,7 @@ onUnmounted(() => {
   z-index: 1000; /* 确保输入框在消息容器上面，但在头部下面 */
   bottom: 0;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1); /* 使用更平滑的缓动函数 */
 }
 
 
@@ -1052,6 +1053,8 @@ onUnmounted(() => {
   right: 0;
   z-index: 100;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(0);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .emoji-content {
@@ -1133,6 +1136,8 @@ onUnmounted(() => {
   right: 0;
   z-index: 100;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(0);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .more-content {
