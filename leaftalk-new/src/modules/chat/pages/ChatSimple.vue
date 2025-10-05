@@ -20,7 +20,7 @@
     </div>
 
     <!-- 聊天消息区域 -->
-    <div class="chat-messages" ref="messagesContainer" @scroll="handleUserScroll" :style="chatBackgroundStyle">
+    <div class="chat-messages" ref="messagesContainer" @scroll="handleUserScroll" :style="{ ...chatBackgroundStyle, bottom: messagesContainerBottom + 'px' }">
       <div v-if="!messages || messages.length === 0" class="empty-chat">
         <iconify-icon icon="heroicons:chat-bubble-left-right" width="48" style="color: #ccc;"></iconify-icon>
         <p>开始聊天吧！</p>
@@ -103,6 +103,8 @@
       @send="handleMessageSend"
       @typing="handleTyping"
       @video-call="openCallSheet"
+      @keyboard-height-change="handleKeyboardHeightChange"
+      @panel-change="handlePanelChange"
       placeholder="输入消息..."
       :disabled="false"
       :chat-id="sessionId"
@@ -170,6 +172,31 @@ const eventBus = inject('eventBus') as any
 
 // 搜索关键词高亮
 const searchHighlightKeyword = ref<string>('')
+
+// 聊天容器底部距离（动态调整）
+const messagesContainerBottom = ref(53) // 默认53px（输入框高度）
+
+// 处理键盘高度变化
+const handleKeyboardHeightChange = (height: number) => {
+  console.log('⌨️ 键盘高度变化:', height)
+  // 键盘弹起时，调整聊天容器底部距离
+  if (height > 0) {
+    messagesContainerBottom.value = 53 + height
+  } else {
+    messagesContainerBottom.value = 53
+  }
+}
+
+// 处理面板变化
+const handlePanelChange = (data: { type: string, height: number }) => {
+  console.log('📱 面板变化:', data)
+  // 面板打开时，调整聊天容器底部距离
+  if (data.type !== 'none') {
+    messagesContainerBottom.value = 53 + data.height
+  } else {
+    messagesContainerBottom.value = 53
+  }
+}
 
 // ========== 聊天背景管理（已重写，使用新的工具函数） ==========
 // 背景样式 ref（保留用于调试面板显示）

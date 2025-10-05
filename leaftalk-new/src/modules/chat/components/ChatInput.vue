@@ -234,6 +234,8 @@ interface Emits {
   (e: 'video-call'): void
   (e: 'red-packet'): void
   (e: 'transfer'): void
+  (e: 'keyboard-height-change', height: number): void
+  (e: 'panel-change', data: { type: 'emoji' | 'more' | 'input-method' | 'none', height: number }): void
 }
 
 const emit = defineEmits<Emits>()
@@ -328,6 +330,7 @@ const toggleEmojiText = () => {
     showMorePanel.value = false
     showInputMethodPanel.value = true  // 显示输入法面板
     console.log('🎭 切换到文本模式，显示输入法面板')
+    emit('panel-change', { type: 'input-method', height: 250 })
   } else {
     // 从语音/文本模式切换到表情模式
     currentInputMode.value = 'emoji'
@@ -335,6 +338,7 @@ const toggleEmojiText = () => {
     showMorePanel.value = false
     showInputMethodPanel.value = false  // 关闭输入法面板
     console.log('🎭 切换到表情模式，显示表情面板')
+    emit('panel-change', { type: 'emoji', height: 250 })
   }
 }
 
@@ -344,6 +348,9 @@ const closePanels = () => {
   showEmojiPanel.value = false
   showMorePanel.value = false
   showInputMethodPanel.value = false
+
+  // 通知面板关闭
+  emit('panel-change', { type: 'none', height: 0 })
 
   // 确保输入框回到底部
   const inputElement = document.querySelector('.wechat-input') as HTMLElement
@@ -493,8 +500,10 @@ const toggleMore = () => {
     showInputMethodPanel.value = false
     currentInputMode.value = 'text'
     console.log('➕ 打开更多面板，关闭其他面板')
+    emit('panel-change', { type: 'more', height: 250 })
   } else {
     console.log('➕ 关闭更多面板')
+    emit('panel-change', { type: 'none', height: 0 })
   }
 }
 
@@ -727,9 +736,26 @@ onMounted(() => {
 
 // 处理视口变化（虚拟键盘检测）
 const handleVisualViewportResize = () => {
-  // 现在有真实的输入法面板，不需要检测虚拟键盘
-  // 输入法面板会自动处理键盘高度
-  console.log('🎹 视口变化，使用真实输入法面板，无需特殊处理')
+  if (!window.visualViewport) return
+
+  const viewport = window.visualViewport
+  const windowHeight = window.innerHeight
+  const viewportHeight = viewport.height
+
+  // 计算键盘高度
+  const keyboardHeight = windowHeight - viewportHeight
+
+  console.log('🎹 视口变化:', {
+    windowHeight,
+    viewportHeight,
+    keyboardHeight,
+    showEmojiPanel: showEmojiPanel.value,
+    showMorePanel: showMorePanel.value,
+    showInputMethodPanel: showInputMethodPanel.value
+  })
+
+  // 发送键盘高度变化事件
+  emit('keyboard-height-change', keyboardHeight)
 }
 
 onUnmounted(() => {
