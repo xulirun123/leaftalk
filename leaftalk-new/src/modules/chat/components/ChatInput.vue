@@ -255,6 +255,23 @@ const showEmojiPanel = ref(false)
 const showMorePanel = ref(false)
 const showInputMethodPanel = ref(false)
 
+// 监听面板状态变化，通知父组件
+watch([showEmojiPanel, showMorePanel, showInputMethodPanel], ([emoji, more, inputMethod]) => {
+  console.log('👀 面板状态变化:', { emoji, more, inputMethod })
+
+  // 确定当前激活的面板类型和高度
+  if (emoji) {
+    emit('panel-change', { type: 'emoji', height: 250 })
+  } else if (more) {
+    emit('panel-change', { type: 'more', height: 250 })
+  } else if (inputMethod) {
+    emit('panel-change', { type: 'input-method', height: 250 })
+  } else {
+    // 所有面板都关闭
+    emit('panel-change', { type: 'none', height: 0 })
+  }
+})
+
 // 输入模式枚举
 type InputMode = 'voice' | 'text' | 'emoji'
 
