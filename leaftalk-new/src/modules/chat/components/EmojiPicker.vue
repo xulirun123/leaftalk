@@ -1,9 +1,16 @@
 <template>
   <div class="emoji-picker">
     <!-- 表情分类标签 -->
-    <div class="emoji-tabs">
-      <button 
-        v-for="category in emojiCategories" 
+    <div
+      class="emoji-tabs"
+      ref="emojiTabsRef"
+      @mousedown="handleTabsMouseDown"
+      @mousemove="handleTabsMouseMove"
+      @mouseup="handleTabsMouseUp"
+      @mouseleave="handleTabsMouseUp"
+    >
+      <button
+        v-for="category in emojiCategories"
         :key="category.key"
         @click="activeCategory = category.key"
         :class="['emoji-tab', { active: activeCategory === category.key }]"
@@ -113,6 +120,12 @@ const activeCategory = ref('smileys')
 const searchKeyword = ref('')
 const emojiContentRef = ref<HTMLElement>()
 const fileInput = ref<HTMLInputElement>()
+const emojiTabsRef = ref<HTMLElement>()
+
+// 鼠标拖动滚动相关
+const isDragging = ref(false)
+const startX = ref(0)
+const scrollLeft = ref(0)
 
 // 表情分类
 const emojiCategories = ref([
@@ -251,6 +264,174 @@ const emojiData = ref({
     { code: 'candy', char: '🍬', name: '糖果' },
     { code: 'lollipop', char: '🍭', name: '棒棒糖' },
     { code: 'honey_pot', char: '🍯', name: '蜂蜜' }
+  ],
+  activities: [
+    { code: 'soccer', char: '⚽', name: '足球' },
+    { code: 'basketball', char: '🏀', name: '篮球' },
+    { code: 'football', char: '🏈', name: '橄榄球' },
+    { code: 'baseball', char: '⚾', name: '棒球' },
+    { code: 'tennis', char: '🎾', name: '网球' },
+    { code: 'volleyball', char: '🏐', name: '排球' },
+    { code: 'rugby_football', char: '🏉', name: '英式橄榄球' },
+    { code: '8ball', char: '🎱', name: '台球' },
+    { code: 'ping_pong', char: '🏓', name: '乒乓球' },
+    { code: 'badminton', char: '🏸', name: '羽毛球' },
+    { code: 'goal_net', char: '🥅', name: '球门' },
+    { code: 'ice_hockey', char: '🏒', name: '冰球' },
+    { code: 'field_hockey', char: '🏑', name: '曲棍球' },
+    { code: 'cricket', char: '🏏', name: '板球' },
+    { code: 'golf', char: '⛳', name: '高尔夫' },
+    { code: 'bow_and_arrow', char: '🏹', name: '弓箭' },
+    { code: 'fishing_pole_and_fish', char: '🎣', name: '钓鱼' },
+    { code: 'boxing_glove', char: '🥊', name: '拳击' },
+    { code: 'martial_arts_uniform', char: '🥋', name: '武术' },
+    { code: 'running_shirt_with_sash', char: '🎽', name: '跑步' },
+    { code: 'ski', char: '🎿', name: '滑雪' },
+    { code: 'skateboard', char: '🛹', name: '滑板' },
+    { code: 'trophy', char: '🏆', name: '奖杯' },
+    { code: 'medal', char: '🏅', name: '奖牌' },
+    { code: 'first_place_medal', char: '🥇', name: '金牌' },
+    { code: 'second_place_medal', char: '🥈', name: '银牌' },
+    { code: 'third_place_medal', char: '🥉', name: '铜牌' },
+    { code: 'dart', char: '🎯', name: '飞镖' },
+    { code: 'game_die', char: '🎲', name: '骰子' },
+    { code: 'slot_machine', char: '🎰', name: '老虎机' },
+    { code: 'video_game', char: '🎮', name: '游戏' },
+    { code: 'joystick', char: '🕹️', name: '游戏杆' },
+    { code: 'performing_arts', char: '🎭', name: '表演艺术' },
+    { code: 'art', char: '🎨', name: '艺术' },
+    { code: 'musical_note', char: '🎵', name: '音符' },
+    { code: 'musical_keyboard', char: '🎹', name: '键盘' },
+    { code: 'guitar', char: '🎸', name: '吉他' },
+    { code: 'trumpet', char: '🎺', name: '小号' },
+    { code: 'violin', char: '🎻', name: '小提琴' },
+    { code: 'drum', char: '🥁', name: '鼓' }
+  ],
+  travel: [
+    { code: 'car', char: '🚗', name: '汽车' },
+    { code: 'taxi', char: '🚕', name: '出租车' },
+    { code: 'blue_car', char: '🚙', name: '蓝色汽车' },
+    { code: 'bus', char: '🚌', name: '公交车' },
+    { code: 'trolleybus', char: '🚎', name: '无轨电车' },
+    { code: 'racing_car', char: '🏎️', name: '赛车' },
+    { code: 'police_car', char: '🚓', name: '警车' },
+    { code: 'ambulance', char: '🚑', name: '救护车' },
+    { code: 'fire_engine', char: '🚒', name: '消防车' },
+    { code: 'minibus', char: '🚐', name: '小巴' },
+    { code: 'truck', char: '🚚', name: '卡车' },
+    { code: 'articulated_lorry', char: '🚛', name: '铰接式卡车' },
+    { code: 'tractor', char: '🚜', name: '拖拉机' },
+    { code: 'motorcycle', char: '🏍️', name: '摩托车' },
+    { code: 'motor_scooter', char: '🛵', name: '小型摩托车' },
+    { code: 'bike', char: '🚲', name: '自行车' },
+    { code: 'kick_scooter', char: '🛴', name: '滑板车' },
+    { code: 'train', char: '🚆', name: '火车' },
+    { code: 'metro', char: '🚇', name: '地铁' },
+    { code: 'light_rail', char: '🚈', name: '轻轨' },
+    { code: 'station', char: '🚉', name: '车站' },
+    { code: 'tram', char: '🚊', name: '有轨电车' },
+    { code: 'monorail', char: '🚝', name: '单轨' },
+    { code: 'mountain_railway', char: '🚞', name: '山地铁路' },
+    { code: 'bullettrain_side', char: '🚄', name: '高铁' },
+    { code: 'bullettrain_front', char: '🚅', name: '子弹头列车' },
+    { code: 'airplane', char: '✈️', name: '飞机' },
+    { code: 'small_airplane', char: '🛩️', name: '小飞机' },
+    { code: 'helicopter', char: '🚁', name: '直升机' },
+    { code: 'rocket', char: '🚀', name: '火箭' },
+    { code: 'satellite', char: '🛰️', name: '卫星' },
+    { code: 'ship', char: '🚢', name: '轮船' },
+    { code: 'boat', char: '⛵', name: '帆船' },
+    { code: 'speedboat', char: '🚤', name: '快艇' },
+    { code: 'anchor', char: '⚓', name: '锚' },
+    { code: 'world_map', char: '🗺️', name: '世界地图' },
+    { code: 'compass', char: '🧭', name: '指南针' },
+    { code: 'mountain', char: '⛰️', name: '山' },
+    { code: 'camping', char: '🏕️', name: '露营' },
+    { code: 'beach_umbrella', char: '🏖️', name: '海滩' }
+  ],
+  objects: [
+    { code: 'watch', char: '⌚', name: '手表' },
+    { code: 'iphone', char: '📱', name: '手机' },
+    { code: 'calling', char: '📲', name: '来电' },
+    { code: 'computer', char: '💻', name: '电脑' },
+    { code: 'keyboard', char: '⌨️', name: '键盘' },
+    { code: 'desktop_computer', char: '🖥️', name: '台式电脑' },
+    { code: 'printer', char: '🖨️', name: '打印机' },
+    { code: 'computer_mouse', char: '🖱️', name: '鼠标' },
+    { code: 'trackball', char: '🖲️', name: '轨迹球' },
+    { code: 'joystick', char: '🕹️', name: '游戏杆' },
+    { code: 'floppy_disk', char: '💾', name: '软盘' },
+    { code: 'cd', char: '💿', name: 'CD' },
+    { code: 'dvd', char: '📀', name: 'DVD' },
+    { code: 'camera', char: '📷', name: '相机' },
+    { code: 'camera_flash', char: '📸', name: '闪光灯相机' },
+    { code: 'video_camera', char: '📹', name: '摄像机' },
+    { code: 'movie_camera', char: '🎥', name: '电影摄影机' },
+    { code: 'telephone_receiver', char: '📞', name: '电话' },
+    { code: 'phone', char: '☎️', name: '座机' },
+    { code: 'tv', char: '📺', name: '电视' },
+    { code: 'radio', char: '📻', name: '收音机' },
+    { code: 'microphone', char: '🎤', name: '麦克风' },
+    { code: 'headphones', char: '🎧', name: '耳机' },
+    { code: 'speaker', char: '🔊', name: '扬声器' },
+    { code: 'bell', char: '🔔', name: '铃铛' },
+    { code: 'alarm_clock', char: '⏰', name: '闹钟' },
+    { code: 'stopwatch', char: '⏱️', name: '秒表' },
+    { code: 'hourglass', char: '⌛', name: '沙漏' },
+    { code: 'bulb', char: '💡', name: '灯泡' },
+    { code: 'flashlight', char: '🔦', name: '手电筒' },
+    { code: 'candle', char: '🕯️', name: '蜡烛' },
+    { code: 'fire', char: '🔥', name: '火' },
+    { code: 'battery', char: '🔋', name: '电池' },
+    { code: 'electric_plug', char: '🔌', name: '插头' },
+    { code: 'mag', char: '🔍', name: '放大镜' },
+    { code: 'lock', char: '🔒', name: '锁' },
+    { code: 'unlock', char: '🔓', name: '开锁' },
+    { code: 'key', char: '🔑', name: '钥匙' },
+    { code: 'hammer', char: '🔨', name: '锤子' },
+    { code: 'wrench', char: '🔧', name: '扳手' }
+  ],
+  symbols: [
+    { code: 'heart', char: '❤️', name: '红心' },
+    { code: 'orange_heart', char: '🧡', name: '橙心' },
+    { code: 'yellow_heart', char: '💛', name: '黄心' },
+    { code: 'green_heart', char: '💚', name: '绿心' },
+    { code: 'blue_heart', char: '💙', name: '蓝心' },
+    { code: 'purple_heart', char: '💜', name: '紫心' },
+    { code: 'black_heart', char: '🖤', name: '黑心' },
+    { code: 'white_heart', char: '🤍', name: '白心' },
+    { code: 'brown_heart', char: '🤎', name: '棕心' },
+    { code: 'broken_heart', char: '💔', name: '心碎' },
+    { code: 'heart_exclamation', char: '❣️', name: '心叹号' },
+    { code: 'two_hearts', char: '💕', name: '两颗心' },
+    { code: 'revolving_hearts', char: '💞', name: '旋转的心' },
+    { code: 'heartbeat', char: '💓', name: '心跳' },
+    { code: 'heartpulse', char: '💗', name: '心脉' },
+    { code: 'sparkling_heart', char: '💖', name: '闪亮的心' },
+    { code: 'cupid', char: '💘', name: '丘比特' },
+    { code: 'gift_heart', char: '💝', name: '礼物心' },
+    { code: 'star', char: '⭐', name: '星星' },
+    { code: 'star2', char: '🌟', name: '闪亮星星' },
+    { code: 'dizzy', char: '💫', name: '眩晕' },
+    { code: 'sparkles', char: '✨', name: '闪光' },
+    { code: 'fire', char: '🔥', name: '火焰' },
+    { code: 'boom', char: '💥', name: '爆炸' },
+    { code: 'zap', char: '⚡', name: '闪电' },
+    { code: 'snowflake', char: '❄️', name: '雪花' },
+    { code: 'cloud', char: '☁️', name: '云' },
+    { code: 'sunny', char: '☀️', name: '太阳' },
+    { code: 'rainbow', char: '🌈', name: '彩虹' },
+    { code: 'checkmark', char: '✅', name: '勾选' },
+    { code: 'x', char: '❌', name: '叉' },
+    { code: 'exclamation', char: '❗', name: '感叹号' },
+    { code: 'question', char: '❓', name: '问号' },
+    { code: 'heavy_plus_sign', char: '➕', name: '加号' },
+    { code: 'heavy_minus_sign', char: '➖', name: '减号' },
+    { code: 'heavy_multiplication_x', char: '✖️', name: '乘号' },
+    { code: 'heavy_division_sign', char: '➗', name: '除号' },
+    { code: 'infinity', char: '♾️', name: '无穷' },
+    { code: 'recycle', char: '♻️', name: '回收' },
+    { code: 'peace_symbol', char: '☮️', name: '和平' }
   ]
 })
 
@@ -302,6 +483,32 @@ const selectEmoji = (emoji: any) => {
   }
   
   emit('update:recentEmojis', newRecentEmojis)
+}
+
+// 鼠标拖动滚动处理
+const handleTabsMouseDown = (e: MouseEvent) => {
+  if (!emojiTabsRef.value) return
+
+  isDragging.value = true
+  startX.value = e.pageX - emojiTabsRef.value.offsetLeft
+  scrollLeft.value = emojiTabsRef.value.scrollLeft
+
+  // 阻止默认行为，避免选中文本
+  e.preventDefault()
+}
+
+const handleTabsMouseMove = (e: MouseEvent) => {
+  if (!isDragging.value || !emojiTabsRef.value) return
+
+  e.preventDefault()
+
+  const x = e.pageX - emojiTabsRef.value.offsetLeft
+  const walk = (x - startX.value) * 2 // 滚动速度倍数
+  emojiTabsRef.value.scrollLeft = scrollLeft.value - walk
+}
+
+const handleTabsMouseUp = () => {
+  isDragging.value = false
 }
 
 const handleSearch = () => {
@@ -363,6 +570,19 @@ onMounted(() => {
   overflow-x: auto;
   flex-shrink: 0;
   background: #f8f8f8;
+  cursor: grab;
+  user-select: none;
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.emoji-tabs::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.emoji-tabs:active {
+  cursor: grabbing;
 }
 
 .emoji-tab {
