@@ -99,6 +99,9 @@
       <EmojiPicker
         @select="insertEmoji"
         @upload="handleEmojiUpload"
+        @delete="handleEmojiDelete"
+        :custom-emojis="customEmojis"
+        @update:custom-emojis="updateCustomEmojis"
       />
     </div>
 
@@ -281,6 +284,27 @@ const isRecording = ref(false)
 
 // 临时输入（拼音、笔画、五笔字根等）
 const tempInput = ref('')
+
+// 自定义表情（从 localStorage 加载）
+const customEmojis = ref<any[]>([])
+
+// 加载自定义表情
+onMounted(() => {
+  const saved = localStorage.getItem('custom_emojis')
+  if (saved) {
+    try {
+      customEmojis.value = JSON.parse(saved)
+    } catch (e) {
+      console.error('加载自定义表情失败:', e)
+    }
+  }
+})
+
+// 更新自定义表情
+const updateCustomEmojis = (emojis: any[]) => {
+  customEmojis.value = emojis
+  localStorage.setItem('custom_emojis', JSON.stringify(emojis))
+}
 
 // 表情相关
 const currentEmojiTab = ref('smile')
@@ -526,11 +550,29 @@ const toggleMore = () => {
 
 const insertEmoji = (emoji: any) => {
   console.log('😀 插入表情:', emoji)
+
+  // 如果是自定义表情，直接发送
+  if (emoji.isCustom) {
+    console.log('📷 发送自定义表情')
+    emit('send', { type: 'custom_emoji', content: emoji.char, name: emoji.name })
+    return
+  }
+
   // 提取表情字符（如果是对象则取 char 属性，否则直接使用）
   const emojiChar = typeof emoji === 'object' ? emoji.char : emoji
   console.log('😀 表情字符:', emojiChar)
   // 直接插入表情，不改变面板状态
   insertEmojiToText(emojiChar)
+}
+
+// 删除输入框最后一个字符
+const handleEmojiDelete = () => {
+  if (inputText.value.length > 0) {
+    inputText.value = inputText.value.slice(0, -1)
+    nextTick(() => {
+      adjustTextareaHeight()
+    })
+  }
 }
 
 const insertEmojiToText = (emoji: string) => {

@@ -14,25 +14,28 @@
         :key="category.key"
         @click="activeCategory = category.key"
         :class="['emoji-tab', { active: activeCategory === category.key }]"
+        :title="category.name"
       >
-        <iconify-icon :icon="category.icon" width="16"></iconify-icon>
-        <span>{{ category.name }}</span>
+        <iconify-icon :icon="category.icon" width="20"></iconify-icon>
       </button>
     </div>
     
     <!-- 表情内容区域 -->
     <div class="emoji-content" ref="emojiContentRef">
       <!-- 最近使用 -->
-      <div v-if="activeCategory === 'recent' && recentEmojis.length > 0" class="emoji-section">
+      <div v-if="activeCategory === 'recent' && currentEmojis.length > 0" class="emoji-section">
         <div class="emoji-grid">
           <div
-            v-for="emoji in recentEmojis"
+            v-for="emoji in currentEmojis"
             :key="emoji.code"
             class="emoji-item"
             @click="selectEmoji(emoji)"
             :title="emoji.name"
           >
-            <span class="emoji-char">{{ emoji.char }}</span>
+            <!-- 自定义表情显示图片 -->
+            <img v-if="emoji.isCustom" :src="emoji.char" :alt="emoji.name" class="custom-emoji-img" />
+            <!-- 普通表情显示字符 -->
+            <span v-else class="emoji-char">{{ emoji.char }}</span>
           </div>
         </div>
       </div>
@@ -47,7 +50,10 @@
             @click="selectEmoji(emoji)"
             :title="emoji.name"
           >
-            <span class="emoji-char">{{ emoji.char }}</span>
+            <!-- 自定义表情显示图片 -->
+            <img v-if="emoji.isCustom" :src="emoji.char" :alt="emoji.name" class="custom-emoji-img" />
+            <!-- 普通表情显示字符 -->
+            <span v-else class="emoji-char">{{ emoji.char }}</span>
           </div>
         </div>
       </div>
@@ -61,8 +67,13 @@
     
     <!-- 搜索框和上传按钮 -->
     <div class="emoji-search">
-      <!-- 上传按钮 -->
-      <button class="upload-btn" @click="handleUpload" title="上传表情">
+      <!-- 上传按钮（仅在自定义表情分类显示） -->
+      <button
+        v-if="activeCategory === 'custom'"
+        class="upload-btn"
+        @click="handleUpload"
+        title="添加表情"
+      >
         <iconify-icon icon="heroicons:plus" width="16"></iconify-icon>
       </button>
 
@@ -80,6 +91,11 @@
           <iconify-icon icon="heroicons:x-mark" width="14"></iconify-icon>
         </button>
       </div>
+
+      <!-- 删除按钮 -->
+      <button class="delete-btn" @click="deleteLastChar" title="删除">
+        <iconify-icon icon="heroicons:backspace" width="18"></iconify-icon>
+      </button>
     </div>
 
     <!-- 隐藏的文件输入框 -->
@@ -100,11 +116,13 @@ import { ref, computed, onMounted, watch } from 'vue'
 interface Props {
   modelValue?: boolean
   recentEmojis?: any[]
+  customEmojis?: any[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
-  recentEmojis: () => []
+  recentEmojis: () => [],
+  customEmojis: () => []
 })
 
 // Emits
@@ -112,7 +130,9 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'select': [emoji: any]
   'update:recentEmojis': [emojis: any[]]
+  'update:customEmojis': [emojis: any[]]
   'upload': [file: File]
+  'delete': []
 }>()
 
 // 响应式数据
@@ -132,7 +152,7 @@ const emojiCategories = ref([
   { key: 'recent', name: '最近', icon: 'heroicons:clock' },
   { key: 'smileys', name: '笑脸', icon: 'heroicons:face-smile' },
   { key: 'people', name: '人物', icon: 'heroicons:user' },
-  { key: 'animals', name: '动物', icon: 'heroicons:heart' },
+  { key: 'custom', name: '自定义', icon: 'heroicons:photo' },
   { key: 'food', name: '食物', icon: 'heroicons:cake' },
   { key: 'activities', name: '活动', icon: 'heroicons:trophy' },
   { key: 'travel', name: '旅行', icon: 'heroicons:map-pin' },
@@ -200,27 +220,7 @@ const emojiData = ref({
     { code: 'handshake', char: '🤝', name: '握手' },
     { code: 'pray', char: '🙏', name: '祈祷' }
   ],
-  animals: [
-    { code: 'dog', char: '🐶', name: '狗' },
-    { code: 'cat', char: '🐱', name: '猫' },
-    { code: 'mouse', char: '🐭', name: '老鼠' },
-    { code: 'hamster', char: '🐹', name: '仓鼠' },
-    { code: 'rabbit', char: '🐰', name: '兔子' },
-    { code: 'fox_face', char: '🦊', name: '狐狸' },
-    { code: 'bear', char: '🐻', name: '熊' },
-    { code: 'panda_face', char: '🐼', name: '熊猫' },
-    { code: 'koala', char: '🐨', name: '考拉' },
-    { code: 'tiger', char: '🐯', name: '老虎' },
-    { code: 'lion', char: '🦁', name: '狮子' },
-    { code: 'cow', char: '🐮', name: '牛' },
-    { code: 'pig', char: '🐷', name: '猪' },
-    { code: 'pig_nose', char: '🐽', name: '猪鼻' },
-    { code: 'frog', char: '🐸', name: '青蛙' },
-    { code: 'monkey_face', char: '🐵', name: '猴子' },
-    { code: 'see_no_evil', char: '🙈', name: '非礼勿视' },
-    { code: 'hear_no_evil', char: '🙉', name: '非礼勿听' },
-    { code: 'speak_no_evil', char: '🙊', name: '非礼勿言' }
-  ],
+  custom: [], // 自定义表情，最多30个
   food: [
     { code: 'apple', char: '🍎', name: '苹果' },
     { code: 'banana', char: '🍌', name: '香蕉' },
@@ -448,9 +448,15 @@ const currentEmojis = computed(() => {
   }
   
   if (activeCategory.value === 'recent') {
-    return props.recentEmojis
+    // 最近使用最多显示32个（4排 x 8列）
+    return props.recentEmojis.slice(0, 32)
   }
-  
+
+  if (activeCategory.value === 'custom') {
+    // 自定义表情最多30个
+    return props.customEmojis.slice(0, 30)
+  }
+
   return emojiData.value[activeCategory.value] || []
 })
 
@@ -476,13 +482,18 @@ const selectEmoji = (emoji: any) => {
   }
   
   newRecentEmojis.unshift(emoji)
-  
-  // 限制最近使用的数量
-  if (newRecentEmojis.length > 24) {
-    newRecentEmojis.splice(24)
+
+  // 限制最近使用的数量为32个（4排 x 8列）
+  if (newRecentEmojis.length > 32) {
+    newRecentEmojis.splice(32)
   }
-  
+
   emit('update:recentEmojis', newRecentEmojis)
+}
+
+// 删除输入框最后一个字符
+const deleteLastChar = () => {
+  emit('delete')
 }
 
 // 鼠标拖动滚动处理
@@ -524,6 +535,11 @@ const clearSearch = () => {
 
 // 上传处理函数
 const handleUpload = () => {
+  // 检查自定义表情数量限制
+  if (props.customEmojis.length >= 30) {
+    alert('自定义表情最多添加30个')
+    return
+  }
   fileInput.value?.click()
 }
 
@@ -531,7 +547,22 @@ const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (file && file.type.startsWith('image/')) {
-    emit('upload', file)
+    // 读取图片并添加到自定义表情
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string
+      const newCustomEmoji = {
+        code: `custom_${Date.now()}`,
+        char: imageUrl, // 使用 base64 图片数据
+        name: file.name.replace(/\.[^/.]+$/, ''), // 移除文件扩展名
+        isCustom: true
+      }
+
+      const newCustomEmojis = [...props.customEmojis, newCustomEmoji]
+      emit('update:customEmojis', newCustomEmojis)
+    }
+    reader.readAsDataURL(file)
+
     // 清空文件输入框，允许重复选择同一文件
     target.value = ''
   }
@@ -588,17 +619,17 @@ onMounted(() => {
 .emoji-tab {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: none;
   background: none;
-  border-radius: 12px;
+  border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s;
-  white-space: nowrap;
-  font-size: 11px;
   color: #666;
   margin-right: 4px;
+  flex-shrink: 0;
 }
 
 .emoji-tab.active {
@@ -661,6 +692,13 @@ onMounted(() => {
   line-height: 1;
 }
 
+.custom-emoji-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -702,6 +740,31 @@ onMounted(() => {
 }
 
 .upload-btn:active {
+  transform: scale(0.95);
+}
+
+.delete-btn {
+  background: #f5f5f5;
+  border: none;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.delete-btn:hover {
+  background: #e0e0e0;
+  color: #333;
+  transform: scale(1.05);
+}
+
+.delete-btn:active {
   transform: scale(0.95);
 }
 

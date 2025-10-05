@@ -109,6 +109,7 @@ const formatLastMessage = (chat: Chat) => {
   if (chat.lastMessageType === 'video') return '[视频]'
   if (chat.lastMessageType === 'file') return '[文件]'
   if (chat.lastMessageType === 'location') return '[位置]'
+  if (chat.lastMessageType === 'custom_emoji') return '[动画表情]'
   if (chat.lastMessageType === 'system_notification') {
     // 解析系统通知内容
     try {
