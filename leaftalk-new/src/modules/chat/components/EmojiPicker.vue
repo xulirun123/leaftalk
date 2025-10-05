@@ -41,7 +41,11 @@
       </div>
 
       <!-- 表情分类内容 -->
-      <div v-else-if="currentEmojis.length > 0 || activeCategory === 'custom'" class="emoji-section">
+      <div
+        v-else-if="currentEmojis.length > 0 || activeCategory === 'custom'"
+        class="emoji-section"
+        :class="{ 'custom-emoji-section': activeCategory === 'custom' }"
+      >
         <div class="emoji-grid">
           <!-- 自定义表情分类显示添加按钮 -->
           <div
@@ -681,20 +685,40 @@ onMounted(() => {
 
 .emoji-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
   gap: 8px;
+}
+
+/* 默认表情：8列 */
+.emoji-section:not(.custom-emoji-section) .emoji-grid {
+  grid-template-columns: repeat(8, 1fr);
+}
+
+/* 自定义表情：4列 */
+.emoji-section.custom-emoji-section .emoji-grid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
 }
 
 .emoji-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+}
+
+/* 默认表情项大小 */
+.emoji-section:not(.custom-emoji-section) .emoji-item {
+  width: 36px;
+  height: 36px;
+}
+
+/* 自定义表情项大小（更大） */
+.emoji-section.custom-emoji-section .emoji-item {
+  aspect-ratio: 1;
+  width: 100%;
 }
 
 .emoji-item:hover {
@@ -711,11 +735,20 @@ onMounted(() => {
   line-height: 1;
 }
 
-.custom-emoji-img {
+/* 默认表情的自定义图片 */
+.emoji-section:not(.custom-emoji-section) .custom-emoji-img {
   width: 32px;
   height: 32px;
   object-fit: contain;
   border-radius: 4px;
+}
+
+/* 自定义表情面板的图片（更大） */
+.emoji-section.custom-emoji-section .custom-emoji-img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  border-radius: 8px;
 }
 
 .add-custom-emoji-btn {

@@ -15,10 +15,14 @@
     <!-- 主内容区 -->
     <div :class="['mobile-content', { 'no-top-bar': !showTopBar, 'no-tab-bar': !showTabBar }]">
       <router-view v-slot="{ Component, route }">
-        <keep-alive>
-          <component :is="Component" :key="route.meta?.keepAlive ? route.name : route.path" v-if="route.meta?.keepAlive" />
-        </keep-alive>
-        <component :is="Component" :key="route.path" v-if="!route.meta?.keepAlive" />
+        <transition :name="transitionName" mode="out-in">
+          <keep-alive>
+            <component :is="Component" :key="route.meta?.keepAlive ? route.name : route.path" v-if="route.meta?.keepAlive" />
+          </keep-alive>
+        </transition>
+        <transition :name="transitionName" mode="out-in">
+          <component :is="Component" :key="route.path" v-if="!route.meta?.keepAlive" />
+        </transition>
       </router-view>
     </div>
 
@@ -89,6 +93,25 @@ const { t } = useGlobalLanguage()
 
 const showGestureIndicator = ref(false)
 const isDevelopment = computed(() => process.env.NODE_ENV === 'development')
+
+// 页面切换动画
+const transitionName = ref('slide-left')
+let historyLength = window.history.length
+
+// 监听路由变化，判断是前进还是后退
+watch(() => route.path, () => {
+  const currentLength = window.history.length
+
+  if (currentLength > historyLength) {
+    // 前进：新页面从右往左滑入
+    transitionName.value = 'slide-left'
+  } else {
+    // 后退：当前页面从左往右滑出
+    transitionName.value = 'slide-right'
+  }
+
+  historyLength = currentLength
+})
 
 
 
@@ -728,6 +751,7 @@ watch(
   /* 移除 padding-top，因为导航栏不再使用 fixed 定位 */
   padding-bottom: 75px; /* 底部导航栏高度 */
   box-sizing: border-box;
+  position: relative; /* 为页面切换动画提供定位上下文 */
 }
 
 .mobile-content.no-top-bar {
@@ -810,6 +834,63 @@ watch(
 
 .debug-item {
   margin-bottom: 4px;
+}
+
+/* 页面切换动画 */
+/* 前进动画：新页面从右往左滑入 */
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.slide-left-enter-from {
+  transform: translateX(100%);
+}
+
+.slide-left-enter-to {
+  transform: translateX(0);
+}
+
+.slide-left-leave-from {
+  transform: translateX(0);
+}
+
+.slide-left-leave-to {
+  transform: translateX(-30%);
+  opacity: 0.5;
+}
+
+/* 后退动画：当前页面从左往右滑出 */
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.slide-right-enter-from {
+  transform: translateX(-30%);
+  opacity: 0.5;
+}
+
+.slide-right-enter-to {
+  transform: translateX(0);
+}
+
+.slide-right-leave-from {
+  transform: translateX(0);
+}
+
+.slide-right-leave-to {
+  transform: translateX(100%);
 }
 
 /* 全局翻译控制 */
