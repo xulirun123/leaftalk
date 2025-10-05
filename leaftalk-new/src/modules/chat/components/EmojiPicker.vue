@@ -17,10 +17,9 @@
     <div class="emoji-content" ref="emojiContentRef">
       <!-- 最近使用 -->
       <div v-if="activeCategory === 'recent' && recentEmojis.length > 0" class="emoji-section">
-        <div class="section-title">最近使用</div>
         <div class="emoji-grid">
-          <div 
-            v-for="emoji in recentEmojis" 
+          <div
+            v-for="emoji in recentEmojis"
             :key="emoji.code"
             class="emoji-item"
             @click="selectEmoji(emoji)"
@@ -30,13 +29,12 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 表情分类内容 -->
       <div v-else-if="currentEmojis.length > 0" class="emoji-section">
-        <div class="section-title">{{ getCurrentCategoryName() }}</div>
         <div class="emoji-grid">
-          <div 
-            v-for="emoji in currentEmojis" 
+          <div
+            v-for="emoji in currentEmojis"
             :key="emoji.code"
             class="emoji-item"
             @click="selectEmoji(emoji)"
@@ -46,7 +44,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 空状态 -->
       <div v-else class="empty-state">
         <iconify-icon icon="heroicons:face-smile" width="48" color="#ccc"></iconify-icon>

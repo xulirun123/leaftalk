@@ -524,10 +524,13 @@ const toggleMore = () => {
   }
 }
 
-const insertEmoji = (emoji: string) => {
+const insertEmoji = (emoji: any) => {
   console.log('😀 插入表情:', emoji)
+  // 提取表情字符（如果是对象则取 char 属性，否则直接使用）
+  const emojiChar = typeof emoji === 'object' ? emoji.char : emoji
+  console.log('😀 表情字符:', emojiChar)
   // 直接插入表情，不改变面板状态
-  insertEmojiToText(emoji)
+  insertEmojiToText(emojiChar)
 }
 
 const insertEmojiToText = (emoji: string) => {

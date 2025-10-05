@@ -88,6 +88,20 @@ const router = useRouter()
 
 const emit = defineEmits(['contextmenu', 'chat-click'])
 
+// 检测是否为纯表情消息
+const isEmojiOnly = (text: string): boolean => {
+  if (!text || typeof text !== 'string') return false
+
+  // 移除所有空白字符
+  const trimmed = text.trim()
+  if (!trimmed) return false
+
+  // 表情符号的 Unicode 范围
+  const emojiRegex = /^[\p{Emoji}\p{Emoji_Component}\p{Emoji_Modifier}\p{Emoji_Modifier_Base}\p{Emoji_Presentation}]+$/u
+
+  return emojiRegex.test(trimmed)
+}
+
 // 格式化最后一条消息
 const formatLastMessage = (chat: Chat) => {
   if (chat.lastMessageType === 'image') return '[图片]'
@@ -104,6 +118,12 @@ const formatLastMessage = (chat: Chat) => {
       return '[家族通知]'
     }
   }
+
+  // 检测是否为纯表情消息
+  if (chat.lastMessage && isEmojiOnly(chat.lastMessage)) {
+    return '[表情]'
+  }
+
   return chat.lastMessage
 }
 
