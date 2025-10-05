@@ -195,6 +195,12 @@ const handlePanelChange = (data: { type: string, height: number }) => {
     messagesContainerBottom.value = 53 + data.height
   } else {
     messagesContainerBottom.value = 53
+    // 面板关闭时，立即重置用户滚动状态，确保容器能正确调整
+    isUserScrolling.value = false
+    if (userScrollTimer.value) {
+      clearTimeout(userScrollTimer.value)
+      userScrollTimer.value = null
+    }
   }
 }
 
