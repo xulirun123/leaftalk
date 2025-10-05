@@ -181,7 +181,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
-import { liveStreamManager, type LiveRoom } from '../../utils/liveStream'
+import { liveStreamManager } from '../utils/liveStream'
 import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()

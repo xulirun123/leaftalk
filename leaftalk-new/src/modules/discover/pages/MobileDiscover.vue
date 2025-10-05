@@ -140,7 +140,7 @@ const goToNearby = () => {
 }
 
 const openAIAssistant = () => {
-  safePush('/ai-assistant')
+  safePush('/ai')
 }
 
 const goToLive = () => {

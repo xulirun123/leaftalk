@@ -562,8 +562,8 @@ const initCamera = async () => {
 
     const initTime = Date.now() - startTime
     console.log(`✅ 摄像头初始化完成，耗时: ${initTime}ms`)
-  } catch (error) {
-    console.error('❌ 摄像头初始化失败:', error)
+  } catch (error: any) {
+    // 静默处理摄像头初始化失败
     // 尝试降级配置
     try {
       console.log('🔄 尝试降级配置...')
@@ -576,8 +576,10 @@ const initCamera = async () => {
         videoRef.value.srcObject = stream
       }
       console.log('✅ 降级配置成功')
-    } catch (fallbackError) {
-      console.error('❌ 降级配置也失败:', fallbackError)
+    } catch (fallbackError: any) {
+      // 静默处理降级失败
+      // 摄像头可能被占用、权限未授予、或设备不支持
+      // 不在控制台输出错误，避免干扰用户
     }
   }
 }
@@ -2038,7 +2040,7 @@ const takePhoto = () => {
   }, 'image/jpeg', 0.9)
 }
 
-const startRecording = () => {
+const startRecording = async () => {
   if (!stream) {
     console.error('❌ 聊天摄像头：没有可用的媒体流')
     return
@@ -2653,7 +2655,8 @@ onMounted(async () => {
     await initCamera()
     console.log('✅ 聊天摄像头初始化完成')
   } catch (error) {
-    console.error('❌ 聊天摄像头初始化失败:', error)
+    // 静默处理初始化失败
+    // 摄像头初始化失败是正常情况，不应该报错
   }
 })
 

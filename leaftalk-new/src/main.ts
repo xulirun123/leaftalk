@@ -29,8 +29,25 @@ import I18nPlugin from './shared/plugins/i18n'
 // Iconify 导入
 import 'iconify-icon'
 
+// Element Plus 全量引入
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+
 // 全局组件导入
 import UnifiedIcon from './shared/components/common/UnifiedIcon.vue'
+
+// Leaflet map styles and icon fixes
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+})
 
 // 工具导入
 import { crashPrevention, recoverFromCrash } from './shared/utils/crashPrevention'
@@ -88,6 +105,11 @@ const app = createApp(MobileApp)
 
 // 注册全局组件
 app.component('UnifiedIcon', UnifiedIcon)
+
+// 注册 Element Plus 所有图标为全局组件
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component as any)
+}
 
 // 创建事件总线
 const eventBus = mitt()
@@ -212,6 +234,8 @@ async function startApp() {
     console.log('🎨 应用设计系统...')
     const cssVars = generateCSSVariables()
     const root = document.documentElement
+    app.use(ElementPlus)
+
     Object.entries(cssVars).forEach(([key, value]) => {
       root.style.setProperty(key, value)
     })
@@ -276,20 +300,31 @@ async function startApp() {
         const user = authStore.user || appStore.user
         console.log('👤 当前用户:', user?.username || user?.id)
 
-        // 初始化来电监听服务
+        // 初始化新的通话管理器（仅在信令服务可用时）
         try {
-          console.log('📞 初始化来电监听服务...')
-          const { incomingCallService } = await import('./modules/webrtc/services/incomingCallService')
-          await incomingCallService.initialize()
+          const currentPath = router.currentRoute.value?.path || ''
+          const isCallContext = currentPath.includes('call') || currentPath.startsWith('/call')
 
-          // 加入用户房间以接收来电
-          if (user?.id) {
-            await incomingCallService.joinUserRoom(String(user.id))
+          let signalAlive = false
+          try {
+            const res = await fetch('http://localhost:8893/health', { method: 'GET' })
+            signalAlive = !!res && (res.ok || res.status === 200)
+          } catch (e) {
+            signalAlive = false
           }
 
-          console.log('✅ 来电监听服务初始化完成')
+          if (!signalAlive) {
+            console.warn('🟡 信令服务不可用，跳过通话管理器初始化')
+          } else if (!isCallContext) {
+            console.log('ℹ️ 非通话页面，延迟初始化通话管理器')
+          } else {
+            console.log('📞 初始化通话管理器...')
+            const { callManager } = await import('./modules/call')
+            await callManager.initialize()
+            console.log('✅ 通话管理器初始化完成')
+          }
         } catch (error) {
-          console.error('❌ 来电监听服务初始化失败:', error)
+          console.error('❌ 通话管理器初始化失败:', error)
         }
       }
     } catch (error) {

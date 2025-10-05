@@ -89,11 +89,6 @@ export const useAppStore = defineStore('app', () => {
     console.log('✅ 用户登录成功，状态已保存')
   }
 
-  function login(authData: { user: any, token: string }) {
-    setUser(authData.user)
-    setToken(authData.token)
-    console.log('✅ 用户登录成功，状态已保存')
-  }
 
   function logout() {
     user.value = null

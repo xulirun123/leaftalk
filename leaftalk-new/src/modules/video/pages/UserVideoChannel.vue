@@ -259,7 +259,7 @@ const sendMessage = async () => {
     console.log('发送视频号私信给:', userInfo.value.name)
 
     // 导入自定义弹窗
-    const { showAlert, showConfirm } = await import('../../utils/dialog')
+    const { showAlert, showConfirm } = await import('../utils/dialog')
 
     // 检查是否已经发送过私信且未回复
     const hasUnrepliedMessage = await checkUnrepliedMessage(userInfo.value.id)
@@ -283,7 +283,7 @@ const sendMessage = async () => {
     }
   } catch (error) {
     console.error('发送私信失败:', error)
-    const { showAlert } = await import('../../utils/dialog')
+    const { showAlert } = await import('../utils/dialog')
     await showAlert('发送私信失败，请稍后重试', '错误')
   }
 }

@@ -83,8 +83,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '../../../stores/auth'
-import { useAppStore } from '../../stores/app'
-import { useChatStore } from '../chat/stores/chatStore'
+import { useAppStore } from '../../stores/appStore'
+import { useChatStore } from '../../../modules/chat/stores/chatStore'
 
 const authStore = useAuthStore()
 const appStore = useAppStore()

@@ -22,9 +22,9 @@
           class="chat-item"
           :class="{ 'pinned': chat.isPinned }"
           @click="openChat(chat.id)"
-          @touchstart="startLongPress(chat, $event)"
-          @touchend="handleTouchEnd(chat.id, $event)"
-          @touchmove="endLongPress"
+          @touchstart.passive="startLongPress(chat, $event)"
+          @touchend.passive="handleTouchEnd(chat.id, $event)"
+          @touchmove.passive="endLongPress"
           @mousedown="startLongPress(chat, $event)"
           @mouseup="endLongPress"
           @mouseleave="endLongPress"
@@ -103,6 +103,28 @@
       </div>
     </div>
 
+    <!-- 添加菜单弹窗 -->
+    <div v-if="showAddMenu" class="add-menu" @click="showAddMenu = false">
+      <div class="add-menu-content" @click.stop>
+        <div class="add-menu-item" @click="startGroupChat">
+          <iconify-icon icon="heroicons:user-group" width="24" style="color: #07C160;"></iconify-icon>
+          <span>发起群聊</span>
+        </div>
+        <div class="add-menu-item" @click="addFriend">
+          <iconify-icon icon="heroicons:user-plus" width="24" style="color: #07C160;"></iconify-icon>
+          <span>添加朋友</span>
+        </div>
+        <div class="add-menu-item" @click="scanQR">
+          <iconify-icon icon="heroicons:qr-code" width="24" style="color: #07C160;"></iconify-icon>
+          <span>扫一扫</span>
+        </div>
+        <div class="add-menu-item" @click="payment">
+          <iconify-icon icon="heroicons:credit-card" width="24" style="color: #07C160;"></iconify-icon>
+          <span>收付款</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 底部导航栏 -->
     <MobileTabBar :unread-count="totalUnreadCount" />
   </div>
@@ -130,6 +152,7 @@ const appStore = useAppStore()
 
 // 响应式数据
 const showChatMenu = ref(false)
+const showAddMenu = ref(false)
 const selectedChat = ref<any>(null)
 const menuPosition = ref({ x: 0, y: 0 })
 const isLongPressing = ref(false)
@@ -232,32 +255,42 @@ const getDisplayName = (chat: any) => {
 const formatTime = (timestamp: number) => {
   if (!timestamp) return ''
 
+  const messageDate = new Date(timestamp)
   const now = new Date()
-  const date = new Date(timestamp)
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  if (diffDays === 0) {
-    // 今天，显示时间
-    return date.toLocaleTimeString('zh-CN', {
+  // 获取今天、昨天、前天的日期（只比较年月日）
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const dayBeforeYesterday = new Date(today)
+  dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2)
+
+  const msgDate = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate())
+
+  // 今天：显示时间
+  if (msgDate.getTime() === today.getTime()) {
+    return messageDate.toLocaleTimeString('zh-CN', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
     })
-  } else if (diffDays === 1) {
-    // 昨天
-    return '昨天'
-  } else if (diffDays < 7) {
-    // 一周内，显示星期
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-    return weekdays[date.getDay()]
-  } else {
-    // 超过一周，显示日期
-    return date.toLocaleDateString('zh-CN', {
-      month: 'numeric',
-      day: 'numeric'
-    })
   }
+
+  // 昨天：显示"昨天"
+  if (msgDate.getTime() === yesterday.getTime()) {
+    return '昨天'
+  }
+
+  // 前天：显示"前天"
+  if (msgDate.getTime() === dayBeforeYesterday.getTime()) {
+    return '前天'
+  }
+
+  // 三天以前：只显示日期（月/日）
+  return messageDate.toLocaleDateString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric'
+  })
 }
 
 const formatLastMessage = (message: any) => {
@@ -522,6 +555,31 @@ const deleteChat = async () => {
   closeChatMenu()
 }
 
+// 添加菜单相关方法
+const startGroupChat = () => {
+  console.log('发起群聊')
+  router.push('/create-group')
+  showAddMenu.value = false
+}
+
+const addFriend = () => {
+  console.log('添加朋友')
+  router.push('/add-friend')
+  showAddMenu.value = false
+}
+
+const scanQR = () => {
+  console.log('扫一扫')
+  router.push('/scan')
+  showAddMenu.value = false
+}
+
+const payment = () => {
+  console.log('收付款')
+  router.push('/payment-code')
+  showAddMenu.value = false
+}
+
 // 生命周期
 onMounted(async () => {
   console.log('📱 ChatHomeEnterprise 组件挂载')
@@ -531,6 +589,14 @@ onMounted(async () => {
 
   // 强制清理自聊天数据
   await cleanupSelfChatData()
+
+  // 监听顶部导航栏的添加按钮点击事件
+  if (eventBus) {
+    eventBus.on('showAddMenu', () => {
+      console.log('📱 收到显示添加菜单事件')
+      showAddMenu.value = true
+    })
+  }
 })
 
 onUnmounted(() => {
@@ -820,5 +886,78 @@ const cleanupSelfChatData = async () => {
 
 .chat-menu-item span {
   font-size: 14px;
+}
+
+/* 添加菜单 */
+.add-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 100px 20px 0 0;
+}
+
+.add-menu-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  min-width: 140px;
+  position: relative;
+  animation: slideDown 0.2s ease-out;
+}
+
+/* 添加指向加号按钮的箭头 */
+.add-menu-content::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 20px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid white;
+  filter: drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.1));
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.add-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  gap: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.add-menu-item:last-child {
+  border-bottom: none;
+}
+
+.add-menu-item:hover {
+  background-color: #f8f8f8;
+}
+
+.add-menu-item span {
+  font-size: 14px;
+  color: #333;
 }
 </style>

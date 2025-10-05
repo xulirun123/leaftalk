@@ -36,7 +36,7 @@
         <div class="shrine-preview">
           <div class="preview-card">
             <div class="preview-image">
-              <img src="/metaverse/shrine-preview.jpg" alt="虚拟祠堂预览" />
+              <div class="shrine-placeholder">🏛️</div>
               <div class="preview-overlay">
                 <button @click="enterShrine" class="enter-btn">
                   <iconify-icon icon="heroicons:eye" width="20"></iconify-icon>
@@ -294,8 +294,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth'
-import { useAppStore } from '../../../stores/app'
-import MobileTopBar from '../../../components/mobile/MobileTopBar.vue'
+import { useAppStore } from '../../../shared/stores/appStore'
+import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()
 const route = useRoute()

@@ -167,6 +167,9 @@
       </div>
     </div>
 
+
+
+
     <!-- 隐藏的文件输入 -->
     <input
       type="file"
@@ -208,13 +211,15 @@ interface Props {
   disabled?: boolean
   maxLength?: number
   autoFocus?: boolean
+  chatId?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   placeholder: '输入消息...',
   disabled: false,
   maxLength: 1000,
-  autoFocus: false
+  autoFocus: false,
+  chatId: ''
 })
 
 const router = useRouter()
@@ -225,7 +230,6 @@ interface Emits {
   (e: 'focus'): void
   (e: 'blur'): void
   (e: 'typing', isTyping: boolean): void
-  (e: 'location'): void
   (e: 'contact'): void
   (e: 'video-call'): void
   (e: 'red-packet'): void
@@ -235,6 +239,9 @@ interface Emits {
 const emit = defineEmits<Emits>()
 
 // 响应式数据
+
+
+
 const inputText = ref('')
 const textInput = ref<HTMLTextAreaElement>()
 const photoInput = ref<HTMLInputElement>()
@@ -546,8 +553,10 @@ const selectFile = () => {
 }
 
 const shareLocation = () => {
-  emit('location')
-  // 不关闭面板，让用户可以连续选择功能
+  // 直接跳转到位置页面，传递chatId参数
+  closePanels()
+  const query = props.chatId ? { chatId: props.chatId } : {}
+  router.push({ path: '/location-picker', query })
 }
 
 const shareContact = () => {
@@ -1326,6 +1335,8 @@ onUnmounted(() => {
     transform: translateZ(0);
   }
 }
+
+
 
 /* 针对有刘海屏或底部手势条的设备 */
 @supports (padding: max(0px)) {

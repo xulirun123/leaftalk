@@ -84,7 +84,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePrivacyStore } from '../../../stores/privacy'
-import { friendsService, type Friend } from '../../../services/friendsService'
+import { friendsService, type Friend } from '../../contacts/services/friendsService'
 
 const router = useRouter()
 const route = useRoute()

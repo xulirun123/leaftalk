@@ -204,16 +204,23 @@ const setupEventListeners = () => {
 
   // 连接错误
   socket.value.on('connect_error', (error) => {
-    console.error('❌ 实时消息接收器连接错误:', error)
+    // 只在开发环境且用户已登录时输出错误信息
+    if (import.meta.env.DEV && authStore.isAuthenticated) {
+      console.error('❌ 实时消息接收器连接错误:', error)
+    }
     isConnecting.value = false
 
     // 详细的错误处理
     if (error.message.includes('ECONNREFUSED')) {
-      console.error('❌ 服务器拒绝连接，可能服务器未启动，启用离线模式')
+      if (import.meta.env.DEV && authStore.isAuthenticated) {
+        console.error('❌ 服务器拒绝连接，可能服务器未启动，启用离线模式')
+      }
       enableOfflineMode()
       return
     } else if (error.message.includes('timeout')) {
-      console.error('❌ 连接超时，网络可能有问题')
+      if (import.meta.env.DEV && authStore.isAuthenticated) {
+        console.error('❌ 连接超时，网络可能有问题')
+      }
     }
 
     // 延迟重连，避免频繁尝试
@@ -432,15 +439,14 @@ const handleIncomingCall = (callData: any) => {
       // 标记通话流程中，保持聊天实时连接
       try { sessionStorage.setItem('keep_realtime_ws', '1') } catch {}
       router.push({
-        name: 'IncomingCall',
-        params: { callerId: fromUserId },
-        query: { callId, type }
+        path: '/call',
+        query: { action: 'incoming', callId, type, targetUserId: fromUserId }
       })
       console.log('✅ 已跳转到来电页面')
     } catch (e) {
       console.error('❌ 路由跳转失败:', e)
       // 备用方案：直接修改URL
-      window.location.href = `http://localhost:5173/incoming-call/${fromUserId}?callId=${callId}&type=${type}`
+      window.location.href = `http://localhost:5173/call?action=incoming&callId=${callId}&type=${type}&targetUserId=${fromUserId}`
     }
   } catch (error) {
     console.error('❌ 处理来电通知失败:', error)
@@ -465,7 +471,7 @@ const handleCallAnswered = (data: any) => {
     const url = new URL(window.location.href)
     const currentCallId = url.searchParams.get('callId')
     const path = url.pathname
-    const isCallPage = path.includes('/incoming-call') || path.includes('/video-call') || path.includes('/voice-call')
+    const isCallPage = path.includes('/call') || path.includes('/incoming-call') || path.includes('/video-call') || path.includes('/voice-call')
     if (isCallPage && currentCallId === callId) {
       // 将状态更新为connected，供通话页侦听
       try { window.dispatchEvent(new CustomEvent('call_answered', { detail: data })) } catch {}
@@ -494,7 +500,7 @@ const handleCallEnded = (data: any) => {
     const url = new URL(window.location.href)
     const currentCallId = url.searchParams.get('callId')
     const path = url.pathname
-    const isCallPage = path.includes('/incoming-call') || path.includes('/video-call') || path.includes('/voice-call')
+    const isCallPage = path.includes('/call') || path.includes('/incoming-call') || path.includes('/video-call') || path.includes('/voice-call')
 
     if (isCallPage && currentCallId === callId) {
       console.log('🧭 收到结束通知，准备关闭通话页面')
@@ -502,7 +508,7 @@ const handleCallEnded = (data: any) => {
       console.log('🧭 结束原因:', reason, '结束者:', endBy)
 
       // 对于来电页面，只有在明确的结束原因时才关闭
-      if (path.includes('/incoming-call')) {
+      if (path.includes('/incoming-call') || (path.includes('/call') && (new URL(window.location.href)).searchParams.get('action') === 'incoming')) {
         if (reason === 'rejected' || reason === 'timeout' || endBy !== 'system') {
           console.log('🧭 来电页面：明确的结束原因，关闭页面')
         } else {
@@ -523,13 +529,24 @@ const handleCallEnded = (data: any) => {
 
       // 对于来电页面，继续原有的关闭逻辑
       const fallback = sessionStorage.getItem('call_fallback_path') || (() => {
-        // incoming-call/:callerId/:type -> /chat/chat_<current>_<caller>
+        // 新的统一通话页 /call?action=incoming&targetUserId=<caller>
+        if (path.includes('/call')) {
+          try {
+            const u = new URL(window.location.href)
+            const caller = u.searchParams.get('targetUserId')
+            if (caller) {
+              const currentUserId = String(authStore.user?.id || '')
+              return currentUserId ? `/chat/chat_${currentUserId}_${caller}` : `/chat/${caller}`
+            }
+          } catch {}
+        }
+        // 兼容旧的来电页 incoming-call/:callerId/:type -> /chat/chat_<current>_<caller>
         let m = path.match(/\/incoming-call\/(\w+)\/(video|voice)/)
         if (m) {
           const currentUserId = String(authStore.user?.id || '')
           return currentUserId ? `/chat/chat_${currentUserId}_${m[1]}` : `/chat/${m[1]}`
         }
-        // video-call|voice-call/:peerId -> /chat/chat_<current>_<peer>
+        // 兼容旧的视频/语音通话页 video-call|voice-call/:peerId -> /chat/chat_<current>_<peer>
         m = path.match(/\/(video-call|voice-call)\/(\w+)/)
         if (m) {
           const currentUserId = String(authStore.user?.id || '')

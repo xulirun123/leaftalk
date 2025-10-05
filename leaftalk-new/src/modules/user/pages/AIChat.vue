@@ -337,8 +337,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAIStore } from '../../stores/ai'
-import type { AIAttachment } from '../../stores/ai'
+import { useAIStore } from '../../../stores/ai'
+import type { AIAttachment } from '../../../stores/ai'
 
 const router = useRouter()
 const route = useRoute()

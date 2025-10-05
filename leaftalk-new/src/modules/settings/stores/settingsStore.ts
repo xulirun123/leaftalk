@@ -408,6 +408,16 @@ export const useGeneralStore = defineStore('general', () => {
     return Math.round((storageInfo.value.used / storageInfo.value.total) * 100)
   })
   
+  // 自动初始化：从 localStorage 或 API 加载设置
+  ;(async () => {
+    try {
+      await init()
+      console.log('✅ [settingsStore] 自动初始化完成')
+    } catch (error) {
+      console.error('❌ [settingsStore] 自动初始化失败:', error)
+    }
+  })()
+
   return {
     settings,
     appVersion,

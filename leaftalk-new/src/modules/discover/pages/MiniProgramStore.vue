@@ -1,11 +1,5 @@
 <template>
   <div class="mini-program-store">
-    <!-- 顶部导航栏 -->
-    <MobileTopBar 
-      title="小程序商店"
-      :show-back="true"
-      @back="goBack"
-    />
 
     <!-- 搜索栏 -->
     <div class="search-section">
@@ -219,7 +213,7 @@ import { useRouter } from 'vue-router'
 // import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../../../shared/stores/appStore'
 // import { miniProgramManager, type MiniProgramInfo } from '../../../shared/utils/miniProgram' // 文件不存在，暂时注释
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
+
 
 const router = useRouter()
 // const { t } = useI18n()
@@ -333,7 +327,8 @@ const getInstallButtonText = (program: MiniProgramInfo) => {
   return program.isInstalled ? '卸载' : '安装'
 }
 
-const formatDownloads = (count: number) => {
+const formatDownloads = (count: number | undefined) => {
+  if (!count) return '0'
   if (count >= 10000) {
     return `${(count / 10000).toFixed(1)}万`
   }
@@ -393,21 +388,44 @@ onMounted(async () => {
 
     // 使用本地数据作为后备
     try {
-      const storePrograms = await miniProgramManager.getStorePrograms()
-      programs.value = Array.isArray(storePrograms) ? storePrograms : []
-      console.log('📱 使用本地小程序数据:', programs.value.length, '个')
+      // 暂时使用模拟数据，直到miniProgramManager实现
+      programs.value = [
+        {
+          id: '1',
+          name: '微信读书',
+          icon: '/images/miniapp-icons/weread.png',
+          description: '让阅读不再孤单',
+          category: 'education',
+          size: '12.5MB',
+          rating: 4.8,
+          downloads: '1000万+',
+          screenshots: ['/images/miniapp-screenshots/weread1.jpg']
+        },
+        {
+          id: '2',
+          name: '腾讯文档',
+          icon: '/images/miniapp-icons/docs.png',
+          description: '多人协作的在线文档',
+          category: 'productivity',
+          size: '8.2MB',
+          rating: 4.6,
+          downloads: '500万+',
+          screenshots: ['/images/miniapp-screenshots/docs1.jpg']
+        }
+      ]
+      console.log('📱 使用模拟小程序数据:', programs.value.length, '个')
     } catch (fallbackError) {
       console.error('❌ 本地数据也加载失败:', fallbackError)
       programs.value = []
     }
   }
 
-  // 监听下载进度
-  miniProgramManager.on('download_progress', handleDownloadProgress)
+  // 监听下载进度 - 暂时注释，直到miniProgramManager实现
+  // miniProgramManager.on('download_progress', handleDownloadProgress)
 })
 
 onUnmounted(() => {
-  miniProgramManager.off('download_progress', handleDownloadProgress)
+  // miniProgramManager.off('download_progress', handleDownloadProgress)
 })
 </script>
 

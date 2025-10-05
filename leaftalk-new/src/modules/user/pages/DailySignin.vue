@@ -220,7 +220,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAppStore } from '../../../stores/app'
+import { useAppStore } from '../../../shared/stores/appStore'
 
 const router = useRouter()
 const appStore = useAppStore()

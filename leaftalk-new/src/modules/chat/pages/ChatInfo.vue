@@ -1,333 +1,475 @@
 <template>
   <div class="chat-info">
-    <!-- 顶部导航栏 -->
-    <div class="header">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24" style="color: #333;"></iconify-icon>
-      </button>
-      <div class="header-title">聊天信息</div>
-    </div>
+    <!-- 使用全局顶部导航栏，不需要自定义导航栏 -->
 
     <!-- 用户信息 -->
     <div class="user-section">
-      <div class="user-info">
-        <img :src="chatInfo.avatar" :alt="chatInfo.name" class="user-avatar" />
-        <div class="user-details">
-          <div class="user-name">{{ chatInfo.name }}</div>
-          <div class="user-status">{{ chatInfo.type === 'group' ? `${chatInfo.memberCount}人` : '在线' }}</div>
-        </div>
+      <div class="avatar-container">
+        <img
+          :src="chatInfo.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${chatInfo.id}`"
+          :alt="chatInfo.name"
+          class="user-avatar"
+          @error="handleImageError"
+        />
+        <div class="user-name">{{ displayName }}</div>
       </div>
-      
-      <div class="user-actions">
-        <button class="action-item" @click="audioCall">
-          <iconify-icon icon="heroicons:phone" width="24" style="color: #07C160;"></iconify-icon>
-          <span>语音通话</span>
-        </button>
-        <button class="action-item" @click="videoCall">
-          <iconify-icon icon="heroicons:video-camera" width="24" style="color: #07C160;"></iconify-icon>
-          <span>视频通话</span>
-        </button>
-        <button class="action-item" @click="viewProfile">
-          <iconify-icon icon="heroicons:user" width="24" style="color: #07C160;"></iconify-icon>
-          <span>个人信息</span>
-        </button>
+      <div class="add-member-box" @click="goToCreateGroup">
+        <iconify-icon icon="heroicons:plus" width="16" style="color: #999;"></iconify-icon>
       </div>
     </div>
 
     <!-- 聊天设置 -->
     <div class="settings-section">
       <div class="setting-item" @click="toggleMute">
-        <div class="setting-info">
-          <iconify-icon icon="heroicons:bell-slash" width="20" style="color: #666;"></iconify-icon>
-          <span>消息免打扰</span>
-        </div>
+        <span>消息免打扰</span>
         <div class="setting-toggle" :class="{ active: isMuted }">
           <div class="toggle-thumb"></div>
         </div>
       </div>
+    </div>
 
+    <div class="settings-section">
       <div class="setting-item" @click="togglePin">
-        <div class="setting-info">
-          <iconify-icon icon="heroicons:bookmark" width="20" style="color: #666;"></iconify-icon>
-          <span>置顶聊天</span>
-        </div>
+        <span>置顶聊天</span>
         <div class="setting-toggle" :class="{ active: isPinned }">
           <div class="toggle-thumb"></div>
         </div>
       </div>
+    </div>
 
+    <div class="settings-section">
       <div class="setting-item" @click="setBackground">
-        <div class="setting-info">
-          <iconify-icon icon="heroicons:photo" width="20" style="color: #666;"></iconify-icon>
-          <span>设置聊天背景</span>
-        </div>
+        <span>设置聊天背景</span>
         <iconify-icon icon="heroicons:chevron-right" width="16" style="color: #999;"></iconify-icon>
       </div>
+    </div>
 
+    <div class="settings-section">
       <div class="setting-item" @click="searchHistory">
-        <div class="setting-info">
-          <iconify-icon icon="heroicons:magnifying-glass" width="20" style="color: #666;"></iconify-icon>
-          <span>查找聊天记录</span>
-        </div>
+        <span>查找聊天内容</span>
         <iconify-icon icon="heroicons:chevron-right" width="16" style="color: #999;"></iconify-icon>
       </div>
     </div>
 
     <!-- 危险操作 -->
-    <div class="danger-section">
-      <div class="setting-item danger" @click="clearHistory">
-        <div class="setting-info">
-          <iconify-icon icon="heroicons:trash" width="20" style="color: #ff4444;"></iconify-icon>
-          <span style="color: #ff4444;">清空聊天记录</span>
-        </div>
+    <div class="settings-section">
+      <div class="setting-item" @click="showDeleteDialog">
+        <span>删除聊天记录</span>
         <iconify-icon icon="heroicons:chevron-right" width="16" style="color: #999;"></iconify-icon>
       </div>
+    </div>
 
-      <div class="setting-item danger" @click="deleteChat">
-        <div class="setting-info">
-          <iconify-icon icon="heroicons:x-circle" width="20" style="color: #ff4444;"></iconify-icon>
-          <span style="color: #ff4444;">删除聊天</span>
-        </div>
-        <iconify-icon icon="heroicons:chevron-right" width="16" style="color: #999;"></iconify-icon>
+    <!-- 删除聊天记录弹窗 -->
+    <div v-if="isDeleteDialogVisible" class="dialog-overlay" @click="hideDeleteDialog">
+      <div class="dialog-bottom" @click.stop>
+        <div class="dialog-button delete-button" @click="confirmDelete">删除聊天记录</div>
+        <div class="dialog-divider"></div>
+        <div class="dialog-button cancel-button" @click="hideDeleteDialog">取消</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useContactStore } from '@/modules/contacts/stores/contactsStore'
 
 const router = useRouter()
 const route = useRoute()
+const contactStore = useContactStore()
 
 // 聊天信息
 const chatInfo = ref({
-  id: route.params.id as string,
-  name: '李四',
-  avatar: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%23FF9500"/><text x="30" y="35" text-anchor="middle" fill="white" font-size="20">李</text></svg>',
+  id: '',
+  name: '',
+  avatar: '',
+  remark: '',
   type: 'private',
   memberCount: 0
+})
+
+// 计算显示名称（最长显示4个字，超过4个字显示前3个字+省略号）
+const displayName = computed(() => {
+  const name = chatInfo.value.remark || chatInfo.value.name || '用户'
+  if (name.length > 4) {
+    return name.substring(0, 3) + '...'
+  }
+  return name
 })
 
 // 设置状态
 const isMuted = ref(false)
 const isPinned = ref(false)
+const isDeleteDialogVisible = ref(false)
+
+// 加载用户信息
+const loadUserInfo = async () => {
+  try {
+    const userId = route.params.id as string
+    console.log('🔍 加载聊天详情，用户ID:', userId)
+    console.log('📋 当前联系人列表数量:', contactStore.contacts.length)
+    console.log('📋 联系人列表:', contactStore.contacts)
+
+    if (!userId) {
+      console.error('❌ 无法获取用户ID')
+      return
+    }
+
+    // 从联系人列表中查找用户信息
+    const contact = contactStore.contacts.find(c => String(c.id) === String(userId))
+
+    if (contact) {
+      console.log('✅ 找到联系人信息:', contact)
+      console.log('📸 头像URL:', contact.avatar)
+      console.log('👤 昵称:', contact.nickname)
+      console.log('🏷️ 备注:', contact.remark)
+
+      chatInfo.value = {
+        id: String(contact.id),
+        name: contact.nickname || contact.name || '未知用户',
+        avatar: contact.avatar || '',
+        remark: contact.remark || '',
+        type: 'private',
+        memberCount: 0
+      }
+
+      console.log('✅ 最终聊天信息:', chatInfo.value)
+    } else {
+      console.log('⚠️ 未找到联系人，尝试从API获取用户信息')
+
+      // 尝试从API获取用户信息
+      try {
+        const { userApi } = await import('@/shared/services/userApi')
+        const response = await userApi.getUserInfo(userId)
+
+        console.log('✅ 从API获取到用户信息:', response)
+
+        // API返回的数据结构是 {success: true, data: {...}}
+        const userInfo = response?.data || response
+
+        if (userInfo && userInfo.id) {
+          console.log('📸 API返回的头像URL:', userInfo.avatar)
+          console.log('👤 API返回的昵称:', userInfo.nickname)
+
+          chatInfo.value = {
+            id: String(userInfo.id),
+            name: userInfo.nickname || userInfo.username || '未知用户',
+            avatar: userInfo.avatar || '',
+            remark: '',
+            type: 'private',
+            memberCount: 0
+          }
+
+          console.log('✅ 最终聊天信息（从API）:', chatInfo.value)
+        } else {
+          throw new Error('API返回空数据')
+        }
+      } catch (apiError) {
+        console.error('❌ 从API获取用户信息失败:', apiError)
+        // 使用默认信息
+        chatInfo.value = {
+          id: userId,
+          name: '未知用户',
+          avatar: '',
+          remark: '',
+          type: 'private',
+          memberCount: 0
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ 加载用户信息失败:', error)
+  }
+}
+
+// 监听联系人列表变化
+watch(() => contactStore.contacts.length, (newLength, oldLength) => {
+  console.log('📋 联系人列表数量变化:', oldLength, '->', newLength)
+  if (newLength > 0) {
+    loadUserInfo()
+  }
+}, { immediate: false })
+
+onMounted(async () => {
+  console.log('🔄 页面加载，开始加载用户信息')
+  console.log('📋 当前联系人列表数量:', contactStore.contacts.length)
+
+  // 加载用户信息
+  await loadUserInfo()
+
+  // 加载会话设置
+  await loadSessionSettings()
+})
+
+// 加载会话设置
+const loadSessionSettings = async () => {
+  try {
+    const userId = route.params.id as string
+    if (!userId) return
+
+    // 生成sessionId
+    const { useChatStore } = await import('@/modules/chat/stores/chatStore')
+    const chatStore = useChatStore()
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
+
+    const currentUserId = String(authStore.user?.id || '')
+    const sessionId = chatStore.generateSessionId(currentUserId, userId)
+
+    console.log('📋 加载会话设置，sessionId:', sessionId)
+
+    // 加载免打扰状态
+    const { useUnreadStore } = await import('@/modules/chat/stores/unread')
+    const unreadStore = useUnreadStore()
+    isMuted.value = unreadStore.getMuteStatus(sessionId)
+    console.log('🔕 免打扰状态:', isMuted.value)
+
+    // 加载置顶状态
+    const session = chatStore.sessions.find(s => s.id === sessionId)
+    if (session) {
+      isPinned.value = session.isPinned || false
+      console.log('📌 置顶状态:', isPinned.value)
+    }
+  } catch (error) {
+    console.error('❌ 加载会话设置失败:', error)
+  }
+}
 
 // 方法
-const goBack = () => {
-  router.back()
+const toggleMute = async () => {
+  try {
+    const userId = route.params.id as string
+    if (!userId) return
+
+    const { useChatStore } = await import('@/modules/chat/stores/chatStore')
+    const chatStore = useChatStore()
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
+
+    const currentUserId = String(authStore.user?.id || '')
+    const sessionId = chatStore.generateSessionId(currentUserId, userId)
+
+    // 切换免打扰状态
+    isMuted.value = !isMuted.value
+
+    // 保存到store
+    const { useUnreadStore } = await import('@/modules/chat/stores/unread')
+    const unreadStore = useUnreadStore()
+    unreadStore.setMuteStatus(sessionId, isMuted.value)
+
+    console.log('🔕 消息免打扰:', isMuted.value)
+  } catch (error) {
+    console.error('❌ 设置免打扰失败:', error)
+  }
 }
 
-const audioCall = () => {
-  console.log('发起语音通话')
-}
+const togglePin = async () => {
+  try {
+    const userId = route.params.id as string
+    if (!userId) return
 
-const videoCall = () => {
-  console.log('发起视频通话')
-}
+    const { useChatStore } = await import('@/modules/chat/stores/chatStore')
+    const chatStore = useChatStore()
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
 
-const viewProfile = () => {
-  console.log('查看个人信息')
-}
+    const currentUserId = String(authStore.user?.id || '')
+    const sessionId = chatStore.generateSessionId(currentUserId, userId)
 
-const toggleMute = () => {
-  isMuted.value = !isMuted.value
-  console.log('消息免打扰:', isMuted.value)
-}
+    // 切换置顶状态
+    isPinned.value = !isPinned.value
 
-const togglePin = () => {
-  isPinned.value = !isPinned.value
-  console.log('置顶聊天:', isPinned.value)
+    // 更新会话的置顶状态
+    const session = chatStore.sessions.find(s => s.id === sessionId)
+    if (session) {
+      session.isPinned = isPinned.value
+      // 保存到缓存
+      chatStore.saveToCache()
+    }
+
+    console.log('📌 置顶聊天:', isPinned.value)
+  } catch (error) {
+    console.error('❌ 设置置顶失败:', error)
+  }
 }
 
 const setBackground = () => {
-  console.log('设置聊天背景')
+  console.log('🎨 跳转到设置聊天背景页面')
+  router.push('/settings/chat-background')
 }
 
-const searchHistory = () => {
-  console.log('查找聊天记录')
+const searchHistory = async () => {
+  console.log('🔍 跳转到搜索聊天记录页面')
+  const userId = route.params.id as string
+
+  // 生成sessionId
+  const { useChatStore } = await import('@/modules/chat/stores/chatStore')
+  const chatStore = useChatStore()
+  const { useAuthStore } = await import('@/stores/auth')
+  const authStore = useAuthStore()
+
+  const currentUserId = String(authStore.user?.id || '')
+  const sessionId = chatStore.generateSessionId(currentUserId, userId)
+
+  console.log('🔍 跳转到搜索页面，sessionId:', sessionId)
+  router.push(`/chat-search/${sessionId}`)
 }
 
-const clearHistory = async () => {
+// 显示删除对话框
+const showDeleteDialog = () => {
+  isDeleteDialogVisible.value = true
+}
+
+// 隐藏删除对话框
+const hideDeleteDialog = () => {
+  isDeleteDialogVisible.value = false
+}
+
+// 确认删除聊天记录
+const confirmDelete = async () => {
   try {
-    const confirmed = confirm('确定要清空聊天记录吗？\n\n• 只会清空您本地的聊天记录\n• 不会影响对方的聊天记录\n• 会话仍会保留，可以继续聊天\n• 清空后无法恢复')
-    if (!confirmed) return
-
-    // 获取当前聊天ID
-    const chatId = route.params.id as string
-    if (!chatId) {
-      console.error('❌ 无法获取聊天ID')
+    // 获取当前用户ID
+    const userId = route.params.id as string
+    if (!userId) {
+      console.error('❌ 无法获取用户ID')
       return
     }
+
+    // 生成sessionId
+    const { useChatStore } = await import('@/modules/chat/stores/chatStore')
+    const chatStore = useChatStore()
+    const { useAuthStore } = await import('@/stores/auth')
+    const authStore = useAuthStore()
+
+    const currentUserId = String(authStore.user?.id || '')
+    const sessionId = chatStore.generateSessionId(currentUserId, userId)
+
+    console.log('🧹 清除聊天记录，sessionId:', sessionId)
 
     // 清除聊天记录
-    const { useChatStore } = await import('@/modules/chat/stores/chatStore')
-    const chatStore = useChatStore()
-    await chatStore.clearChatHistory(chatId)
+    await chatStore.clearChatHistory(sessionId)
 
-    console.log('✅ 聊天记录已清空')
-    alert('聊天记录已清空')
+    console.log('✅ 聊天记录已删除')
+
+    // 隐藏对话框
+    hideDeleteDialog()
   } catch (error) {
-    console.error('❌ 清空聊天记录失败:', error)
-    alert('清空失败，请重试')
+    console.error('❌ 删除聊天记录失败:', error)
+    hideDeleteDialog()
   }
 }
 
-const deleteChat = async () => {
-  try {
-    const confirmed = confirm('确定要删除聊天吗？\n\n• 只会删除您本地的聊天记录和会话\n• 不会影响对方的聊天记录\n• 删除后需要重新创建会话才能聊天\n• 删除后无法恢复')
-    if (!confirmed) return
+// 跳转到创建群聊页面
+const goToCreateGroup = () => {
+  console.log('🔍 跳转到创建群聊页面')
+  router.push('/create-group')
+}
 
-    // 获取当前聊天ID
-    const chatId = route.params.id as string
-    if (!chatId) {
-      console.error('❌ 无法获取聊天ID')
-      return
-    }
-
-    // 删除聊天项
-    const { useChatStore } = await import('@/modules/chat/stores/chatStore')
-    const chatStore = useChatStore()
-    await chatStore.deleteChatItem(chatId)
-
-    console.log('✅ 聊天已删除')
-    alert('聊天已删除')
-    router.back()
-  } catch (error) {
-    console.error('❌ 删除聊天失败:', error)
-    alert('删除失败，请重试')
-  }
+// 处理图片加载错误
+const handleImageError = (event: Event) => {
+  const img = event.target as HTMLImageElement
+  console.log('❌ 头像加载失败，使用默认头像')
+  img.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${chatInfo.value.id}`
 }
 </script>
 
 <style scoped>
 .chat-info {
-  height: 100vh;
-  background: #f5f5f5;
+  min-height: 100vh;
+  background: #E5E5E5;
   overflow-y: auto;
-}
-
-.header {
-  background: white;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  position: fixed;
-  top: 0;
+  position: absolute;
+  top: 65px; /* 从顶部导航栏下方开始，间距为0 */
   left: 0;
   right: 0;
-  z-index: 100;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.back-btn {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 8px;
-}
-
-.header-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
+  bottom: 0;
 }
 
 .user-section {
   background: white;
-  margin-top: 60px;
-  padding: 20px 16px;
-  border-bottom: 8px solid #f0f0f0;
+  height: 80px; /* 容器高度 80px */
+  display: flex;
+  align-items: flex-start; /* 顶部对齐 */
+  padding-left: 10px; /* 左边距 10px */
+  padding-top: 10px; /* 顶部内边距 */
+  gap: 12px; /* 头像容器和虚线框之间的间距 */
+  margin-bottom: 2px; /* 容器间距 2px */
 }
 
-.user-info {
+.avatar-container {
   display: flex;
+  flex-direction: column; /* 纵向布局：头像在上，昵称在下 */
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  justify-content: flex-start;
+  gap: 6px; /* 头像和昵称之间的间距 6px */
 }
 
 .user-avatar {
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-}
-
-.user-details {
-  flex: 1;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 4px;
+  flex-shrink: 0;
+  object-fit: cover; /* 确保图片按比例裁剪 */
 }
 
 .user-name {
-  font-size: 18px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 4px;
-}
-
-.user-status {
-  font-size: 14px;
+  font-size: 10px; /* 字体大小 10px（浏览器最小字体） */
+  font-weight: normal; /* 不使用粗体 */
   color: #666;
+  width: 36px; /* 宽度 36px */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1;
 }
 
-.user-actions {
+.add-member-box {
+  width: 36px; /* 虚线框宽度 36px */
+  height: 36px; /* 虚线框高度 36px，正方形 */
+  border: 1px dashed #ccc;
+  border-radius: 4px;
   display: flex;
-  justify-content: space-around;
-}
-
-.action-item {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  border: none;
-  background: transparent;
+  justify-content: center;
   cursor: pointer;
-  padding: 12px;
-  border-radius: 8px;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
-.action-item:hover {
-  background: #f8f8f8;
+.add-member-box:hover {
+  border-color: #999;
+  background: #f5f5f5;
 }
 
-.action-item span {
-  font-size: 12px;
-  color: #666;
+.add-member-box:active {
+  background: #e5e5e5;
 }
 
-.settings-section,
-.danger-section {
+.settings-section {
   background: white;
-  margin-bottom: 8px;
+  margin-bottom: 2px; /* 容器间距 2px */
 }
 
 .setting-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  height: 48px; /* 功能项高度 48px */
+  padding: 0 16px;
   cursor: pointer;
   transition: background-color 0.2s;
-}
-
-.setting-item:last-child {
-  border-bottom: none;
+  font-size: 16px;
+  color: #333;
 }
 
 .setting-item:hover {
   background: #f8f8f8;
-}
-
-.setting-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 16px;
-  color: #333;
 }
 
 .setting-toggle {
@@ -351,11 +493,79 @@ const deleteChat = async () => {
   position: absolute;
   top: 2px;
   left: 2px;
-  transition: transform 0.3s;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .setting-toggle.active .toggle-thumb {
-  transform: translateX(20px);
+  left: 22px;
+}
+
+/* 删除对话框样式 */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dialog-bottom {
+  width: 100%;
+  background: white;
+  border-radius: 12px 12px 0 0;
+  padding: 0;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.dialog-button {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.dialog-button:active {
+  background: #f5f5f5;
+}
+
+.delete-button {
+  color: #FF3B30;
+  font-weight: 500;
+}
+
+.cancel-button {
+  color: #333;
+}
+
+.dialog-divider {
+  height: 8px;
+  background: #f5f5f5;
 }
 </style>

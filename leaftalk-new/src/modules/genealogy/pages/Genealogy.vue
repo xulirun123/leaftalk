@@ -61,11 +61,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
 import MobileTabBar from '../../../shared/components/mobile/MobileTabBar.vue'
+import { checkVerification } from '../../../shared/utils/verificationCheck'
 
 const router = useRouter()
+const route = useRoute()
 const appStore = useAppStore()
 
 // 响应式数据
@@ -74,11 +76,10 @@ const myGenealogies = ref([])
 const isVerified = ref(false)
 
 // 检查用户是否已实名认证
-const checkVerificationStatus = () => {
-  // 检查用户是否已实名认证
-  const user = appStore.user
-  isVerified.value = user && user.verification_status === 'verified'
-  console.log('🔍 用户认证状态:', isVerified.value, user)
+const checkVerificationStatus = async () => {
+  // 使用统一的实名认证检查工具
+  isVerified.value = await checkVerification()
+  console.log('🔍 用户认证状态:', isVerified.value)
 }
 
 // 自动创建族谱
@@ -120,8 +121,9 @@ const autoCreateGenealogy = async () => {
 }
 
 const goToVerification = () => {
-  appStore.showToast('实名认证功能开发中', 'info')
-  // router.push('/verification')
+  // 保存返回路径
+  sessionStorage.setItem('verification_return_path', route.fullPath)
+  router.push('/identity-verification')
 }
 
 const viewGenealogy = (genealogy: any) => {
@@ -132,7 +134,7 @@ const viewGenealogy = (genealogy: any) => {
 // 生命周期
 onMounted(async () => {
   console.log('🌳 族谱页面加载...')
-  checkVerificationStatus()
+  await checkVerificationStatus()
 
   if (isVerified.value) {
     await autoCreateGenealogy()

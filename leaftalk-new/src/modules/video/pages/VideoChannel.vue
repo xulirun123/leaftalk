@@ -160,8 +160,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMomentsStore } from '../../../stores/moments'
-import { useDiscoverStore } from './stores/discover'
-import WeChatIcon from '../../components/icons/WeChatIcon.vue'
+import { useDiscoverStore } from '../../../stores/discover'
+import WeChatIcon from '../../../shared/components/icons/WeChatIcon.vue'
 
 const router = useRouter()
 const route = useRoute()

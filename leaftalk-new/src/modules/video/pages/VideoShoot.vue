@@ -115,7 +115,7 @@
             @click="applyFilter(filter.id)"
           >
             <div class="filter-preview" :style="{ filter: filter.css }">
-              <img src="/images/filter-preview.jpg" alt="预览" />
+              <div class="filter-preview-placeholder">🎨</div>
             </div>
             <span class="filter-name">{{ filter.name }}</span>
           </div>

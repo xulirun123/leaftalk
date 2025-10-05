@@ -88,7 +88,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useBlacklistStore, type BlacklistUser } from '../../stores/blacklist'
+import { useBlacklistStore, type BlacklistUser } from '../../../stores/blacklist'
 import { generateDefaultAvatar } from '../../../shared/utils/userInfo'
 
 const router = useRouter()

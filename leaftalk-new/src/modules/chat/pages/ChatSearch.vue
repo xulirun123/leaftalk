@@ -1,53 +1,48 @@
 <template>
   <div class="chat-search-page">
-    <MobileTopBar
-      title="搜索聊天记录"
-      :showBack="true"
-      @back="goBack"
-    />
-    
-    <div class="page-content scroll-container">
-      <!-- 搜索栏 -->
-      <div class="search-section">
-        <div class="search-bar">
-          <iconify-icon icon="heroicons:magnifying-glass" width="20" color="#999"></iconify-icon>
-          <input 
-            v-model="searchKeyword" 
-            placeholder="搜索聊天记录" 
-            class="search-input"
-            @input="performSearch"
-            ref="searchInput"
-          />
-          <button v-if="searchKeyword" @click="clearSearch" class="clear-btn">
-            <iconify-icon icon="heroicons:x-mark" width="16" color="#999"></iconify-icon>
-          </button>
-        </div>
-      </div>
+    <!-- 状态栏 -->
+    <div class="status-bar"></div>
 
-      <!-- 搜索筛选 -->
-      <div class="filter-section" v-if="searchKeyword">
-        <div class="filter-tabs">
-          <button 
-            v-for="filter in searchFilters" 
-            :key="filter.key"
-            @click="activeFilter = filter.key"
-            :class="['filter-tab', { active: activeFilter === filter.key }]"
+    <!-- 搜索栏 -->
+    <div class="search-header">
+      <div class="search-bar">
+        <iconify-icon icon="heroicons:magnifying-glass" width="18" color="#999"></iconify-icon>
+        <input
+          v-model="searchKeyword"
+          placeholder="搜索聊天记录"
+          class="search-input"
+          @input="performSearch"
+          ref="searchInput"
+        />
+      </div>
+      <button class="cancel-btn" @click="goBack">取消</button>
+    </div>
+
+    <div class="page-content">
+      <!-- 快速搜索分类 -->
+      <div class="quick-search-section">
+        <div class="section-title">快速搜索聊天内容</div>
+        <div class="quick-search-grid">
+          <div
+            v-for="category in searchCategories"
+            :key="category.key"
+            class="category-item"
+            @click="goToCategorySearch(category.key)"
           >
-            {{ filter.name }}
-            <span v-if="getFilterCount(filter.key) > 0" class="filter-count">
-              {{ getFilterCount(filter.key) }}
-            </span>
-          </button>
+            <iconify-icon :icon="category.icon" width="24" :color="category.color"></iconify-icon>
+            <span class="category-name">{{ category.name }}</span>
+          </div>
         </div>
       </div>
 
-      <!-- 搜索结果 -->
-      <div class="search-results" v-if="searchKeyword">
+      <!-- 搜索结果（当有输入时显示） -->
+      <div class="search-results-section" v-if="searchKeyword">
+
         <div v-if="isSearching" class="loading-state">
           <iconify-icon icon="heroicons:arrow-path" width="24" color="#999" class="spinning"></iconify-icon>
           <span>搜索中...</span>
         </div>
-        
+
         <div v-else-if="filteredResults.length === 0" class="empty-results">
           <iconify-icon icon="heroicons:magnifying-glass" width="48" color="#ccc"></iconify-icon>
           <p>未找到相关聊天记录</p>
@@ -55,8 +50,8 @@
         </div>
         
         <div v-else class="result-list">
-          <div 
-            v-for="result in filteredResults" 
+          <div
+            v-for="result in filteredResults"
             :key="result.id"
             class="result-item"
             @click="openChatMessage(result)"
@@ -71,7 +66,84 @@
               </div>
               <div class="result-message">
                 <span class="sender-name" v-if="result.isGroup">{{ result.senderName }}:</span>
-                <span class="message-content" v-html="highlightKeyword(result.content)"></span>
+
+                <!-- 文字消息 -->
+                <span v-if="result.type === 'text'" class="message-content" v-html="highlightKeyword(result.content)"></span>
+
+                <!-- 图片消息 -->
+                <div v-else-if="result.type === 'image'" class="media-message">
+                  <iconify-icon icon="heroicons:photo" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content" v-html="highlightKeyword(result.content)"></span>
+                </div>
+
+                <!-- 视频消息 -->
+                <div v-else-if="result.type === 'video'" class="media-message">
+                  <iconify-icon icon="heroicons:video-camera" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content">{{ result.content }}</span>
+                  <span class="media-duration">{{ result.duration }}</span>
+                </div>
+
+                <!-- 语音消息 -->
+                <div v-else-if="result.type === 'voice'" class="media-message">
+                  <iconify-icon icon="heroicons:microphone" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content">{{ result.content }}</span>
+                  <span class="media-duration">{{ result.duration }}</span>
+                </div>
+
+                <!-- 文件消息 -->
+                <div v-else-if="result.type === 'file'" class="media-message">
+                  <iconify-icon icon="heroicons:document" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content" v-html="highlightKeyword(result.content)"></span>
+                  <span class="file-size">{{ result.fileSize }}</span>
+                </div>
+
+                <!-- 链接消息 -->
+                <div v-else-if="result.type === 'link'" class="media-message">
+                  <iconify-icon icon="heroicons:link" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content" v-html="highlightKeyword(result.linkTitle || result.content)"></span>
+                </div>
+
+                <!-- 音乐消息 -->
+                <div v-else-if="result.type === 'music'" class="media-message">
+                  <iconify-icon icon="heroicons:musical-note" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content">{{ result.musicTitle }}</span>
+                  <span class="music-artist">{{ result.artist }}</span>
+                </div>
+
+                <!-- 小程序消息 -->
+                <div v-else-if="result.type === 'miniprogram'" class="media-message">
+                  <iconify-icon icon="heroicons:cube" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content">{{ result.miniprogramName }}</span>
+                </div>
+
+                <!-- 视频号消息 -->
+                <div v-else-if="result.type === 'videochannel'" class="media-message">
+                  <iconify-icon icon="heroicons:play-circle" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content">{{ result.videoChannelTitle }}</span>
+                </div>
+
+                <!-- 位置消息 -->
+                <div v-else-if="result.type === 'location'" class="media-message">
+                  <iconify-icon icon="heroicons:map-pin" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content">{{ result.locationName }}</span>
+                  <span class="location-address">{{ result.address }}</span>
+                </div>
+
+                <!-- 红包消息 -->
+                <div v-else-if="result.type === 'redpacket'" class="media-message">
+                  <iconify-icon icon="heroicons:gift" width="16" color="#F56C6C"></iconify-icon>
+                  <span class="message-content">{{ result.content }}</span>
+                  <span class="amount">¥{{ result.amount }}</span>
+                </div>
+
+                <!-- 转账消息 -->
+                <div v-else-if="result.type === 'transfer'" class="media-message">
+                  <iconify-icon icon="heroicons:banknotes" width="16" color="#07C160"></iconify-icon>
+                  <span class="message-content">{{ result.content }}</span>
+                </div>
+
+                <!-- 其他类型 -->
+                <span v-else class="message-content">{{ result.content }}</span>
               </div>
               <div class="result-type">
                 <iconify-icon :icon="getTypeIcon(result.type)" width="12" color="#999"></iconify-icon>
@@ -83,44 +155,7 @@
         </div>
       </div>
 
-      <!-- 搜索建议 -->
-      <div class="search-suggestions" v-else>
-        <div class="suggestion-section">
-          <h3>最近搜索</h3>
-          <div class="recent-searches">
-            <div 
-              v-for="recent in recentSearches" 
-              :key="recent"
-              class="recent-item"
-              @click="searchKeyword = recent"
-            >
-              <iconify-icon icon="heroicons:clock" width="16" color="#999"></iconify-icon>
-              <span>{{ recent }}</span>
-              <button @click.stop="removeRecentSearch(recent)" class="remove-btn">
-                <iconify-icon icon="heroicons:x-mark" width="12" color="#999"></iconify-icon>
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <div class="suggestion-section">
-          <h3>搜索技巧</h3>
-          <div class="search-tips">
-            <div class="tip-item">
-              <iconify-icon icon="heroicons:light-bulb" width="16" color="#07C160"></iconify-icon>
-              <span>输入关键词搜索聊天内容</span>
-            </div>
-            <div class="tip-item">
-              <iconify-icon icon="heroicons:light-bulb" width="16" color="#07C160"></iconify-icon>
-              <span>可以搜索图片、文件、链接等</span>
-            </div>
-            <div class="tip-item">
-              <iconify-icon icon="heroicons:light-bulb" width="16" color="#07C160"></iconify-icon>
-              <span>支持按联系人或群组筛选</span>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -138,33 +173,30 @@ const appStore = useAppStore()
 // 响应式数据
 const searchInput = ref(null)
 const searchKeyword = ref('')
-const activeFilter = ref('all')
 const isSearching = ref(false)
 
-// 搜索筛选选项
-const searchFilters = [
-  { key: 'all', name: '全部' },
-  { key: 'text', name: '文字' },
-  { key: 'image', name: '图片' },
-  { key: 'file', name: '文件' },
-  { key: 'link', name: '链接' }
+// 快速搜索分类
+const searchCategories = [
+  { key: 'date', name: '日期', icon: 'heroicons:calendar', color: '#07C160' },
+  { key: 'image', name: '图片', icon: 'heroicons:photo', color: '#FF9500' },
+  { key: 'music', name: '音乐', icon: 'heroicons:musical-note', color: '#FF3B30' },
+  { key: 'file', name: '文件', icon: 'heroicons:document', color: '#5856D6' },
+  { key: 'link', name: '链接', icon: 'heroicons:link', color: '#007AFF' },
+  { key: 'video', name: '视频', icon: 'heroicons:video-camera', color: '#34C759' },
+  { key: 'transaction', name: '交易', icon: 'heroicons:banknotes', color: '#FF9500' },
+  { key: 'miniprogram', name: '小程序', icon: 'heroicons:cube', color: '#5AC8FA' },
+  { key: 'videochannel', name: '视频号', icon: 'heroicons:play-circle', color: '#FF2D55' }
 ]
 
-// 最近搜索
-const recentSearches = ref([
-  '家族聚会',
-  '照片',
-  '文档',
-  '会议'
-])
 
-// 搜索结果
+
+// 搜索结果（模拟数据 - 包含各种类型）
 const searchResults = ref([
   {
     id: 1,
-    chatId: 'chat1',
+    chatId: 'chat_15_2',
     chatName: '家族群',
-    chatAvatar: '/group-avatar1.jpg',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=group1',
     isGroup: true,
     senderId: 'user1',
     senderName: '张小明',
@@ -174,44 +206,168 @@ const searchResults = ref([
   },
   {
     id: 2,
-    chatId: 'chat2',
+    chatId: 'chat_15_3',
     chatName: '李小华',
-    chatAvatar: '/avatar2.jpg',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user2',
     isGroup: false,
     senderId: 'user2',
     senderName: '李小华',
     type: 'image',
-    content: '家族聚会的照片.jpg',
+    content: '[图片] 家族聚会合影.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?w=300',
     timestamp: new Date(Date.now() - 7200000)
   },
   {
     id: 3,
-    chatId: 'chat1',
+    chatId: 'chat_15_2',
     chatName: '家族群',
-    chatAvatar: '/group-avatar1.jpg',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=group1',
     isGroup: true,
     senderId: 'user3',
     senderName: '王大明',
     type: 'file',
-    content: '家族族谱文档.pdf',
+    content: '[文件] 家族族谱文档.pdf',
+    fileSize: '2.5MB',
     timestamp: new Date(Date.now() - 86400000)
+  },
+  {
+    id: 4,
+    chatId: 'chat_15_3',
+    chatName: '李小华',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user2',
+    isGroup: false,
+    senderId: 'user2',
+    senderName: '李小华',
+    type: 'video',
+    content: '[视频] 家族聚会视频.mp4',
+    duration: '02:35',
+    timestamp: new Date(Date.now() - 172800000)
+  },
+  {
+    id: 5,
+    chatId: 'chat_15_2',
+    chatName: '家族群',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=group1',
+    isGroup: true,
+    senderId: 'user4',
+    senderName: '赵小红',
+    type: 'voice',
+    content: '[语音]',
+    duration: '15"',
+    timestamp: new Date(Date.now() - 259200000)
+  },
+  {
+    id: 6,
+    chatId: 'chat_15_4',
+    chatName: '王小刚',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user4',
+    isGroup: false,
+    senderId: 'user4',
+    senderName: '王小刚',
+    type: 'link',
+    content: '家族网站链接',
+    linkUrl: 'https://family.example.com',
+    linkTitle: '叶氏家族官方网站',
+    timestamp: new Date(Date.now() - 345600000)
+  },
+  {
+    id: 7,
+    chatId: 'chat_15_2',
+    chatName: '家族群',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=group1',
+    isGroup: true,
+    senderId: 'user5',
+    senderName: '刘小芳',
+    type: 'music',
+    content: '[音乐] 家族主题曲',
+    musicTitle: '叶氏家族之歌',
+    artist: '家族合唱团',
+    timestamp: new Date(Date.now() - 432000000)
+  },
+  {
+    id: 8,
+    chatId: 'chat_15_3',
+    chatName: '李小华',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user2',
+    isGroup: false,
+    senderId: 'user2',
+    senderName: '李小华',
+    type: 'miniprogram',
+    content: '[小程序] 家族族谱查询',
+    miniprogramName: '叶语族谱',
+    timestamp: new Date(Date.now() - 518400000)
+  },
+  {
+    id: 9,
+    chatId: 'chat_15_2',
+    chatName: '家族群',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=group1',
+    isGroup: true,
+    senderId: 'user6',
+    senderName: '陈小明',
+    type: 'videochannel',
+    content: '[视频号] 家族历史纪录片',
+    videoChannelTitle: '叶氏家族百年史',
+    timestamp: new Date(Date.now() - 604800000)
+  },
+  {
+    id: 10,
+    chatId: 'chat_15_5',
+    chatName: '周小丽',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user5',
+    isGroup: false,
+    senderId: 'user5',
+    senderName: '周小丽',
+    type: 'location',
+    content: '[位置] 家族祠堂',
+    locationName: '叶氏祠堂',
+    address: '广东省梅州市梅县区',
+    timestamp: new Date(Date.now() - 691200000)
+  },
+  {
+    id: 11,
+    chatId: 'chat_15_2',
+    chatName: '家族群',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=group1',
+    isGroup: true,
+    senderId: 'user7',
+    senderName: '吴小强',
+    type: 'redpacket',
+    content: '[红包] 新年快乐',
+    amount: '88.88',
+    timestamp: new Date(Date.now() - 777600000)
+  },
+  {
+    id: 12,
+    chatId: 'chat_15_6',
+    chatName: '郑小华',
+    chatAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user6',
+    isGroup: false,
+    senderId: 'user6',
+    senderName: '郑小华',
+    type: 'transfer',
+    content: '[转账] ¥500.00',
+    amount: '500.00',
+    timestamp: new Date(Date.now() - 864000000)
   }
 ])
 
 // 计算属性
 const filteredResults = computed(() => {
   if (!searchKeyword.value) return []
-  
-  let results = searchResults.value.filter(result => 
+
+  let results = searchResults.value.filter(result =>
     result.content.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
     result.chatName.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
     result.senderName.toLowerCase().includes(searchKeyword.value.toLowerCase())
   )
-  
-  if (activeFilter.value !== 'all') {
-    results = results.filter(result => result.type === activeFilter.value)
+
+  // 按聊天ID筛选（如果有传入chatId参数）
+  if (route.params.chatId) {
+    const chatId = route.params.chatId as string
+    results = results.filter(result => result.chatId === chatId)
   }
-  
+
   return results
 })
 
@@ -223,7 +379,7 @@ onMounted(() => {
       searchInput.value.focus()
     }
   })
-  
+
   // 如果有传入的搜索关键词
   if (route.query.keyword) {
     searchKeyword.value = route.query.keyword as string
@@ -233,6 +389,16 @@ onMounted(() => {
 // 方法
 const goBack = () => {
   router.back()
+}
+
+// 跳转到分类搜索页面
+const goToCategorySearch = (category: string) => {
+  const chatId = route.params.chatId as string
+  const basePath = `/chat-search-${category}`
+  const fullPath = chatId ? `${basePath}/${chatId}` : basePath
+
+  console.log('🔍 跳转到分类搜索:', category, fullPath)
+  router.push(fullPath)
 }
 
 const performSearch = () => {
@@ -254,20 +420,7 @@ const performSearch = () => {
   }, 500)
 }
 
-const clearSearch = () => {
-  searchKeyword.value = ''
-  activeFilter.value = 'all'
-}
 
-const getFilterCount = (filterKey: string) => {
-  if (filterKey === 'all') return filteredResults.value.length
-  return searchResults.value.filter(result => 
-    result.type === filterKey && 
-    (result.content.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-     result.chatName.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-     result.senderName.toLowerCase().includes(searchKeyword.value.toLowerCase()))
-  ).length
-}
 
 const highlightKeyword = (text: string) => {
   if (!searchKeyword.value) return text
@@ -294,10 +447,16 @@ const getTypeIcon = (type: string) => {
   const iconMap = {
     text: 'heroicons:chat-bubble-left',
     image: 'heroicons:photo',
+    video: 'heroicons:video-camera',
+    voice: 'heroicons:microphone',
     file: 'heroicons:document',
     link: 'heroicons:link',
-    voice: 'heroicons:microphone',
-    video: 'heroicons:video-camera'
+    music: 'heroicons:musical-note',
+    miniprogram: 'heroicons:cube',
+    videochannel: 'heroicons:play-circle',
+    location: 'heroicons:map-pin',
+    redpacket: 'heroicons:gift',
+    transfer: 'heroicons:banknotes'
   }
   return iconMap[type] || 'heroicons:chat-bubble-left'
 }
@@ -305,11 +464,17 @@ const getTypeIcon = (type: string) => {
 const getTypeText = (type: string) => {
   const typeMap = {
     text: '文字消息',
-    image: '图片消息',
-    file: '文件消息',
-    link: '链接消息',
-    voice: '语音消息',
-    video: '视频消息'
+    image: '图片',
+    video: '视频',
+    voice: '语音',
+    file: '文件',
+    link: '链接',
+    music: '音乐',
+    miniprogram: '小程序',
+    videochannel: '视频号',
+    location: '位置',
+    redpacket: '红包',
+    transfer: '转账'
   }
   return typeMap[type] || '消息'
 }
@@ -322,69 +487,150 @@ const openChatMessage = (result: any) => {
   })
 }
 
-const removeRecentSearch = (search: string) => {
-  const index = recentSearches.value.indexOf(search)
-  if (index > -1) {
-    recentSearches.value.splice(index, 1)
-  }
-}
+
 </script>
 
 <style scoped>
 .chat-search-page {
   height: 100vh;
-  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  background: #EDEDED;
 }
 
-.page-content {
-  height: calc(100vh - 75px);
-  overflow-y: auto;
-  padding: 16px;
+/* 状态栏 */
+.status-bar {
+  height: 25px;
+  background: white;
 }
 
-.search-section {
-  margin-bottom: 16px;
+/* 搜索头部 */
+.search-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border-bottom: 1px solid #E5E5E5;
 }
 
 .search-bar {
+  flex: 1;
   display: flex;
   align-items: center;
-  background: white;
-  border-radius: 20px;
-  padding: 8px 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  gap: 8px;
+  padding: 6px 12px;
+  background: #F6F6F6;
+  border-radius: 8px;
 }
 
 .search-input {
   flex: 1;
   border: none;
   outline: none;
-  margin-left: 8px;
-  font-size: 14px;
+  font-size: 15px;
   color: #333;
+  background: transparent;
 }
 
 .search-input::placeholder {
   color: #999;
 }
 
-.clear-btn {
+.cancel-btn {
+  padding: 0;
   background: none;
   border: none;
-  padding: 4px;
+  font-size: 15px;
+  color: #07C160;
   cursor: pointer;
-  border-radius: 50%;
-  transition: background 0.2s;
+  white-space: nowrap;
 }
 
-.clear-btn:hover {
-  background: #f0f0f0;
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 快速搜索分类 */
+.quick-search-section {
+  background: white;
+  padding: 16px;
+  margin-bottom: 8px;
+}
+
+.section-title {
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 12px;
+}
+
+.quick-search-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.category-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  background: #F6F6F6;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-item:active {
+  background: #E5E5E5;
+  transform: scale(0.98);
+}
+
+.category-name {
+  font-size: 13px;
+  color: #333;
 }
 
 .filter-section {
   margin-bottom: 16px;
 }
 
+/* 日期筛选 */
+.date-filter {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.date-filter-btn {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.date-filter-btn.active {
+  background: #07C160;
+  color: white;
+  border-color: #07C160;
+}
+
+.date-filter-btn:hover {
+  border-color: #07C160;
+}
+
+/* 类型筛选 */
 .filter-tabs {
   display: flex;
   gap: 8px;
@@ -545,6 +791,30 @@ const removeRecentSearch = (search: string) => {
   gap: 4px;
   font-size: 12px;
   color: #999;
+}
+
+/* 媒体消息样式 */
+.media-message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.media-duration,
+.file-size,
+.music-artist,
+.location-address {
+  font-size: 12px;
+  color: #999;
+  margin-left: 4px;
+}
+
+.amount {
+  font-size: 14px;
+  font-weight: bold;
+  color: #F56C6C;
+  margin-left: 4px;
 }
 
 .search-suggestions {

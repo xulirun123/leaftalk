@@ -1,12 +1,5 @@
 <template>
   <div class="settings">
-    <!-- 使用统一的顶部导航栏 -->
-    <MobileTopBar
-      :title="$t('settings.title')"
-      :show-back="true"
-      @back="goBack"
-    />
-
     <!-- 设置列表 -->
     <div class="settings-content">
       <!-- 主要设置项 -->
@@ -75,7 +68,6 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
 import { useAuthStore } from '../../../stores/auth'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()
 const appStore = useAppStore()

@@ -10,27 +10,6 @@
           <iconify-icon icon="heroicons:arrow-left" width="24" style="color: white;"></iconify-icon>
         </button>
 
-        <!-- 仿系统状态栏 -->
-        <div class="status-bar">
-          <div class="sb-left">
-            <span class="time">{{ timeString }}</span>
-          </div>
-          <div class="sb-right">
-            <span class="signal" :class="{ offline: !isOnline }">
-              <i v-for="i in 4" :key="i" :style="{ height: (4 + i*3) + 'px' }"></i>
-            </span>
-            <span class="wifi" :class="{ offline: !isOnline }">
-              <i></i>
-            </span>
-            <span class="battery">
-              <i class="cap"></i>
-              <i class="level"><b :style="{ width: Math.round(batteryLevel * 100) + '%' }"></b></i>
-            </span>
-          </div>
-        </div>
-
-
-
         <!-- 用户信息（右侧） -->
         <div class="user-info-right">
           <div class="user-details">

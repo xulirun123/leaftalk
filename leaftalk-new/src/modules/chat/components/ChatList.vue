@@ -121,32 +121,43 @@ const getNotificationTypeText = (type: string) => {
 // 格式化时间
 const formatTime = (time: Date) => {
   if (!time) return ''
-  
+
+  const messageDate = new Date(time)
   const now = new Date()
-  const diff = now.getTime() - time.getTime()
-  const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (diffDays === 0) {
-    // 今天，显示时间
-    return time.toLocaleTimeString('zh-CN', { 
-      hour: '2-digit', 
+
+  // 获取今天、昨天、前天的日期（只比较年月日）
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const dayBeforeYesterday = new Date(today)
+  dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2)
+
+  const msgDate = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate())
+
+  // 今天：显示时间
+  if (msgDate.getTime() === today.getTime()) {
+    return messageDate.toLocaleTimeString('zh-CN', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: false 
-    })
-  } else if (diffDays === 1) {
-    // 昨天
-    return '昨天'
-  } else if (diffDays < 7) {
-    // 一周内，显示星期
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六']
-    return `星期${weekdays[time.getDay()]}`
-  } else {
-    // 超过一周，显示日期
-    return time.toLocaleDateString('zh-CN', { 
-      month: '2-digit', 
-      day: '2-digit' 
+      hour12: false
     })
   }
+
+  // 昨天：显示"昨天"
+  if (msgDate.getTime() === yesterday.getTime()) {
+    return '昨天'
+  }
+
+  // 前天：显示"前天"
+  if (msgDate.getTime() === dayBeforeYesterday.getTime()) {
+    return '前天'
+  }
+
+  // 三天以前：只显示日期（月/日）
+  return messageDate.toLocaleDateString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric'
+  })
 }
 
 // 打开聊天

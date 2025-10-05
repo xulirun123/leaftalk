@@ -30,8 +30,8 @@ export class ChatModule implements Module {
         title: '聊天',
         requiresAuth: false,
         keepAlive: false,
-        hideTabBar: true,
-        hideTopBar: true
+        hideTabBar: true
+        // 显示统一的顶部导航栏（不设置 hideTopBar）
       }
     },
     {

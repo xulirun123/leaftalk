@@ -114,8 +114,8 @@ import { useAppStore } from '../../../shared/stores/appStore'
 import { useAuthStore } from '../../../stores/auth'
 import axios from 'axios'
 
-// 配置axios
-axios.defaults.baseURL = import.meta.env.DEV ? 'http://localhost:8893/api' : '/api'
+// 配置axios - 使用相对路径，通过前端服务器代理
+axios.defaults.baseURL = '/api'
 
 const router = useRouter()
 const appStore = useAppStore()
@@ -140,10 +140,9 @@ const handleLogin = async () => {
 
     // 使用axios调用登录API
     console.log('🔄 使用axios调用登录API')
-    const apiUrl = import.meta.env.DEV ? 'http://localhost:8893/api/auth/login' : '/api/auth/login'
-    console.log('🔗 请求URL:', apiUrl)
+    console.log('🔗 请求URL: /auth/login (通过代理)')
 
-    const response = await axios.post(apiUrl, {
+    const response = await axios.post('/auth/login', {
       username: username.value,
       password: password.value
     })
@@ -177,55 +176,22 @@ const handleLogin = async () => {
       authStore.setUser(userData)
       authStore.setToken(result.data.token)
 
-      // 检查实名认证状态 - 调用后端API获取真实状态
-      try {
-        console.log('🔍 检查用户实名认证状态...')
-        const verificationResponse = await fetch(`http://localhost:8893/api/dev/user-verification/${userData.id}`)
-        const verificationResult = await verificationResponse.json()
-
-        if (verificationResult.success && verificationResult.data.isVerified) {
-          // 已实名认证，跳转到首页
-          console.log('✅ 用户已实名认证，跳转到首页')
-          appStore.showToast('登录成功！正在跳转...', 'success')
-          setTimeout(() => {
-            router.push('/')
-          }, 1500)
-        } else {
-          // 未实名认证，跳转到实名认证页面
-          console.log('⚠️ 用户未实名认证，跳转到认证页面')
-          appStore.showToast('请先完成实名认证', 'warning')
-          setTimeout(() => {
-            router.push('/identity-verification')
-          }, 1500)
-        }
-      } catch (verificationError) {
-        console.warn('🔍 认证状态检查失败，使用默认逻辑:', verificationError)
-        // 如果API调用失败，使用原有逻辑
-        if (!result.data.user.verified) {
-          appStore.showToast('请先完成实名认证', 'warning')
-          setTimeout(() => {
-            router.push('/identity-verification')
-          }, 1500)
-        } else {
-          appStore.showToast('登录成功！正在跳转...', 'success')
-          setTimeout(() => {
-            router.push('/')
-          }, 1500)
-        }
-      }
+      // 登录成功后直接跳转到首页，不检查实名认证状态
+      console.log('✅ 登录成功，跳转到首页')
+      appStore.showToast('登录成功！正在跳转...', 'success')
+      setTimeout(() => {
+        router.push('/')
+      }, 1500)
 
     } else {
       throw new Error(result.message || '登录失败')
     }
 
   } catch (error) {
-    console.error('❌ 登录失败:', error)
-    console.error('❌ 错误类型:', error.constructor.name)
-    console.error('❌ 错误代码:', error.code)
-    console.error('❌ 错误消息:', error.message)
-    console.error('❌ 响应状态:', error.response?.status)
-    console.error('❌ 响应数据:', error.response?.data)
-    console.error('❌ 请求配置:', error.config?.url, error.config?.method)
+    // 只在开发环境输出详细错误信息
+    if (import.meta.env.DEV) {
+      console.error('❌ 登录失败:', error)
+    }
 
     // 处理不同类型的错误
     let errorMessage = '登录失败，请重试'

@@ -1,34 +1,32 @@
 <template>
   <div class="chat-simple" :class="{ entering: isEntering }" v-if="isValidRoute">
-    <!-- 状态栏贴顶部 -->
-    <StatusBar />
+    <!-- 使用统一的顶部导航栏，不需要自定义导航栏 -->
 
-    <!-- 聊天头部 - 移除通话按钮和在线状态 -->
-    <div class="chat-header" style="background:#e5e5e5;">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24"></iconify-icon>
-      </button>
-      <div class="chat-title">
-        <h3>{{ titleName }}</h3>
+    <!-- 调试信息已关闭 -->
+    <div v-if="false" style="position: fixed; top: 100px; right: 10px; background: rgba(255,255,255,0.95); padding: 10px; z-index: 9999; font-size: 11px; max-width: 350px; word-break: break-all; border: 2px solid #07C160; max-height: 400px; overflow-y: auto;">
+      <div><strong style="color: #07C160;">🔍 背景调试信息:</strong></div>
+      <div style="margin-top: 5px; padding: 5px; background: #f0f0f0;">
+        <div><strong>chatBackgroundStyle:</strong></div>
+        <div style="font-size: 10px; color: #333;">{{ JSON.stringify(chatBackgroundStyle) }}</div>
       </div>
-      <div class="header-actions">
-        <button class="action-btn" @click="testAdjustHeight" title="测试调整消息容器">
-          <iconify-icon icon="heroicons:arrow-path" width="16"></iconify-icon>
-        </button>
-        <button class="action-btn" @click="showChatInfo">
-          <iconify-icon icon="heroicons:ellipsis-horizontal" width="20"></iconify-icon>
-        </button>
+      <div style="margin-top: 5px; padding: 5px; background: #f0f0f0;">
+        <div><strong>localStorage背景:</strong></div>
+        <div style="font-size: 10px; color: #333;">{{ debugLocalStorage }}</div>
+      </div>
+      <div style="margin-top: 5px; padding: 5px; background: #f0f0f0;">
+        <div><strong>加载状态:</strong></div>
+        <div style="font-size: 10px; color: #333;">{{ debugLoadStatus }}</div>
       </div>
     </div>
 
     <!-- 聊天消息区域 -->
-    <div class="chat-messages" ref="messagesContainer" @scroll="handleUserScroll">
+    <div class="chat-messages" ref="messagesContainer" @scroll="handleUserScroll" :style="chatBackgroundStyle">
       <div v-if="!messages || messages.length === 0" class="empty-chat">
         <iconify-icon icon="heroicons:chat-bubble-left-right" width="48" style="color: #ccc;"></iconify-icon>
         <p>开始聊天吧！</p>
       </div>
 
-      <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper">
+      <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper" :data-message-id="message.id">
         <!-- 消息时间 - 只有与前一条消息间隔超过10分钟才显示 -->
         <div v-if="shouldShowTime(message, index)" class="message-time-center">
           {{ formatTime(message.timestamp) }}
@@ -40,7 +38,7 @@
             <img :src="chatInfo?.avatar || ''" :alt="chatInfo?.name || '用户'" @error="() => handleAvatarError('other')" />
           </div>
           <div class="message-content" :class="{ 'own-content': message.isOwn }">
-            <div class="message-bubble" :class="{ 'own-bubble': message.isOwn, 'message-failed': message.status === 'failed' }"
+            <div class="message-bubble" :class="{ 'own-bubble': message.isOwn, 'message-failed': message.status === 'failed', 'is-location': message.type === 'location' }"
                  :style="message.isOwn && message.type === 'text' ? 'padding: 8px 15px 8px 12px !important;' : ''">
               <p v-if="message.type === 'text'" :style="message.isOwn ? 'margin: 0; padding-right: 0;' : 'margin: 0;'">{{ message.content }}</p>
               <img
@@ -72,6 +70,17 @@
                   </div>
                 </div>
               </div>
+              <div v-else-if="message.type === 'location'" class="location-bubble" @click="openLocationFromMessage(message)">
+                <div class="location-card with-thumb">
+                  <div class="location-thumb">
+                    <img class="location-thumb-img" :src="getMapSrc(message, '600x300')" alt="地图缩略图" @error="(e:any)=>handleStaticMapError(e, message)" />
+                  </div>
+                  <div class="location-info">
+                    <div class="location-name">{{ getLocationNameFromMessage(message) }}</div>
+                    <div class="location-address">{{ getLocationAddressFromMessage(message) }}</div>
+                  </div>
+                </div>
+              </div>
 
               <!-- 发送状态指示器已移除 -->
 
@@ -96,6 +105,7 @@
       @video-call="openCallSheet"
       placeholder="输入消息..."
       :disabled="false"
+      :chat-id="sessionId"
     />
 
     <!-- RealtimeMessageReceiver组件 -->
@@ -137,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch, onActivated, inject } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import StatusBar from '../../../shared/components/mobile/StatusBar.vue'
 import ChatInput from '../components/ChatInput.vue'
@@ -150,11 +160,28 @@ import { useAuthStore } from '../../../stores/auth'
 import { getRealAvatarUrl } from '../../../shared/utils/avatar'
 // import { getOtherUserId } from '../utils/chatUrlGenerator' // 暂时不使用
 import { ensureStylesLoaded } from '../utils/stylePreloader'
+import { loadAndApplyChatBackground, getCurrentChatId } from '../utils/chatBackgroundManager'
 
 const router = useRouter()
 const route = useRoute()
 const appStore = useAppStore()
 const authStore = useAuthStore()
+const eventBus = inject('eventBus') as any
+
+// ========== 聊天背景管理（已重写，使用新的工具函数） ==========
+// 背景样式 ref（保留用于调试面板显示）
+const chatBackgroundStyle = ref<any>({})
+
+// 调试信息（保留用于调试面板显示）
+const debugLocalStorage = ref<string>('')
+const debugLoadStatus = ref<string>('未加载')
+
+// 加载聊天背景（新版本 - 简单可靠）
+const loadChatBackground = () => {
+  const chatId = getCurrentChatId()
+  loadAndApplyChatBackground(chatId)
+  debugLoadStatus.value = '✅ 已加载'
+}
 const chatStore = useChatStore()
 
 // 进入聊天页时轻微淡入，减少路由切换抖动
@@ -264,42 +291,17 @@ const makeVideoCall = async () => {
   hideCallSheet()
 
   try {
-    // 生成通话ID
-    const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-    // 调用后端API发起通话
-    const response = await fetch('http://localhost:8893/api/webrtc-calls/initiate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
-        toUserId: otherUserId,
-        type: 'video'
-      })
-    })
-
-    if (response.ok) {
-      const result = await response.json()
-      if (result.success) {
-        // 跳转到视频通话页面
-        router.push({
-          name: 'VideoCall',
-          params: { id: otherUserId },
-          query: {
-            callId: result.data.callId,
-            status: 'calling',
-            name: '联系人', // 这里可以从聊天数据中获取真实姓名
-            avatar: '' // 这里可以从聊天数据中获取真实头像
-          }
-        })
-      } else {
-        throw new Error(result.error || '发起视频通话失败')
+    // 使用新的通话系统发起视频通话
+    router.push({
+      path: '/call',
+      query: {
+        action: 'outgoing',
+        targetUserId: otherUserId,
+        type: 'video',
+        name: titleName.value || '联系人',
+        avatar: chatInfo.value?.avatar || ''
       }
-    } else {
-      throw new Error('网络请求失败')
-    }
+    })
   } catch (error) {
     console.error('❌ 发起视频通话失败:', error)
     appStore.showToast('发起视频通话失败', 'error')
@@ -310,43 +312,17 @@ const makeVoiceCall = async () => {
   hideCallSheet()
 
   try {
-    // 生成通话ID
-    const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-    // 调用后端API发起通话
-    const response = await fetch('http://localhost:8893/api/webrtc-calls/initiate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`
-      },
-      body: JSON.stringify({
-        toUserId: otherUserId,
-        type: 'voice'
-      })
-    })
-
-    if (response.ok) {
-      const result = await response.json()
-      if (result.success) {
-        // 跳转到语音通话页面（并在会话期间保持聊天实时连接）
-        try { sessionStorage.setItem('keep_realtime_ws', '1') } catch {}
-        router.push({
-          name: 'VoiceCall',
-          params: { id: otherUserId },
-          query: {
-            callId: result.data.callId,
-            status: 'calling',
-            name: titleName.value,
-            avatar: chatInfo.value.avatar
-          }
-        })
-      } else {
-        throw new Error(result.error || '发起语音通话失败')
+    // 使用新的通话系统发起语音通话
+    router.push({
+      path: '/call',
+      query: {
+        action: 'outgoing',
+        targetUserId: otherUserId,
+        type: 'voice',
+        name: titleName.value || '联系人',
+        avatar: chatInfo.value?.avatar || ''
       }
-    } else {
-      throw new Error('网络请求失败')
-    }
+    })
   } catch (error) {
     console.error('❌ 发起语音通话失败:', error)
     appStore.showToast('发起语音通话失败', 'error')
@@ -756,10 +732,41 @@ const shouldShowTime = (message: any, index: number) => {
 // 格式化时间
 const formatTime = (timestamp: number) => {
   const date = new Date(timestamp)
-  return date.toLocaleTimeString('zh-CN', {
+  const now = new Date()
+
+  // 获取今天、昨天、前天的日期（只比较年月日）
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const dayBeforeYesterday = new Date(today)
+  dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2)
+
+  const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  // 格式化时间部分
+  const timeStr = date.toLocaleTimeString('zh-CN', {
     hour: '2-digit',
     minute: '2-digit'
   })
+
+  // 判断是今天、昨天、前天还是更早
+  if (messageDate.getTime() === today.getTime()) {
+    // 今天：只显示时间
+    return timeStr
+  } else if (messageDate.getTime() === yesterday.getTime()) {
+    // 昨天：显示"昨天 + 时间"
+    return `昨天 ${timeStr}`
+  } else if (messageDate.getTime() === dayBeforeYesterday.getTime()) {
+    // 前天：显示"前天 + 时间"
+    return `前天 ${timeStr}`
+  } else {
+    // 更早：显示"月/日 + 时间"
+    const monthDay = date.toLocaleDateString('zh-CN', {
+      month: 'numeric',
+      day: 'numeric'
+    })
+    return `${monthDay} ${timeStr}`
+  }
 }
 
 // 名片消息处理
@@ -829,6 +836,183 @@ const handleMessageSend = async (message: { type: 'text' | 'image' | 'voice' | '
   }
 }
 
+// 检查位置选择结果
+const checkLocationSelection = () => {
+  try {
+    const locationData = sessionStorage.getItem('selected_location')
+    if (locationData) {
+      const data = JSON.parse(locationData)
+      sessionStorage.removeItem('selected_location')
+
+      // 发送位置消息
+      if (data.location) {
+        const locationMessage = {
+          type: 'location' as const,
+          content: JSON.stringify({
+            name: data.location.name,
+            address: data.location.address,
+            latitude: data.location.latitude,
+            longitude: data.location.longitude
+          })
+        }
+        handleMessageSend(locationMessage)
+      }
+    }
+  } catch (error) {
+    console.error('处理位置选择结果失败:', error)
+  }
+}
+
+// 位置消息相关方法
+const getLocationNameFromMessage = (message: any) => {
+  try {
+    const locationData = JSON.parse(message.content)
+    return locationData.name || '位置'
+  } catch {
+    return '位置'
+  }
+}
+
+const getLocationAddressFromMessage = (message: any) => {
+  try {
+    const locationData = JSON.parse(message.content)
+    return locationData.address || '详细地址'
+  } catch {
+    return '详细地址'
+  }
+}
+
+const getStaticMapFromMessage = (message: any, size = '280x140') => {
+  try {
+    const data = JSON.parse(message.content)
+    const latRaw: any = (data || {}).latitude
+    const lonRaw: any = (data || {}).longitude
+    const latitude = typeof latRaw === 'number' ? latRaw : parseFloat(latRaw)
+    const longitude = typeof lonRaw === 'number' ? lonRaw : parseFloat(lonRaw)
+    if (!isFinite(latitude) || !isFinite(longitude)) return ''
+    const [w, h] = String(size).split('x')
+    const key = (import.meta as any).env?.VITE_AMAP_KEY || '57eda573d29a3034ad1419599454760e'
+    return `https://restapi.amap.com/v3/staticmap?location=${longitude},${latitude}&zoom=16&scale=2&size=${w}*${h}&markers=mid,0x07C160,A:${longitude},${latitude}&key=${key}`
+  } catch {
+    return ''
+  }
+}
+
+// 计算给定半径（米）在指定宽度像素下的静态图缩放级别（Zoom）
+const calcZoomForRadius = (lat:number, widthPx:number, radiusMeters:number) => {
+  const cos = Math.cos((lat||0) * Math.PI / 180)
+  const metersPerPixel = (2 * radiusMeters) / Math.max(1, parseInt(String(widthPx)||'600'))
+  const z = Math.log2((156543.03392 * cos) / metersPerPixel)
+  return Math.max(3, Math.min(18, Math.round(z)))
+}
+
+
+// 地图缩略图回退：当高德静态图加载失败时，切换到 OSM 静态图
+const fallbackMapSrcs = ref<Record<string, string>>({})
+
+const buildAmapStatic = (lat:number, lon:number, size='600x300', radiusMeters=2000) => {
+  const [w,h] = String(size).split('x')
+  const zoom = calcZoomForRadius(lat, parseInt(w), radiusMeters)
+  const key = (import.meta as any).env?.VITE_AMAP_KEY || '57eda573d29a3034ad1419599454760e'
+  return `https://restapi.amap.com/v3/staticmap?location=${lon},${lat}&zoom=${zoom}&scale=2&size=${w}*${h}&markers=mid,0x07C160,A:${lon},${lat}&key=${key}`
+}
+
+const buildOSMStatic = (lat:number, lon:number, size='600x300', radiusMeters=2000) => {
+  const [w,h] = String(size).split('x')
+  const zoom = calcZoomForRadius(lat, parseInt(w), radiusMeters)
+  return `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lon}&zoom=${zoom}&size=${w}x${h}&markers=${lat},${lon},red`
+}
+
+const buildYandexStatic = (lat:number, lon:number, size='600x300', radiusMeters=2000) => {
+  const [w,h] = String(size).split('x')
+  const zoom = calcZoomForRadius(lat, parseInt(w), radiusMeters)
+  return `https://static-maps.yandex.ru/1.x/?lang=zh_CN&ll=${lon},${lat}&z=${zoom}&size=${w},${h}&l=map&pt=${lon},${lat},pm2gnl`
+}
+
+
+const getMapSrc = (message:any, size='600x300') => {
+  try{
+    const id = String(message?.id || '')
+    if (id && fallbackMapSrcs.value[id]) return fallbackMapSrcs.value[id]
+    const data = JSON.parse(message.content||'{}')
+    const lat = typeof data.latitude==='number'?data.latitude:parseFloat(data.latitude)
+    const lon = typeof data.longitude==='number'?data.longitude:parseFloat(data.longitude)
+    if(!isFinite(lat)||!isFinite(lon)) return ''
+    return buildAmapStatic(lat, lon, size, 2000)
+  }catch{return ''}
+}
+
+const handleStaticMapError = (ev: Event, message: any) => {
+  try {
+    const data = JSON.parse(message.content || '{}')
+    const lat = typeof data.latitude === 'number' ? data.latitude : parseFloat(data.latitude)
+    const lon = typeof data.longitude === 'number' ? data.longitude : parseFloat(data.longitude)
+    const id = String(message?.id || '')
+    if (!isFinite(lat) || !isFinite(lon) || !id) return
+
+    const img = ev.target as HTMLImageElement
+    const current = img?.src || ''
+    let next = ''
+    if (current.includes('amap.com')) {
+      // AMap failed -> try Yandex
+      next = buildYandexStatic(lat, lon, '600x300', 2000)
+    } else if (current.includes('yandex.ru')) {
+      // Yandex failed -> try OSM static
+      next = buildOSMStatic(lat, lon, '600x300', 2000)
+    } else if (current.includes('openstreetmap.de')) {
+      // OSM static failed -> final placeholder
+      const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300'>
+        <rect width='100%' height='100%' fill='#eaeaea'/>
+        <g fill='#999' font-family='sans-serif' font-size='14'>
+          <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle'>地图加载失败</text>
+        </g>
+      </svg>`)
+      next = `data:image/svg+xml;charset=UTF-8,${svg}`
+    } else {
+      // Unknown -> try OSM
+      next = buildOSMStatic(lat, lon, '600x300', 2000)
+    }
+    fallbackMapSrcs.value[id] = next
+    if (img) img.src = next
+  } catch {}
+}
+
+
+// 将位置信息按中国习惯（大到小）展示：若地址以逗号/顿号分隔，则反转片段顺序
+const getLocationDisplayCN = (message: any) => {
+  try {
+    const data = JSON.parse(message.content || '{}')
+    let addr = String(data.address || '').trim()
+    // 若为“附近位置/含‘附近’”这类泛化描述，则优先展示名字
+    if (!addr || /附近/.test(addr)) return String(data.name || addr || '')
+    // 优先处理中文/英文逗号分隔
+    const parts = addr.split(/[，,]/).map(s => s.trim()).filter(Boolean)
+    if (parts.length > 1) {
+      const reversed = parts.reverse()
+      const filtered = reversed.filter(p => p !== '中国')
+      return filtered.join(' ')
+    }
+    return addr
+  } catch {
+    return ''
+  }
+}
+
+const openLocationFromMessage = (message: any) => {
+  try {
+    const locationData = JSON.parse(message.content)
+    const { latitude, longitude, name } = locationData
+    // 优先使用高德地图导航（移动端会尝试唤起APP，PC端打开网页版）
+
+
+    const amapUrl = `https://uri.amap.com/navigation?to=${longitude},${latitude},${encodeURIComponent(name || '目的地')}&mode=car&policy=1&src=叶语`
+    window.open(amapUrl, '_blank')
+  } catch (error) {
+    console.error('打开位置失败:', error)
+    appStore.showToast('无法打开位置', 'error')
+  }
+}
+
 // 处理消息发送成功
 const handleMessageSent = (message: any) => {
   console.log('✅ 消息发送成功:', message)
@@ -886,6 +1070,38 @@ const scrollToBottom = (force = false) => {
 
   console.log('📜 滚动到底部')
   messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+}
+
+// 滚动到指定消息并高亮
+const scrollToMessage = (messageId: string, highlightKeyword?: string) => {
+  console.log('📍 定位到消息:', messageId, '高亮关键词:', highlightKeyword)
+
+  nextTick(() => {
+    // 查找消息元素
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
+
+    if (messageElement && messagesContainer.value) {
+      // 滚动到消息位置（消息在顶部）
+      const containerTop = messagesContainer.value.offsetTop
+      const messageTop = (messageElement as HTMLElement).offsetTop
+
+      messagesContainer.value.scrollTop = messageTop - containerTop
+
+      // 高亮消息
+      messageElement.classList.add('message-highlight')
+
+      // 3秒后移除高亮
+      setTimeout(() => {
+        messageElement.classList.remove('message-highlight')
+      }, 3000)
+
+      console.log('✅ 已定位到消息')
+    } else {
+      console.warn('⚠️ 未找到消息元素:', messageId)
+      // 如果找不到消息，滚动到底部
+      scrollToBottom(true)
+    }
+  })
 }
 
 // 监听用户滚动行为
@@ -1162,6 +1378,11 @@ const loadChatInfo = async () => {
     avatar: finalChatAvatar
   }
 
+  // 更新路由 meta 标题，让 MobileApp 显示正确的标题
+  if (route.meta) {
+    route.meta.title = finalChatName
+  }
+
   // 加载当前用户信息（头像统一走真实头像API，忽略/uploads直链）
   const currentUserName = authStore.user?.nickname || authStore.user?.username || '我'
   const currentUserAvatar = normalizeAvatarForUser(currentUserId, authStore.user?.avatar)
@@ -1311,6 +1532,30 @@ const clearAllStorage = () => {
 onMounted(async () => {
   console.log('🚀 ChatSimple组件挂载，会话ID:', sessionId.value)
 
+  // 保存当前聊天ID到 localStorage（用于背景设置页面获取）
+  const chatId = getCurrentChatId()
+  localStorage.setItem('yeyu_last_chat_id', chatId)
+  console.log('📝 保存当前聊天ID:', chatId)
+
+  // 加载聊天背景（新版本 - 简单可靠）
+  loadChatBackground()
+
+  // 监听背景更新事件（简化版）
+  if (eventBus) {
+    eventBus.on('chatBackground:updated', (data: any) => {
+      console.log('📢 收到背景更新事件:', data)
+      if (data.chatId === chatId) {
+        console.log('🔄 当前聊天背景已更新，立即重新加载')
+        loadChatBackground()
+      }
+    })
+  }
+
+
+
+  // 检查位置选择结果
+  checkLocationSelection()
+
   // 轻微淡入（下一个帧切换为不透明，配合CSS过渡）
   requestAnimationFrame(() => { isEntering.value = false })
 
@@ -1384,7 +1629,16 @@ onMounted(async () => {
       inputObserverCleanup.value = observer.cleanup
     }
 
-    scrollToBottom(true) // 页面初始化时强制滚动到底部
+    // 检查是否需要定位到指定消息
+    const messageId = route.query.messageId as string
+    const highlightKeyword = route.query.highlight as string
+
+    if (messageId) {
+      // 定位到指定消息
+      scrollToMessage(messageId, highlightKeyword)
+    } else {
+      scrollToBottom(true) // 页面初始化时强制滚动到底部
+    }
   })
 
   // 初次进入的稳定期（避免上下抖动）：短暂冻结动态高度调整
@@ -1436,24 +1690,61 @@ onMounted(async () => {
 
       chatStore.clearChatHistory(sessionId.value)
     }
-onMounted(() => {
+  }
+
+  // 添加键盘事件监听
   window.addEventListener('keydown', onKeydown)
+
+  // 初始化 settingsStore 并监听背景变化
+  try {
+    const { useGeneralStore } = await import('../../../modules/settings/stores/settingsStore')
+    const generalStore = useGeneralStore()
+
+    console.log('🔧 [ChatSimple] 设置背景监听器')
+    console.log('🔧 [ChatSimple] 当前背景设置:', generalStore.settings.chatBackground)
+
+    // 监听背景变化
+    watch(() => generalStore.settings.chatBackground, async (newBackground, oldBackground) => {
+      console.log('🔄 [ChatSimple] 检测到背景设置变化:', oldBackground, '->', newBackground)
+      try {
+        await loadChatBackground()
+        console.log('✅ [ChatSimple] 背景加载完成')
+      } catch (error) {
+        console.error('❌ [ChatSimple] 背景加载失败:', error)
+      }
+    }, { deep: true, immediate: false })
+
+    console.log('✅ [ChatSimple] 背景监听器已设置')
+    console.log('✅ [ChatSimple] chatBackgroundStyle:', chatBackgroundStyle.value)
+  } catch (error) {
+    console.error('❌ 初始化settingsStore失败:', error)
+  }
+})
+
+// 组件激活时重新加载背景（从背景设置页面返回时）
+onActivated(() => {
+  console.log('🔄 ChatSimple页面激活，重新加载聊天背景')
+  loadChatBackground()
+  checkLocationSelection()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
-})
 
+  // 移除背景更新事件监听
+  if (eventBus) {
+    eventBus.off('chatBackground:updated')
   }
 })
 </script>
 
 <style scoped>
 .chat-simple {
-  height: 100vh !important;
+  /* 不设置高度，让内容自然填充 */
+  min-height: 100vh;
   /* 改为相对定位，支持绝对定位的子元素 */
   position: relative !important;
-  background: #f5f5f5;
+  background: #FFFFFF; /* 聊天容器使用正常白色 */
   box-sizing: border-box !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -1461,9 +1752,9 @@ onUnmounted(() => {
   z-index: 1;
   /* 确保子元素正确排列 */
   overflow: hidden !important;
-  /* 固定在屏幕上 */
+  /* 固定在屏幕上，为顶部导航栏留出空间 */
   position: fixed !important;
-  top: 0 !important;
+  top: 65px !important; /* 状态栏25px + 导航栏40px = 65px */
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
@@ -1475,76 +1766,6 @@ onUnmounted(() => {
 }
 .chat-simple.entering { opacity: 0; }
 
-/* 聊天头部 */
-.chat-header {
-  background: white;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid #e0e0e0;
-  position: absolute !important;
-  top: 25px !important; /* 状态栏高度，导航紧贴其下 */
-  left: 0 !important;
-  right: 0 !important;
-  height: 40px !important; /* 固定头部高度（与全局一致） */
-  box-sizing: border-box !important;
-  z-index: 999; /* 确保头部在输入框上面 */
-}
-
-.back-btn {
-  background: none;
-  border: none;
-  color: #333;
-  cursor: pointer;
-  padding: 8px;
-  margin-right: 12px;
-  border-radius: 50%;
-  transition: background 0.2s ease;
-}
-
-.back-btn:hover {
-  background: #f0f0f0;
-}
-
-.chat-title {
-  flex: 1;
-  text-align: center;
-}
-
-.chat-title h3 {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  letter-spacing: 0.5px;
-}
-
-.online-status {
-  font-size: 12px;
-  color: #07C160;
-  margin: 2px 0 0 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn {
-  background: none;
-  border: none;
-  color: #333;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  transition: background 0.2s ease;
-}
-
-.action-btn:hover {
-  background: #f0f0f0;
-}
-
 /* 消息区域 */
 .chat-messages {
   /* 不使用flex: 1，而是使用固定高度计算 */
@@ -1554,11 +1775,12 @@ onUnmounted(() => {
   box-sizing: border-box !important;
   /* 按用户要求：消息容器固定底部53px */
   position: fixed !important;
-  top: 66px !important; /* 状态栏25px + 头部40px + 1px边框 */
+  top: 65px !important; /* 状态栏25px + 导航栏40px = 65px */
   left: 0 !important;
   right: 0 !important;
   bottom: 53px !important; /* 固定底部53px，不再动态调整 */
   z-index: 1 !important;
+  /* 背景由 Vue :style 绑定动态设置，不在这里设置默认值 */
   /* padding-bottom由JavaScript根据面板状态动态设置 */
   /* 隐藏滚动条 */
   scrollbar-width: none;
@@ -1583,6 +1805,15 @@ onUnmounted(() => {
 /* 消息包装器 - 包含时间和消息 */
 .message-wrapper {
   margin-bottom: 20px; /* 消息包装器间距 */
+  transition: background-color 0.3s ease;
+}
+
+.message-wrapper.message-highlight {
+  background-color: #E7F8EE; /* 浅绿色高亮背景 */
+  border-radius: 8px;
+  padding: 8px;
+  margin-left: -8px;
+  margin-right: -8px;
 }
 
 .message-wrapper + .message-wrapper .message-item {
@@ -1732,6 +1963,10 @@ onUnmounted(() => {
   /* 移除黑色背景，避免出现内侧黑边 */
   background: transparent;
   backface-visibility: hidden;
+/* 无 :has 支持时，位置消息也按图片样式处理 */
+.message-bubble.is-location{padding:0!important;background:transparent!important;box-shadow:none!important}
+.message-bubble.is-location::before{display:block}
+
   transform: translateZ(0);
   will-change: transform, opacity;
 }
@@ -1802,6 +2037,67 @@ onUnmounted(() => {
 
 .contact-bubble .cb-name { font-size:14px; color:#333; line-height:18px; font-weight:400; }
 
+/* 位置消息气泡样式 */
+.location-bubble {
+  display: flex;
+  cursor: pointer;
+}
+
+.location-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f6f6f6;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 200px;
+  max-width: 280px;
+  transition: background 0.2s ease;
+}
+
+.location-card:hover {
+  background: #f0f0f0;
+}
+
+.location-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+
+  background: #f0f9f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.location-info {
+  flex: 1;
+
+  min-width: 0;
+}
+
+.location-name {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  line-height: 18px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.location-address {
+  font-size: 12px;
+  color: #666;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 旧的message-time样式已移除，使用message-time-center */
 
 /* 响应式适配 - JavaScript会动态调整消息容器的底部间距 */
@@ -1831,5 +2127,32 @@ onUnmounted(() => {
 .preview-close-btn:hover{background:rgba(0,0,0,0.7)}
 .preview-video-wrap{position:relative;display:flex;align-items:center;justify-content:center}
 .preview-play-btn{position:absolute;width:64px;height:64px;border-radius:32px;border:2px solid rgba(255,255,255,0.8);background:rgba(0,0,0,0.5);color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px}
+
+/* 位置缩略图卡片（带缩略图与信息区）*/
+.location-card.with-thumb{display:flex;flex-direction:column;gap:0;padding:2px;overflow:hidden;background:#fff;border:1px solid #eee;border-radius:8px}
+.location-thumb{position:relative;width:100%;height:140px;background:#eaeaea}
+.location-thumb-img{width:100%;height:140px;object-fit:cover;display:block}
+.thumb-overlay{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-start;background:linear-gradient(to top,rgba(0,0,0,0.3),transparent 60%);pointer-events:none}
+.thumb-pill{margin:6px;padding:2px 6px;font-size:12px;color:#fff;background:rgba(0,0,0,0.45);border-radius:10px;max-width:80%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.location-card.with-thumb .location-info{padding:10px 12px}
+
+
+/* 兼容性：不依赖 :has()，对位置消息直接用类名覆盖样式 */
+.message-bubble.is-location{padding:0!important;background:transparent!important;box-shadow:none!important}
+.message-bubble.is-location::before{display:block}
+
+/* 位置消息在气泡中的表现，和图片一致：去掉内边距与背景，保留箭头 */
+.message-bubble:has(.location-card.with-thumb){padding:0!important;background:transparent!important;box-shadow:none!important}
+.message-bubble:has(.location-card.with-thumb)::before{display:block}
+
+/* 自己发送的位置消息：2px 主色边框 */
+.message-item.own-message .location-card.with-thumb{border:2px solid #07C160}
+
+/* 宽度规则：当(屏幕宽度-116px)>=180px取180px，否则取(屏幕宽度-116px) */
+.location-card.with-thumb{width:min(180px, calc(100vw - 116px))}
+/* 文字左对齐 */
+.location-card.with-thumb .location-info{text-align:left}
+
+
 
 </style>

@@ -1,14 +1,5 @@
 <template>
   <div class="payment-main-page">
-    <!-- 顶部导航栏 -->
-    <div class="top-bar">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24"></iconify-icon>
-      </button>
-      <h1 class="title">收付款</h1>
-      <div class="header-spacer"></div>
-    </div>
-
     <!-- 收付款内容 -->
     <div class="payment-content">
       <!-- 模式切换 -->
@@ -47,7 +38,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAppStore } from '../../../stores/appStore'
+import { useAppStore } from '../../../shared/stores/appStore'
 import QRCode from 'qrcode'
 
 const router = useRouter()

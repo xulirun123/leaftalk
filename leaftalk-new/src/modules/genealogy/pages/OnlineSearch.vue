@@ -434,8 +434,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth'
-import { useAppStore } from '../../../stores/app'
-import MobileTopBar from '../../../components/mobile/MobileTopBar.vue'
+import { useAppStore } from '../../../shared/stores/appStore'
+import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()
 const route = useRoute()

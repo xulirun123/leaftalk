@@ -25,7 +25,7 @@ export class ContactsModule implements Module {
     {
       path: '/add-friend',
       name: 'AddFriend',
-      component: () => import('./pages/AddFriendNew.vue'),
+      component: () => import('./pages/AddFriendNew2.vue'),
       meta: { requiresAuth: true }
     },
     {

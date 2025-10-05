@@ -1,0 +1,15 @@
+{
+  "name": "leaftalk-simple",
+  "version": "1.0.0",
+  "description": "叶语 (YeYu) 家族社交聊天应用 - 简化版",
+  "main": "simple-server.js",
+  "scripts": {
+    "start": "node simple-server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "keywords": ["leaftalk", "yeyu", "chat", "family"],
+  "author": "叶语团队",
+  "license": "MIT"
+}

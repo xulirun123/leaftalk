@@ -105,7 +105,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 // 移除vue-i18n导入，使用全局$t方法
-import { contactAPI } from '../../../modules/contacts/services/api'
+import { contactsApi } from '../../contacts/services/contactsApi'
 
 const router = useRouter()
 // 使用全局$t方法，通过getCurrentInstance获取
@@ -155,7 +155,7 @@ const handleSearch = async () => {
 
   try {
     // 搜索联系人
-    const contactResponse = await contactAPI.search(searchQuery.value)
+    const contactResponse = await contactsApi.search(searchQuery.value)
     if (contactResponse.data.success) {
       contactResults.value = contactResponse.data.data.map((user: any) => ({
         id: user.id,
@@ -171,7 +171,7 @@ const handleSearch = async () => {
 
   // 搜索聊天记录
   try {
-    const chatResponse = await contactAPI.searchMessages(searchQuery.value)
+    const chatResponse = await contactsApi.searchMessages(searchQuery.value)
     if (chatResponse.data.success) {
       chatResults.value = chatResponse.data.data.map((msg: any) => ({
         id: msg.id,
@@ -188,7 +188,7 @@ const handleSearch = async () => {
 
   // 搜索文件
   try {
-    const fileResponse = await contactAPI.searchFiles(searchQuery.value)
+    const fileResponse = await contactsApi.searchFiles(searchQuery.value)
     if (fileResponse.data.success) {
       fileResults.value = fileResponse.data.data.map((file: any) => ({
         id: file.id,
@@ -317,21 +317,21 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: #f5f5f5;
-  padding-top: 60px; /* 为固定的搜索头部留出空间 */
+  /* 移除padding-top，因为现在隐藏了全局导航栏 */
 }
 
 .search-header {
   position: fixed;
-  top: 0;
+  top: 100px; /* 在全局导航栏下面 */
   left: 0;
   right: 0;
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 8px 16px;
   background: white;
   border-bottom: 1px solid #e5e5e5;
   z-index: 100;
-  height: 36px;
+  height: 48px;
   box-sizing: border-box;
 }
 
@@ -341,9 +341,9 @@ onMounted(() => {
   align-items: center;
   background: #f5f5f5;
   border-radius: 8px;
-  padding: 3px 12px;
+  padding: 6px 12px;
   gap: 8px;
-  height: 30px;
+  height: 36px;
   box-sizing: border-box;
 }
 
@@ -384,6 +384,7 @@ onMounted(() => {
 .search-suggestions {
   flex: 1;
   padding: 16px;
+  margin-top: 148px; /* 100px全局导航栏 + 48px搜索头部 */
 }
 
 .suggestion-section {
@@ -425,6 +426,7 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 8px 0;
+  margin-top: 148px; /* 100px全局导航栏 + 48px搜索头部 */
 }
 
 .result-section {

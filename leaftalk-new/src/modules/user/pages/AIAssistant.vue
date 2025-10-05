@@ -194,7 +194,7 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSafeNavigation } from '../../../shared/utils/safeNavigation'
-// import { useI18n } from '../../composables/useI18n'
+// import { useI18n } from '../../../shared/composables/useI18n'
 import { useAuthStore } from '../../../stores/auth'
 import { useAppStore } from '../../../shared/stores/appStore'
 import { useChatStore } from '../chat/stores/chatStore'

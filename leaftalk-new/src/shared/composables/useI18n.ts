@@ -3,12 +3,12 @@
  */
 
 import {
-  $setLanguage as setLang,
-  $getCurrentLanguage as getCurrentLanguage,
-  SUPPORTED_LANGUAGES,
-  $addLanguagePack as addTranslationKey,
-  type LanguageCode
+  setLanguage as setLang,
+  getCurrentLanguage,
+  SUPPORTED_LANGUAGES
 } from '../plugins/i18n'
+
+type LanguageCode = string
 
 export function useI18n() {
   // 注意：现在使用全局国际化系统，这个组合式函数主要用于兼容性

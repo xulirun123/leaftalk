@@ -1,100 +1,110 @@
 <template>
   <div class="create-group-page">
-    <!-- 顶部导航栏 -->
-    <MobileTopBar
-      title="发起群聊"
-      :show-back="true"
-      :right-buttons="topBarButtons"
-      @back="goBack"
-      @button-click="handleTopBarClick"
-    />
-
-    <!-- 移除群聊名称设置，创建后在群管理中设置 -->
-
-    <!-- 选择成员 -->
-    <div class="member-section">
-      <div class="section-header">
-        <h3>选择群成员</h3>
-        <span class="member-count">已选择 {{ selectedMembers.length }} 人</span>
-      </div>
-
-      <!-- 已选成员 -->
-      <div v-if="selectedMembers.length > 0" class="selected-members">
-        <div 
-          v-for="member in selectedMembers"
-          :key="member.id"
-          class="selected-member"
-          @click="removeMember(member.id)"
-        >
-          <img :src="member.avatar" :alt="member.name" class="member-avatar" />
-          <span class="member-name">{{ member.name }}</span>
-          <iconify-icon icon="heroicons:x-mark" width="16" class="remove-icon"></iconify-icon>
-        </div>
-      </div>
-
-      <!-- 联系人列表 -->
-      <div class="contacts-list">
-        <div class="search-bar">
-          <iconify-icon icon="heroicons:magnifying-glass" width="20" class="search-icon"></iconify-icon>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="搜索联系人"
-            class="search-input"
-          />
-        </div>
-
-        <div class="contact-list">
-          <div 
-            v-for="contact in filteredContacts"
-            :key="contact.id"
-            class="contact-item"
-            :class="{ selected: isSelected(contact.id) }"
-            @click="toggleMember(contact)"
-          >
-            <img :src="contact.avatar" :alt="contact.name" class="contact-avatar" />
-            <div class="contact-info">
-              <div class="contact-name">{{ contact.name }}</div>
-              <div class="contact-status">{{ contact.status || '在线' }}</div>
-            </div>
-            <div class="select-indicator">
-              <iconify-icon 
-                v-if="isSelected(contact.id)"
-                icon="heroicons:check-circle" 
-                width="24" 
-                style="color: #07C160;"
-              ></iconify-icon>
-              <div v-else class="select-circle"></div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- 搜索框 -->
+    <div class="search-container">
+      <iconify-icon icon="heroicons:magnifying-glass" width="16" class="search-icon"></iconify-icon>
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="搜索"
+        class="search-input"
+      />
     </div>
 
-    <!-- 移除底部创建按钮，已移到顶部导航栏 -->
+    <!-- 面对面建群 -->
+    <div class="face-to-face-item" @click="goToFaceToFace">
+      <iconify-icon icon="heroicons:user-group" width="20" class="face-icon"></iconify-icon>
+      <span class="face-text">面对面建群</span>
+      <iconify-icon icon="heroicons:chevron-right" width="16" class="arrow-icon"></iconify-icon>
+    </div>
+
+    <!-- 联系人列表 -->
+    <div class="contact-list" ref="contactListRef">
+      <template v-for="(group, index) in groupedContacts" :key="group.letter">
+        <!-- 字母分类项 -->
+        <div class="letter-header" :data-letter="group.letter">
+          {{ group.letter }}
+        </div>
+
+        <!-- 该字母下的联系人 -->
+        <div
+          v-for="contact in group.contacts"
+          :key="contact.id"
+          class="contact-item"
+          :class="{ selected: isSelected(contact.id) }"
+          @click="toggleMember(contact)"
+        >
+          <!-- 选择圆圈 -->
+          <div class="select-indicator">
+            <div v-if="isSelected(contact.id)" class="select-circle selected">
+              <iconify-icon icon="heroicons:check" width="12" style="color: white;"></iconify-icon>
+            </div>
+            <div v-else class="select-circle"></div>
+          </div>
+
+          <!-- 头像 -->
+          <img :src="contact.avatar" :alt="contact.name" class="contact-avatar" />
+
+          <!-- 联系人信息 -->
+          <div class="contact-info">
+            <div class="contact-name">{{ contact.name }}</div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- 字母索引 -->
+    <div class="letter-index">
+      <div
+        v-if="hasStarred"
+        class="index-item"
+        @click="scrollToLetter('★')"
+      >
+        <iconify-icon icon="heroicons:star-solid" width="12" style="color: #666;"></iconify-icon>
+      </div>
+      <div
+        v-for="letter in alphabet"
+        :key="letter"
+        class="index-item"
+        @click="scrollToLetter(letter)"
+      >
+        {{ letter }}
+      </div>
+      <div class="index-item" @click="scrollToLetter('#')">#</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 import { useChatStore } from '../stores/chatStore'
-import { contactAPI } from '../../contacts/services/api'
+import { contactsApi } from '../../contacts/services/contactsApi'
+import pinyin from 'pinyin'
 
 const router = useRouter()
 const chatStore = useChatStore()
-
-// 返回上一页
-const goBack = () => {
-  router.back()
-}
+const eventBus = inject('eventBus')
 
 // 响应式数据
 const searchQuery = ref('')
 const selectedMembers = ref([])
 const contacts = ref([])
 const loading = ref(false)
+const contactListRef = ref(null)
+
+// 字母表
+const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+
+// 是否有星标朋友
+const hasStarred = computed(() => {
+  return contacts.value.some((c: any) => c.isStarred)
+})
+
+// 跳转到面对面建群
+const goToFaceToFace = () => {
+  router.push('/face-to-face-add')
+}
 
 // 获取当前用户信息
 const getCurrentUserInfo = () => {
@@ -127,93 +137,136 @@ const loadContacts = async () => {
     loading.value = true
     console.log('🔄 从API获取联系人列表...')
 
-    const response = await contactAPI.getContacts()
+    const response = await contactsApi.getContacts()
+    console.log('📦 API响应:', response)
 
-    if (response.data && response.data.success) {
-      const apiContacts = response.data.data || []
+    if (response.success && response.data) {
+      const apiContacts = response.data || []
+      console.log('📋 原始联系人数据:', apiContacts)
 
       // 转换API数据格式并排除当前用户
       const formattedContacts = apiContacts
         .filter((contact: any) => contact.id !== currentUser.id)
         .map((contact: any) => ({
           id: contact.id,
-          name: contact.name || contact.nickname || contact.username || '未知用户',
+          name: contact.remark || contact.nickname || contact.name || contact.username || '未知用户',
           avatar: contact.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${contact.name || contact.id}`,
           status: '在线',
-          username: contact.username || contact.yeyuId
+          username: contact.username || contact.yeyu_id,
+          isStarred: contact.is_starred || false
         }))
 
       contacts.value = formattedContacts
       console.log('✅ 联系人列表加载成功:', contacts.value.length, '个联系人')
+      console.log('✅ 格式化后的联系人:', formattedContacts)
 
     } else {
-      console.warn('⚠️ API返回失败，使用备用数据')
-      // 使用备用数据
-      contacts.value = generateFallbackContacts(currentUser)
+      console.warn('⚠️ API返回失败，联系人列表为空')
+      console.warn('⚠️ 响应数据:', response)
+      contacts.value = []
     }
   } catch (error) {
     console.error('❌ 获取联系人列表失败:', error)
-    // 使用备用数据
-    contacts.value = generateFallbackContacts(currentUser)
+    contacts.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 生成备用联系人数据
-const generateFallbackContacts = (currentUser: any) => {
-  const fallbackUsers = [
-    {
-      id: 'test001',
-      name: '测试用户1',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=testuser1',
-      status: '在线',
-      username: 'testuser1'
-    },
-    {
-      id: 'test002',
-      name: '测试用户2',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=testuser2',
-      status: '在线',
-      username: 'testuser2'
-    },
-    {
-      id: 'test003',
-      name: '测试用户3',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=testuser3',
-      status: '在线',
-      username: 'testuser3'
-    }
-  ]
+// 获取拼音首字母
+const getPinyinFirstLetter = (name: string): string => {
+  if (!name) return '#'
 
-  // 过滤掉当前登录用户
-  return fallbackUsers.filter(user => user.id !== currentUser.id)
+  try {
+    const pinyinArray = pinyin(name, {
+      style: pinyin.STYLE_FIRST_LETTER
+    })
+
+    if (pinyinArray && pinyinArray.length > 0 && pinyinArray[0].length > 0) {
+      const firstLetter = pinyinArray[0][0].toUpperCase()
+      // 检查是否是A-Z
+      if (/^[A-Z]$/.test(firstLetter)) {
+        return firstLetter
+      }
+    }
+  } catch (error) {
+    console.error('获取拼音失败:', error)
+  }
+
+  return '#'
 }
 
-// contacts已在上面定义
+// 分组联系人
+const groupedContacts = computed(() => {
+  const contactsToGroup = searchQuery.value
+    ? contacts.value.filter((contact: any) =>
+        contact.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+      )
+    : contacts.value
 
-// 顶部导航栏按钮
-const topBarButtons = computed(() => [
-  {
-    text: '完成',
-    action: 'create',
-    disabled: !canCreate.value
-  }
-])
+  // 按字母分组
+  const groups: Record<string, any[]> = {}
 
-// 计算属性
-const filteredContacts = computed(() => {
-  if (!searchQuery.value) {
-    return contacts.value
+  // 星标朋友
+  if (hasStarred.value) {
+    groups['★'] = []
   }
-  return contacts.value.filter(contact =>
-    contact.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
+
+  // A-Z
+  alphabet.forEach(letter => {
+    groups[letter] = []
+  })
+
+  // 其他
+  groups['#'] = []
+
+  // 分配联系人到各组
+  contactsToGroup.forEach((contact: any) => {
+    if (contact.isStarred) {
+      groups['★'].push(contact)
+    } else {
+      const letter = getPinyinFirstLetter(contact.name)
+      if (groups[letter]) {
+        groups[letter].push(contact)
+      } else {
+        groups['#'].push(contact)
+      }
+    }
+  })
+
+  // 转换为数组并过滤空组
+  const result = []
+
+  if (hasStarred.value && groups['★'].length > 0) {
+    result.push({ letter: '★', contacts: groups['★'] })
+  }
+
+  alphabet.forEach(letter => {
+    if (groups[letter].length > 0) {
+      result.push({ letter, contacts: groups[letter] })
+    }
+  })
+
+  if (groups['#'].length > 0) {
+    result.push({ letter: '#', contacts: groups['#'] })
+  }
+
+  return result
 })
 
 const canCreate = computed(() => {
   return selectedMembers.value.length >= 2
 })
+
+// 滚动到指定字母
+const scrollToLetter = (letter: string) => {
+  if (!contactListRef.value) return
+
+  const letterHeader = contactListRef.value.querySelector(`[data-letter="${letter}"]`)
+  if (letterHeader) {
+    letterHeader.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 
 // 方法
 const handleTopBarClick = (action: string) => {
@@ -221,6 +274,13 @@ const handleTopBarClick = (action: string) => {
   if (action === 'create') {
     createGroup()
   }
+}
+
+// 监听事件总线
+if (eventBus) {
+  eventBus.on('createGroup:confirm', () => {
+    createGroup()
+  })
 }
 
 
@@ -302,221 +362,190 @@ onMounted(() => {
 
 <style scoped>
 .create-group-page {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f5f5f5;
-  padding-top: 80px;
+  background-color: white;
+  position: relative;
 }
 
-.form-section {
+/* 搜索框 */
+.search-container {
+  position: fixed;
+  top: 65px; /* 状态栏25px + 导航栏40px，与顶部导航栏间距为0 */
+  left: 0;
+  right: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
   background: white;
-  padding: 16px;
-  margin-bottom: 8px;
-}
-
-.form-item {
-  margin-bottom: 24px;
-}
-
-.form-item:last-child {
-  margin-bottom: 0;
-}
-
-.form-item label {
-  display: block;
-  font-size: 16px;
-  color: #333;
-  margin-bottom: 8px;
-}
-
-.form-input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 16px;
-  outline: none;
-}
-
-.form-input:focus {
-  border-color: #07C160;
-}
-
-.char-count {
-  text-align: right;
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-
-
-
-.member-section {
-  flex: 1;
-  background: white;
-  display: flex;
-  flex-direction: column;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #333;
-}
-
-.member-count {
-  font-size: 14px;
-  color: #07C160;
-}
-
-.selected-members {
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.selected-member {
-  display: flex;
-  align-items: center;
-  background: #f5f5f5;
-  border-radius: 16px;
-  padding: 4px 8px 4px 4px;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.member-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-}
-
-.member-name {
-  font-size: 14px;
-  color: #333;
-}
-
-.remove-icon {
-  color: #999;
-}
-
-.contacts-list {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
-  gap: 8px;
+  z-index: 10;
+  box-sizing: border-box;
 }
 
 .search-icon {
   color: #999;
+  flex-shrink: 0;
+  margin-right: 8px;
 }
 
 .search-input {
   flex: 1;
   border: none;
-  font-size: 16px;
+  font-size: 14px;
   outline: none;
+  background: transparent;
+  height: 100%;
 }
 
-.contact-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-.contact-item {
+/* 面对面建群 */
+.face-to-face-item {
+  position: fixed;
+  top: 107px; /* 65px + 36px + 6px */
+  left: 0;
+  right: 0;
+  height: 36px;
   display: flex;
   align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0 16px;
+  background: white;
+  border-top: 1px solid #E5E5E5;
+  border-bottom: 1px solid #E5E5E5;
   cursor: pointer;
-  gap: 12px;
+  z-index: 9;
+  box-sizing: border-box;
 }
 
-.contact-item:hover {
-  background: #f8f8f8;
+.face-to-face-item:active {
+  background: #f5f5f5;
 }
 
-.contact-item.selected {
-  background: #f0f9ff;
+.face-icon {
+  color: #07C160;
+  margin-right: 12px;
 }
 
-.contact-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-}
-
-.contact-info {
+.face-text {
   flex: 1;
-}
-
-.contact-name {
-  font-size: 16px;
+  font-size: 14px;
   color: #333;
-  margin-bottom: 4px;
 }
 
-.contact-status {
-  font-size: 12px;
+.arrow-icon {
   color: #999;
 }
 
+/* 联系人列表 */
+.contact-list {
+  position: fixed;
+  top: 143px; /* 65px + 36px + 6px + 36px */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  padding-right: 24px; /* 为字母索引留出空间 */
+  box-sizing: border-box;
+}
+
+/* 字母分类项 */
+.letter-header {
+  height: 25px;
+  line-height: 25px;
+  padding-left: 16px;
+  background: #f5f5f5;
+  font-size: 13px;
+  color: #999;
+  font-weight: 500;
+}
+
+/* 联系人项 */
+.contact-item {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.contact-item:active {
+  background: #f5f5f5;
+}
+
+/* 选择圆圈 */
 .select-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 18px;
+  height: 18px;
 }
 
 .select-circle {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #e5e5e5;
+  width: 18px;
+  height: 18px;
+  border: 1px solid #d9d9d9;
   border-radius: 50%;
-}
-
-.create-section {
-  padding: 16px;
-  background: white;
-  border-top: 1px solid #f0f0f0;
-}
-
-.create-btn {
-  width: 100%;
-  padding: 16px;
-  background: #07C160;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s;
 }
 
-.create-btn:disabled {
-  background: #cccccc;
-  cursor: not-allowed;
+.select-circle.selected {
+  background: #07C160;
+  border-color: #07C160;
 }
 
-.create-btn:not(:disabled):hover {
-  background: #06a552;
+/* 头像 */
+.contact-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+/* 联系人信息 */
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-name {
+  font-size: 14px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 字母索引 */
+.letter-index {
+  position: fixed;
+  right: 4px;
+  top: calc(50% + 70px); /* 往下移动70px */
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 100;
+}
+
+.index-item {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #666;
+  cursor: pointer;
+  user-select: none;
+}
+
+.index-item:active {
+  color: #07C160;
 }
 </style>

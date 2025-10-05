@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仿微信通话系统测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #07C160;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #06AD56;
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        .btn-danger {
+            background: #ff4757;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #ff3742;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .log-container {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-idle { background: #6c757d; }
+        .status-calling { background: #ffc107; }
+        .status-connected { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .user-card {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #666;
+        }
+        .user-info {
+            flex: 1;
+        }
+        .user-name {
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        .user-id {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 仿微信通话系统测试</h1>
+            <p>测试新开发的WebRTC通话系统</p>
+        </div>
+
+        <!-- 系统状态 -->
+        <div class="test-section">
+            <h3>📊 系统状态</h3>
+            <div>
+                <span class="status-indicator" id="systemStatus"></span>
+                <span id="systemStatusText">未初始化</span>
+            </div>
+            <div style="margin-top: 10px;">
+                <strong>WebRTC支持:</strong> <span id="webrtcSupport">检测中...</span>
+            </div>
+            <div style="margin-top: 5px;">
+                <strong>权限状态:</strong> <span id="permissionStatus">检测中...</span>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="initializeSystem()">初始化系统</button>
+                <button class="btn btn-secondary" onclick="checkPermissions()">检查权限</button>
+                <button class="btn btn-secondary" onclick="requestPermissions()">请求权限</button>
+            </div>
+        </div>
+
+        <!-- 用户登录 -->
+        <div class="test-section">
+            <h3>👤 用户登录</h3>
+            <div class="input-group">
+                <label>用户ID:</label>
+                <select id="userSelect">
+                    <option value="1">用户1 (测试主叫)</option>
+                    <option value="2">用户2 (测试被叫)</option>
+                </select>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="loginUser()">登录</button>
+                <button class="btn btn-secondary" onclick="logoutUser()">登出</button>
+            </div>
+            <div id="currentUser" style="margin-top: 10px; font-weight: 500;"></div>
+        </div>
+
+        <!-- 通话测试 -->
+        <div class="test-section">
+            <h3>📞 通话测试</h3>
+            
+            <!-- 目标用户选择 -->
+            <div class="user-card">
+                <div class="user-avatar">2</div>
+                <div class="user-info">
+                    <div class="user-name">测试用户2</div>
+                    <div class="user-id">ID: 2</div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="makeCall('2', 'voice')">语音通话</button>
+                    <button class="btn btn-primary" onclick="makeCall('2', 'video')">视频通话</button>
+                </div>
+            </div>
+
+            <div class="user-card">
+                <div class="user-avatar">1</div>
+                <div class="user-info">
+                    <div class="user-name">测试用户1</div>
+                    <div class="user-id">ID: 1</div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="makeCall('1', 'voice')">语音通话</button>
+                    <button class="btn btn-primary" onclick="makeCall('1', 'video')">视频通话</button>
+                </div>
+            </div>
+
+            <!-- 通话控制 -->
+            <div class="button-group">
+                <button class="btn btn-danger" onclick="endCall()">结束通话</button>
+                <button class="btn btn-secondary" onclick="toggleAudio()">切换静音</button>
+                <button class="btn btn-secondary" onclick="toggleVideo()">切换视频</button>
+            </div>
+        </div>
+
+        <!-- API测试 -->
+        <div class="test-section">
+            <h3>🔧 API测试</h3>
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="testInitiateAPI()">测试发起通话API</button>
+                <button class="btn btn-secondary" onclick="testAcceptAPI()">测试接听API</button>
+                <button class="btn btn-secondary" onclick="testRejectAPI()">测试拒绝API</button>
+                <button class="btn btn-secondary" onclick="testEndAPI()">测试结束API</button>
+            </div>
+        </div>
+
+        <!-- 日志输出 -->
+        <div class="test-section">
+            <h3>📝 系统日志</h3>
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="clearLog()">清空日志</button>
+            </div>
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentUserId = null;
+        let authToken = null;
+        let callManager = null;
+
+        // 日志函数
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#333';
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        // 更新系统状态
+        function updateSystemStatus(status, text) {
+            const indicator = document.getElementById('systemStatus');
+            const statusText = document.getElementById('systemStatusText');
+            
+            indicator.className = `status-indicator status-${status}`;
+            statusText.textContent = text;
+        }
+
+        // 检查WebRTC支持
+        function checkWebRTCSupport() {
+            const supported = !!(
+                navigator.mediaDevices &&
+                navigator.mediaDevices.getUserMedia &&
+                window.RTCPeerConnection
+            );
+            
+            document.getElementById('webrtcSupport').textContent = supported ? '✅ 支持' : '❌ 不支持';
+            return supported;
+        }
+
+        // 检查权限
+        async function checkPermissions() {
+            try {
+                const permissions = await Promise.all([
+                    navigator.permissions.query({ name: 'camera' }),
+                    navigator.permissions.query({ name: 'microphone' })
+                ]);
+                
+                const camera = permissions[0].state;
+                const microphone = permissions[1].state;
+                
+                document.getElementById('permissionStatus').textContent = 
+                    `摄像头: ${camera}, 麦克风: ${microphone}`;
+                
+                log(`权限状态 - 摄像头: ${camera}, 麦克风: ${microphone}`);
+            } catch (error) {
+                log(`检查权限失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 请求权限
+        async function requestPermissions() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: true
+                });
+                
+                stream.getTracks().forEach(track => track.stop());
+                log('权限请求成功', 'success');
+                await checkPermissions();
+            } catch (error) {
+                log(`权限请求失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 初始化系统
+        async function initializeSystem() {
+            try {
+                log('正在初始化系统...');
+                updateSystemStatus('calling', '初始化中...');
+                
+                // 检查WebRTC支持
+                if (!checkWebRTCSupport()) {
+                    throw new Error('浏览器不支持WebRTC');
+                }
+                
+                // 检查权限
+                await checkPermissions();
+                
+                updateSystemStatus('connected', '系统就绪');
+                log('系统初始化完成', 'success');
+            } catch (error) {
+                updateSystemStatus('error', '初始化失败');
+                log(`系统初始化失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 用户登录
+        async function loginUser() {
+            try {
+                const userId = document.getElementById('userSelect').value;
+                log(`正在登录用户 ${userId}...`);
+                
+                // 模拟登录API调用
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        phone: `1380000000${userId}`,
+                        password: '123456'
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    currentUserId = userId;
+                    authToken = result.data.token;
+                    document.getElementById('currentUser').textContent = 
+                        `当前用户: ${result.data.user.nickname || `用户${userId}`} (ID: ${userId})`;
+                    log(`用户 ${userId} 登录成功`, 'success');
+                } else {
+                    throw new Error(result.error || '登录失败');
+                }
+            } catch (error) {
+                log(`登录失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 用户登出
+        function logoutUser() {
+            currentUserId = null;
+            authToken = null;
+            document.getElementById('currentUser').textContent = '';
+            log('用户已登出');
+        }
+
+        // 发起通话
+        async function makeCall(targetUserId, type) {
+            if (!currentUserId || !authToken) {
+                log('请先登录', 'error');
+                return;
+            }
+            
+            if (targetUserId === currentUserId) {
+                log('不能给自己打电话', 'error');
+                return;
+            }
+            
+            try {
+                log(`发起${type === 'video' ? '视频' : '语音'}通话给用户 ${targetUserId}...`);
+                
+                const response = await fetch('/api/call/initiate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        targetUserId,
+                        type
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    log(`通话发起成功，通话ID: ${result.data.callId}`, 'success');
+                    
+                    // 在实际应用中，这里会跳转到通话页面
+                    // window.location.href = `/call?action=outgoing&targetUserId=${targetUserId}&type=${type}`;
+                } else {
+                    throw new Error(result.error || '发起通话失败');
+                }
+            } catch (error) {
+                log(`发起通话失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 结束通话
+        function endCall() {
+            log('结束通话');
+        }
+
+        // 切换音频
+        function toggleAudio() {
+            log('切换音频静音');
+        }
+
+        // 切换视频
+        function toggleVideo() {
+            log('切换视频静音');
+        }
+
+        // API测试函数
+        async function testInitiateAPI() {
+            if (!authToken) {
+                log('请先登录', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/call/initiate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        targetUserId: currentUserId === '1' ? '2' : '1',
+                        type: 'voice'
+                    })
+                });
+                
+                const result = await response.json();
+                log(`发起通话API测试: ${JSON.stringify(result)}`, result.success ? 'success' : 'error');
+            } catch (error) {
+                log(`API测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAcceptAPI() {
+            log('接听API测试 - 需要先有来电');
+        }
+
+        async function testRejectAPI() {
+            log('拒绝API测试 - 需要先有来电');
+        }
+
+        async function testEndAPI() {
+            log('结束API测试 - 需要先有通话');
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', () => {
+            log('页面加载完成');
+            updateSystemStatus('idle', '未初始化');
+            checkWebRTCSupport();
+            checkPermissions();
+        });
+    </script>
+</body>
+</html>

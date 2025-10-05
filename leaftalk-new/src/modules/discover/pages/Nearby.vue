@@ -1,15 +1,5 @@
 <template>
   <div class="nearby-page">
-    <!-- 顶部导航栏 -->
-    <div class="header">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24" style="color: #333;"></iconify-icon>
-      </button>
-      <div class="header-title">附近的人</div>
-      <button class="filter-btn" @click="showFilter">
-        <iconify-icon icon="heroicons:funnel" width="20" style="color: #333;"></iconify-icon>
-      </button>
-    </div>
 
     <!-- 位置信息 -->
     <div class="location-info">

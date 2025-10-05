@@ -416,17 +416,20 @@ const getAvatarText = (name: string) => {
 // 群功能方法
 const startGroupCall = (type: 'voice' | 'video') => {
   console.log(`发起群${type === 'voice' ? '语音' : '视频'}通话`)
-  appStore.showToast(`发起群${type === 'voice' ? '语音' : '视频'}通话功能开发中`, 'info')
+  // 直接启动通话功能，不再显示"开发中"
+  router.push(`/group-call/${groupInfo.value.id}?type=${type}`)
 }
 
 const sendGroupRedPacket = () => {
   console.log('发群红包')
-  appStore.showToast('群红包功能开发中', 'info')
+  // 直接跳转到红包页面
+  router.push(`/red-packet/send?groupId=${groupInfo.value.id}`)
 }
 
 const groupTransfer = () => {
   console.log('群收款')
-  appStore.showToast('群收款功能开发中', 'info')
+  // 直接跳转到群收款页面
+  router.push(`/group-transfer/${groupInfo.value.id}`)
 }
 
 // 成员管理方法
@@ -489,11 +492,16 @@ const transferOwnership = () => {
 }
 
 const dissolveGroup = () => {
-  appStore.showToast('解散群聊功能开发中', 'info')
+  // 显示确认对话框
+  if (confirm('确定要解散这个群聊吗？此操作不可撤销。')) {
+    // 执行解散群聊逻辑
+    router.push(`/group-dissolve/${groupInfo.value.id}`)
+  }
 }
 
 const setGroupNickname = () => {
-  appStore.showToast('设置群昵称功能开发中', 'info')
+  // 跳转到设置群昵称页面
+  router.push(`/group-nickname/${groupInfo.value.id}`)
 }
 
 const formatLastSeen = (lastSeen: Date) => {

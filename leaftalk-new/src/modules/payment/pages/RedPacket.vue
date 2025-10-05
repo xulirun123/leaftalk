@@ -351,11 +351,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { usePaymentStore } from '../../stores/payment'
-import { useSmartAuth } from '../composables/useSmartAuth'
+import { useRouter, useRoute } from 'vue-router'
+import { usePaymentStore } from '../../../stores/payment'
+import { useSmartAuth } from '../../../shared/composables/useSmartAuth'
+import { requireVerification } from '../../../shared/utils/verificationCheck'
 
 const router = useRouter()
+const route = useRoute()
 const paymentStore = usePaymentStore()
 
 // 智能验证
@@ -586,7 +588,13 @@ const formatTime = (timestamp: number) => {
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  // 检查实名认证状态
+  const isVerified = await requireVerification('红包功能', route.fullPath)
+  if (!isVerified) {
+    return // 未认证，已跳转到实名认证页面
+  }
+
   paymentStore.loadWallet()
 })
 </script>

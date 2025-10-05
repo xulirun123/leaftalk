@@ -1,11 +1,5 @@
 <template>
   <div class="user-profile">
-    <!-- 顶部导航 -->
-    <MobileTopBar
-      title="朋友资料"
-      :show-back="true"
-      @back="goBack"
-    />
     <!-- 朋友资料功能列表 -->
     <div class="settings-section">
       <!-- 备注名 -->
@@ -160,7 +154,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 import { apiClient } from '../../services/apiClient'
 import { useAppStore } from '../../../shared/stores/appStore'
 
@@ -302,7 +295,7 @@ const loadUserInfo = async () => {
 
   try {
     // 使用FriendsService获取用户信息
-    const { FriendsService } = await import('../../services/friendsService')
+    const { FriendsService } = await import('../../contacts/services/friendsService')
     const friendsService = FriendsService.getInstance()
     const friend = await friendsService.getFriendById(userId)
 

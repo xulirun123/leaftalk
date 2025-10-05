@@ -10,7 +10,7 @@ interface ApiClientConfig {
 
 // 默认配置
 const defaultConfig: ApiClientConfig = {
-  baseURL: 'http://localhost:8893/api',  // 直接调用后端API
+  baseURL: '/api',  // 使用相对路径，通过前端服务器代理
   timeout: 10000,
   retryAttempts: 3,
   retryDelay: 1000

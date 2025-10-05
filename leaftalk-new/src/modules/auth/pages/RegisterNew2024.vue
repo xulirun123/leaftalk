@@ -234,7 +234,8 @@ const checkPhoneAvailability = async (phoneNumber) => {
       isPhoneAvailable.value = true
     }
   } catch (error) {
-    phoneCheckMessage.value = '检查失败，请重试'
+    console.error('手机号检查失败:', error)
+    phoneCheckMessage.value = '网络错误，请检查网络连接'
     phoneCheckStatus.value = 'error'
     isPhoneAvailable.value = false
   } finally {
@@ -336,20 +337,20 @@ const handleRegister = async () => {
 
     if (result.success) {
       safeShowToast('注册成功！正在跳转...', 'success')
-      
+
       // 保存认证信息
       localStorage.setItem('yeyu_auth_token', result.data.token)
       localStorage.setItem('yeyu_user_info', JSON.stringify(result.data.user))
-      
+
       // 更新store状态
       if (authStore) {
         authStore.setUser(result.data.user)
         authStore.setToken(result.data.token)
       }
 
-      // 直接跳转到实名认证
+      // 注册成功后直接跳转到首页，不强制实名认证
       setTimeout(() => {
-        router.push('/identity-verification')
+        router.push('/')
       }, 1500)
 
     } else {

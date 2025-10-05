@@ -37,9 +37,12 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
+import { useAuthStore } from '../../../stores/auth'
+import axios from 'axios'
 
 const router = useRouter()
 const appStore = useAppStore()
+const authStore = useAuthStore()
 
 
 
@@ -84,32 +87,62 @@ const goBlacklist = () => {
 
 const updatePermission = async (type: string, value: boolean) => {
   try {
-    // 这里应该调用API保存权限设置
     console.log(`更新权限设置: ${type} = ${value}`)
 
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // 如果是验证设置，调用API保存到数据库
+    if (type === 'verification') {
+      const response = await axios.put('/user/profile', {
+        require_friend_verification: value
+      })
 
-    // 保存到本地存储
-    localStorage.setItem(`yeyu_permission_${type}`, value.toString())
-
-    appStore.showToast('权限设置已更新', 'success')
+      if (response.data.success) {
+        // 更新本地用户信息
+        if (authStore.user) {
+          authStore.user.require_friend_verification = value ? 1 : 0
+        }
+        appStore.showToast('权限设置已更新', 'success')
+      } else {
+        throw new Error(response.data.error || '设置失败')
+      }
+    } else {
+      // 其他权限设置保存到本地存储
+      await new Promise(resolve => setTimeout(resolve, 300))
+      localStorage.setItem(`yeyu_permission_${type}`, value.toString())
+      appStore.showToast('权限设置已更新', 'success')
+    }
 
   } catch (error) {
     console.error('更新权限设置失败:', error)
     appStore.showToast('设置失败，请重试', 'error')
+    // 恢复原值
+    if (type === 'verification') {
+      requireVerification.value = !value
+    }
   }
 }
 
-const loadPermissions = () => {
-  // 从本地存储加载权限设置
+const loadPermissions = async () => {
+  try {
+    // 从API加载用户信息，获取验证设置
+    const response = await axios.get('/user/profile')
+    if (response.data.success && response.data.data) {
+      const userData = response.data.data
+      // 设置验证开关状态（默认为true，即需要验证）
+      requireVerification.value = userData.require_friend_verification !== 0
+    }
+  } catch (error) {
+    console.error('加载用户信息失败:', error)
+    // 如果加载失败，使用默认值
+    requireVerification.value = true
+  }
+
+  // 从本地存储加载其他权限设置
   const permissions = [
     { key: 'phone', ref: allowPhoneAdd },
     { key: 'yeyuId', ref: allowYeyuIdAdd },
     { key: 'group', ref: allowGroupAdd },
     { key: 'qr', ref: allowQRAdd },
-    { key: 'recommend', ref: allowRecommend },
-    { key: 'verification', ref: requireVerification }
+    { key: 'recommend', ref: allowRecommend }
   ]
 
   permissions.forEach(({ key, ref: permissionRef }) => {

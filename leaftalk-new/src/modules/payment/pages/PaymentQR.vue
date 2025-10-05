@@ -1,12 +1,5 @@
 <template>
   <div class="payment-qr-page">
-    <!-- 顶部导航栏 -->
-    <MobileTopBar 
-      title="收付款" 
-      :show-back="true" 
-      @back="goBack"
-    />
-
     <div class="payment-qr-content">
       <div class="placeholder">
         <iconify-icon icon="heroicons:qr-code" width="64" class="placeholder-icon"></iconify-icon>
@@ -18,14 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
-
-const router = useRouter()
-
-const goBack = () => {
-  router.back()
-}
+// 页面逻辑
 </script>
 
 <style scoped>

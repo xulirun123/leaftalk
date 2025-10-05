@@ -1,8 +1,5 @@
 <template>
   <div class="my-groups">
-    <!-- 顶部导航 -->
-    <MobileTopBar title="我的群组" :show-back="true" @back="goBack" />
-
     <!-- 群组列表 -->
     <MobilePageContent>
       <div class="groups-list">
@@ -50,7 +47,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '../stores/chatStore'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 import MobilePageContent from '../../../shared/components/mobile/MobilePageContent.vue'
 
 const router = useRouter()

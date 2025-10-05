@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试文件上传服务</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-item { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { border-color: #28a745; background-color: #d4edda; }
+        .error { border-color: #dc3545; background-color: #f8d7da; }
+        img { max-width: 200px; max-height: 150px; margin: 10px 0; }
+        .url { font-family: monospace; background: #f8f9fa; padding: 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 文件上传服务测试</h1>
+    
+    <div id="tests"></div>
+
+    <script>
+        const baseURL = 'http://localhost:8893'
+        const testsDiv = document.getElementById('tests')
+        
+        // 测试文件列表
+        const testFiles = [
+            '/uploads/chat/1757983652082_l8125cmc7hm.jpg',
+            '/uploads/chat/1757961872531_f88si9u86he.jpg',
+            '/uploads/chat/1757983631827_04zcemrxd8n5.jpg',
+            '/uploads/chat/1757961929335_orde1wa84v.jpg'
+        ]
+        
+        function createTestItem(url, status, message) {
+            const div = document.createElement('div')
+            div.className = `test-item ${status}`
+            
+            const urlDiv = document.createElement('div')
+            urlDiv.className = 'url'
+            urlDiv.textContent = url
+            
+            const messageDiv = document.createElement('div')
+            messageDiv.textContent = message
+            
+            div.appendChild(urlDiv)
+            div.appendChild(messageDiv)
+            
+            if (status === 'success') {
+                const img = document.createElement('img')
+                img.src = baseURL + url
+                img.alt = '测试图片'
+                img.onload = () => {
+                    messageDiv.textContent = '✅ 图片加载成功'
+                }
+                img.onerror = () => {
+                    messageDiv.textContent = '❌ 图片加载失败'
+                    div.className = 'test-item error'
+                }
+                div.appendChild(img)
+            }
+            
+            testsDiv.appendChild(div)
+        }
+        
+        async function testFile(filePath) {
+            const url = baseURL + filePath
+            
+            try {
+                const response = await fetch(url, { method: 'HEAD' })
+                
+                if (response.ok) {
+                    createTestItem(filePath, 'success', `✅ 文件存在 (${response.status})`)
+                } else {
+                    createTestItem(filePath, 'error', `❌ 文件不存在 (${response.status})`)
+                }
+            } catch (error) {
+                createTestItem(filePath, 'error', `❌ 请求失败: ${error.message}`)
+            }
+        }
+        
+        async function runTests() {
+            console.log('🚀 开始测试文件服务...')
+            
+            for (const filePath of testFiles) {
+                await testFile(filePath)
+                await new Promise(resolve => setTimeout(resolve, 500)) // 延迟500ms
+            }
+            
+            console.log('🎯 测试完成！')
+        }
+        
+        // 页面加载时自动测试
+        window.onload = runTests
+    </script>
+</body>
+</html>

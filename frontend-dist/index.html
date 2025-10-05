@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>叶语 (YeYu) - 家族社交聊天应用</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #07C160 0%, #00A854 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #07C160;
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #07C160, #00A854);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .nav-item {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: transparent;
+            border: 1px solid #07C160;
+            color: #07C160;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background: #07C160;
+            color: white;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        
+        .welcome-card {
+            background: white;
+            border-radius: 24px;
+            padding: 60px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            animation: fadeInUp 0.8s ease;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .welcome-logo {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #07C160, #00A854);
+            border-radius: 30px;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(7, 193, 96, 0.3);
+        }
+        
+        .welcome-title {
+            font-size: 48px;
+            font-weight: bold;
+            color: #07C160;
+            margin-bottom: 15px;
+        }
+        
+        .welcome-subtitle {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+        
+        .feature-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .feature-desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            min-width: 140px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #07C160, #00A854);
+            color: white;
+            box-shadow: 0 5px 15px rgba(7, 193, 96, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(7, 193, 96, 0.4);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: #07C160;
+            border: 2px solid #07C160;
+        }
+        
+        .btn-secondary:hover {
+            background: #07C160;
+            color: white;
+        }
+        
+        .status-bar {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 20px;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #07C160;
+            font-weight: 500;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #07C160;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .nav-menu {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .welcome-card {
+                padding: 40px 20px;
+                margin: 20px;
+            }
+            
+            .welcome-title {
+                font-size: 36px;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="app-container">
+            <!-- 头部导航 -->
+            <header class="header">
+                <div class="header-content">
+                    <div class="logo">
+                        <div class="logo-icon">🍃</div>
+                        <span>叶语 (YeYu)</span>
+                    </div>
+                    <nav class="nav-menu">
+                        <a href="#home" class="nav-item active">首页</a>
+                        <a href="#features" class="nav-item">功能</a>
+                        <a href="#about" class="nav-item">关于</a>
+                        <a href="/api/health" class="nav-item" target="_blank">API状态</a>
+                    </nav>
+                </div>
+            </header>
+            
+            <!-- 主要内容 -->
+            <main class="main-content">
+                <div class="welcome-card">
+                    <div class="welcome-logo">🍃</div>
+                    <h1 class="welcome-title">叶语 (YeYu)</h1>
+                    <p class="welcome-subtitle">企业级家族社交聊天应用<br>连接家族，传承文化，共享美好</p>
+                    
+                    <!-- 功能特性 -->
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">💬</div>
+                            <div class="feature-title">即时聊天</div>
+                            <div class="feature-desc">高效的实时通讯，支持文字、语音、视频</div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">👥</div>
+                            <div class="feature-title">联系人管理</div>
+                            <div class="feature-desc">智能的好友系统，轻松管理家族成员</div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🌳</div>
+                            <div class="feature-title">家族族谱</div>
+                            <div class="feature-desc">数字化族谱管理，传承家族历史</div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🔐</div>
+                            <div class="feature-title">实名认证</div>
+                            <div class="feature-desc">安全的身份验证，保障用户隐私</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="checkAPI()">体验应用</button>
+                        <a href="/api/health" class="btn btn-secondary" target="_blank">API文档</a>
+                    </div>
+                </div>
+            </main>
+            <!-- 状态栏 -->
+            <div class="status-bar">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="status-text">服务器运行正常</span>
+                </div>
+            </div>
+
+            <!-- 页脚 -->
+            <footer class="footer">
+                <p>© 2025 叶语 (YeYu) - 企业级家族社交聊天应用</p>
+                <p>服务器地址: 120.24.148.204 | 部署时间: <span id="deploy-time"></span></p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // 设置部署时间
+        document.getElementById('deploy-time').textContent = new Date().toLocaleString('zh-CN');
+
+        // API状态检查
+        async function checkAPI() {
+            const statusText = document.getElementById('status-text');
+
+            try {
+                statusText.textContent = '检查API状态...';
+
+                const response = await fetch('/api/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    statusText.textContent = '✅ API服务正常运行';
+
+                    // 显示成功消息
+                    showMessage('API连接成功！服务器运行正常。', 'success');
+
+                    console.log('API响应:', data);
+                } else {
+                    throw new Error('API响应错误');
+                }
+            } catch (error) {
+                statusText.textContent = '⚠️ API连接检查中...';
+                showMessage('API连接失败，请检查服务器状态。', 'error');
+                console.error('API连接失败:', error);
+            }
+        }
+
+        // 显示消息提示
+        function showMessage(message, type = 'info') {
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: bold;
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+                max-width: 300px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            `;
+
+            if (type === 'success') {
+                messageDiv.style.background = 'linear-gradient(135deg, #07C160, #00A854)';
+            } else if (type === 'error') {
+                messageDiv.style.background = 'linear-gradient(135deg, #ff4757, #ff3838)';
+            } else {
+                messageDiv.style.background = 'linear-gradient(135deg, #3742fa, #2f3542)';
+            }
+
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+
+            // 3秒后自动移除
+            setTimeout(() => {
+                messageDiv.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => {
+                    document.body.removeChild(messageDiv);
+                }, 300);
+            }, 3000);
+        }
+
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 页面加载时自动检查API
+        window.addEventListener('load', () => {
+            setTimeout(checkAPI, 1000);
+        });
+
+        // 导航功能
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (item.getAttribute('href').startsWith('#')) {
+                    e.preventDefault();
+                    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -70,6 +70,8 @@ export class AuthModule implements Module {
     console.log('🔒 AuthModule 路由守卫已暂时禁用')
     return
 
+    // 以下代码暂时禁用
+    /*
     router.beforeEach(async (to: any, from: any, next: any) => {
       console.log('🔒 路由守卫检查:', to.path)
 
@@ -137,6 +139,7 @@ export class AuthModule implements Module {
 
       next()
     })
+    */
   }
   
   /**

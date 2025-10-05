@@ -1,0 +1,15 @@
+{
+  "name": "leaftalk-deployment",
+  "version": "1.0.0",
+  "description": "叶语项目部署包",
+  "main": "start-all.js",
+  "scripts": {
+    "start": "node start-all.js",
+    "frontend": "node frontend-server.js",
+    "backend": "node backend-server.js",
+    "install-deps": "npm install && cd server && npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

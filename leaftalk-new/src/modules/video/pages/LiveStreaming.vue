@@ -294,7 +294,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../../../shared/stores/appStore'
-import { liveStreamManager, type LiveMessage } from '../../utils/liveStream'
+import { liveStreamManager, type LiveMessage } from '../utils/liveStream'
 
 const router = useRouter()
 const { t } = useI18n()

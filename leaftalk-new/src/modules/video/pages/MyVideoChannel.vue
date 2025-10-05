@@ -1,16 +1,5 @@
 <template>
   <div class="my-video-channel">
-    <!-- 自定义顶部导航栏 -->
-    <div class="custom-header">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24" style="color: #333;"></iconify-icon>
-      </button>
-      <h1 class="header-title">我的视频号</h1>
-      <button class="menu-btn" @click="showMenu">
-        <iconify-icon icon="heroicons:ellipsis-horizontal" width="24" style="color: #333;"></iconify-icon>
-      </button>
-    </div>
-
     <!-- 个人信息区域 -->
     <div class="profile-section">
       <div class="profile-header">
@@ -260,12 +249,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useVideoStore } from '../../stores/video'
+import { useVideoStore } from '../../../stores/video'
 import { useAuthStore } from '../../../stores/auth'
 import { useSafeNavigation } from '../../../shared/utils/safeNavigation'
 
-import UnifiedAvatar from '../../components/common/UnifiedAvatar.vue'
-import { useUnifiedAvatar } from '../../composables/useUnifiedAvatar'
+import UnifiedAvatar from '../../../shared/components/common/UnifiedAvatar.vue'
+import { useUnifiedAvatar } from '../../../shared/composables/useUnifiedAvatar'
 
 const router = useRouter()
 const videoStore = useVideoStore()

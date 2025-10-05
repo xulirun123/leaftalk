@@ -1,17 +1,6 @@
 <template>
   <div class="emoji-page">
-    <!-- 顶部导航栏 -->
-    <div class="header">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24" style="color: #333;"></iconify-icon>
-      </button>
-      <div class="header-title">个性表情</div>
-      <button class="manage-btn" @click="toggleManageMode">
-        {{ isManageMode ? '完成' : '管理' }}
-      </button>
-    </div>
-
-    <!-- 标签栏 -->
+    <!-- 标签栏 (移到顶部，紧贴全局导航栏) -->
     <div class="tabs">
       <div 
         v-for="tab in tabs" 
@@ -742,7 +731,7 @@ onMounted(() => {
   background: white;
   display: flex;
   position: fixed;
-  top: 60px;
+  top: 100px; /* 全局导航栏高度 (25px状态栏 + 75px导航栏) */
   left: 0;
   right: 0;
   z-index: 99;
@@ -751,7 +740,7 @@ onMounted(() => {
 
 .tab-item {
   flex: 1;
-  padding: 12px;
+  padding: 8px; /* 减小 padding */
   text-align: center;
   cursor: pointer;
   color: #666;
@@ -765,8 +754,8 @@ onMounted(() => {
 }
 
 .emoji-content {
-  padding-top: 108px;
-  min-height: calc(100vh - 108px);
+  padding-top: 136px; /* 100px全局导航栏 + 36px标签栏 */
+  min-height: calc(100vh - 136px);
 }
 
 .empty-state {
@@ -774,7 +763,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
+  padding: 40px 20px; /* 减小 padding */
   text-align: center;
   color: #999;
 }
@@ -790,11 +779,11 @@ onMounted(() => {
 }
 
 .emoji-section {
-  padding: 16px;
+  padding: 12px 16px; /* 减小顶部 padding */
 }
 
 .category-section {
-  margin-bottom: 24px;
+  margin-bottom: 16px; /* 减小间距 */
 }
 
 .category-title {

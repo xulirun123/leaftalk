@@ -10,7 +10,7 @@ export interface ChatMessage {
   senderId: string
   receiverId: string
   content: string
-  type: 'text' | 'image' | 'voice' | 'video' | 'file' | 'contact'
+  type: 'text' | 'image' | 'voice' | 'video' | 'file' | 'contact' | 'location'
   timestamp: number
   status: 'sending' | 'sent' | 'delivered' | 'read'
 }

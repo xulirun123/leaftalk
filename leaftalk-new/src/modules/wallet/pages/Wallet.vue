@@ -1,12 +1,5 @@
 <template>
   <div class="wallet-page">
-    <!-- 顶部导航栏 -->
-    <MobileTopBar 
-      title="钱包" 
-      :show-back="true" 
-      @back="goBack"
-    />
-
     <!-- 余额卡片 -->
     <div class="balance-card">
       <div class="balance-header">
@@ -69,7 +62,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()
 

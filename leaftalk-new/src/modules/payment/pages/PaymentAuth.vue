@@ -1,14 +1,5 @@
 <template>
   <div class="payment-auth-page">
-    <!-- 顶部导航栏 -->
-    <div class="top-bar">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24"></iconify-icon>
-      </button>
-      <h1 class="title">身份验证</h1>
-      <div class="header-spacer"></div>
-    </div>
-
     <!-- 身份验证内容 -->
     <div class="auth-content">
       <!-- 检查密码状态 -->

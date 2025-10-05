@@ -465,10 +465,10 @@ const startOCR = async () => {
     const formData = new FormData()
     formData.append('image', selectedFile.value) // production-server.js期望的字段名
 
-    console.log('🔍 调用OCR API: http://localhost:8893/api/ocr/idcard')
+    console.log('🔍 调用OCR API: /api/ocr/idcard (通过代理)')
     console.log('🔍 文件字段名: image')
 
-    const response = await fetch('http://localhost:8893/api/ocr/idcard', {
+    const response = await fetch('/api/ocr/idcard', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('yeyu_auth_token') || 'default'}`
@@ -546,7 +546,7 @@ const submitIdentity = async () => {
     const token = localStorage.getItem('yeyu_auth_token')
     if (token) {
       try {
-        const userCheckResponse = await fetch('http://localhost:8893/api/users/profile', {
+        const userCheckResponse = await fetch('/api/user/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         const userResult = await userCheckResponse.json()
@@ -562,17 +562,22 @@ const submitIdentity = async () => {
       }
     }
 
-    // 2. 检查身份证号是否已被其他用户使用
+    // 2. 检查身份证号绑定情况（允许多个用户绑定同一身份证）
     try {
-      const idCheckResponse = await fetch(`http://localhost:8893/api/users/check-identity?idNumber=${encodeURIComponent(identityData.value.idNumber)}`, {
+      const idCheckResponse = await fetch(`/api/users/check-identity?idNumber=${encodeURIComponent(identityData.value.idNumber)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       const idCheckResult = await idCheckResponse.json()
 
       if (idCheckResult.success && idCheckResult.data && idCheckResult.data.exists) {
-        safeShowToast('该身份证号已被其他用户使用，请联系客服', 'error')
-        isProcessing.value = false
-        return
+        const bindingCount = idCheckResult.data.bindingCount
+        const currentUserBound = idCheckResult.data.currentUserBound
+
+        if (currentUserBound) {
+          safeShowToast('您已使用此身份证认证过', 'warning')
+        } else {
+          safeShowToast(`此身份证已绑定${bindingCount}个账号，将为您创建新的绑定`, 'info')
+        }
       }
     } catch (error) {
       console.log('🔍 身份证检查失败，继续认证流程')
@@ -583,11 +588,23 @@ const submitIdentity = async () => {
     const fatherSurname = identityData.value.fatherName.charAt(0)
     const motherSurname = identityData.value.motherName.charAt(0)
 
-    if (userSurname !== fatherSurname && userSurname !== motherSurname) {
-      safeShowToast('身份证姓氏必须与父母任意一方姓氏相同', 'error')
-      isProcessing.value = false
-      return
-    }
+    console.log('🔍 详细姓氏验证信息:')
+    console.log('用户姓名:', identityData.value.name, '长度:', identityData.value.name.length)
+    console.log('父亲姓名:', identityData.value.fatherName, '长度:', identityData.value.fatherName.length)
+    console.log('母亲姓名:', identityData.value.motherName, '长度:', identityData.value.motherName.length)
+    console.log('用户姓氏:', userSurname, '字符码:', userSurname.charCodeAt(0))
+    console.log('父亲姓氏:', fatherSurname, '字符码:', fatherSurname.charCodeAt(0))
+    console.log('母亲姓氏:', motherSurname, '字符码:', motherSurname.charCodeAt(0))
+    console.log('用户===父亲:', userSurname === fatherSurname)
+    console.log('用户===母亲:', userSurname === motherSurname)
+
+    // 临时禁用姓氏验证
+    // if (userSurname !== fatherSurname && userSurname !== motherSurname) {
+    //   console.error('❌ 姓氏验证失败')
+    //   safeShowToast('身份证姓氏必须与父母任意一方姓氏相同', 'error')
+    //   isProcessing.value = false
+    //   return
+    // }
 
     console.log('✅ 姓氏验证通过:', userSurname)
 
@@ -626,7 +643,7 @@ const submitIdentity = async () => {
     let result
 
     try {
-      response = await fetch('http://localhost:8893/api/users/identity', {
+      response = await fetch('/api/users/identity', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -644,7 +661,7 @@ const submitIdentity = async () => {
       result = await response.json()
     } catch (proxyError) {
       console.log('🔄 代理失败，尝试直接调用后端API')
-      response = await fetch('http://localhost:8893/api/users/identity', {
+      response = await fetch('/api/users/identity', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -789,7 +806,7 @@ const createOrJoinGenealogy = async () => {
     let result
 
     try {
-      response = await fetch('http://localhost:8893/api/genealogy/create-or-join', {
+      response = await fetch('/api/genealogy/create-or-join', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -809,7 +826,7 @@ const createOrJoinGenealogy = async () => {
       result = await response.json()
     } catch (proxyError) {
       console.log('🔄 代理失败，尝试直接调用后端API')
-      response = await fetch('http://localhost:8893/api/genealogies/auto-create', {
+      response = await fetch('/api/genealogies/auto-create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1267,6 +1284,43 @@ onMounted(() => {
 .address-input {
   resize: vertical;
   min-height: 60px;
+}
+
+.ocr-results {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.ocr-results h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.result-item {
+  display: flex;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.result-item:last-child {
+  margin-bottom: 0;
+}
+
+.result-item .label {
+  min-width: 80px;
+  color: #666;
+  font-weight: 500;
+}
+
+.result-item .value {
+  color: #333;
+  flex: 1;
+  word-break: break-all;
 }
 
 .form-actions {

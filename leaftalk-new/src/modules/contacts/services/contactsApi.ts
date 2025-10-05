@@ -64,6 +64,21 @@ class ContactsApi {
   async sendFriendRequest(data: { phone?: string, yeyu_id?: string, message?: string }): Promise<ApiResponse> {
     return apiClient.post<ApiResponse>('/contacts/send-request', data)
   }
+
+  // 搜索联系人
+  async search(query: string): Promise<ApiResponse<Contact[]>> {
+    return apiClient.get<ApiResponse<Contact[]>>(`/contacts/search?q=${encodeURIComponent(query)}`)
+  }
+
+  // 搜索聊天消息
+  async searchMessages(query: string): Promise<ApiResponse<any[]>> {
+    return apiClient.get<ApiResponse<any[]>>(`/messages/search?q=${encodeURIComponent(query)}`)
+  }
+
+  // 搜索文件
+  async searchFiles(query: string): Promise<ApiResponse<any[]>> {
+    return apiClient.get<ApiResponse<any[]>>(`/files/search?q=${encodeURIComponent(query)}`)
+  }
 }
 
 export const contactsApi = new ContactsApi()

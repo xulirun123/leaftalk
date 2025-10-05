@@ -3,73 +3,59 @@
     <div class="content">
       <!-- 搜索框 -->
       <div class="search-section">
-        <div class="search-bar">
+        <div class="search-bar" @click="goToSearchFriend">
           <iconify-icon icon="heroicons:magnifying-glass" width="18"></iconify-icon>
           <input
             v-model="searchQuery"
             type="text"
             placeholder="搜索"
-            @keydown.enter="searchFriend"
+            readonly
+            @click="goToSearchFriend"
           />
-          <button v-if="searchQuery" @click="searchFriend" class="search-btn">搜索</button>
         </div>
       </div>
 
-      <!-- 手机联系人入口 -->
-      <div class="phone-contacts-section">
-        <div class="phone-contacts-entry" @click="goToPhoneContacts">
-          <div class="entry-icon">
-            <iconify-icon icon="heroicons:device-phone-mobile" width="20"></iconify-icon>
-          </div>
-          <div class="entry-text">手机联系人</div>
-          <div class="entry-arrow">
-            <iconify-icon icon="heroicons:chevron-right" width="14"></iconify-icon>
-          </div>
-        </div>
-      </div>
-
-      <!-- 好友申请和我的申请 -->
+      <!-- 好友申请记录（收到的和发送的合并显示） -->
       <div class="friend-requests">
-        <!-- 收到的好友申请 -->
-        <div v-if="friendRequests.length === 0 && myRequests.length === 0" class="empty-state">
+        <!-- 空状态 -->
+        <div v-if="allRequests.length === 0" class="empty-state">
           <iconify-icon icon="heroicons:user-plus" width="48"></iconify-icon>
           <div>暂无好友申请</div>
         </div>
 
-        <!-- 收到的申请 -->
-        <div v-if="friendRequests.length > 0" class="request-list">
-          <div class="request-section-title">收到的申请</div>
-          <div v-for="request in friendRequests" :key="request.id" class="request-item">
-            <div class="request-avatar" @click="viewUserProfile(request)">
+        <!-- 所有申请记录 -->
+        <div v-if="allRequests.length > 0" class="request-list">
+          <div v-for="request in allRequests" :key="request.id" class="request-item" @click="viewUserProfile(request)">
+            <div class="request-avatar">
               <img :src="request.avatar" :alt="request.name" />
             </div>
             <div class="request-info">
               <div class="request-name">{{ request.name }}</div>
               <div class="request-message">{{ request.message }}</div>
             </div>
-            <div class="request-actions">
-              <button v-if="request.status === 'pending'" @click="acceptRequest(request)" class="accept-btn">接受</button>
-              <button v-if="request.status === 'pending'" @click="rejectRequest(request)" class="reject-btn">拒绝</button>
-              <div v-else class="status-text">{{ request.status === 'accepted' ? '已接受' : '已拒绝' }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 我发送的申请 -->
-        <div v-if="myRequests.length > 0" class="request-list">
-          <div class="request-section-title">我发送的申请</div>
-          <div v-for="request in myRequests" :key="request.id" class="request-item">
-            <div class="request-avatar" @click="viewUserProfile(request)">
-              <img :src="request.avatar" :alt="request.name" />
-            </div>
-            <div class="request-info">
-              <div class="request-name">{{ request.name }}</div>
-              <div class="request-message">{{ request.message }}</div>
-            </div>
-            <div class="request-status">
-              <div class="status-text">
-                {{ getMyRequestStatusText(request.status) }}
-              </div>
+            <div class="request-actions" @click.stop>
+              <!-- 收到的申请：待处理时显示接受/拒绝按钮 -->
+              <template v-if="request.type === 'received'">
+                <button v-if="request.status === 'pending'" @click="acceptRequest(request)" class="accept-btn">接受</button>
+                <button v-if="request.status === 'pending'" @click="rejectRequest(request)" class="reject-btn">拒绝</button>
+                <!-- 已接受或已拒绝时显示箭头 -->
+                <div v-else class="status-text-with-icon">
+                  <iconify-icon icon="heroicons:arrow-down-left" width="14" class="arrow-received"></iconify-icon>
+                  <span>{{ request.status === 'accepted' ? '已添加' : '已拒绝' }}</span>
+                </div>
+              </template>
+              <!-- 我发送的申请：显示状态文本 -->
+              <template v-else>
+                <!-- pending 状态不显示箭头 -->
+                <div v-if="request.status === 'pending'" class="status-text">
+                  <span>已申请</span>
+                </div>
+                <!-- 已接受或已拒绝时显示箭头 -->
+                <div v-else class="status-text-with-icon">
+                  <iconify-icon icon="heroicons:arrow-up-right" width="14" class="arrow-sent"></iconify-icon>
+                  <span>{{ request.status === 'accepted' ? '已添加' : '已拒绝' }}</span>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -81,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '../../chat/stores/chatStore'
 import { useAppStore } from '../../../shared/stores/appStore'
@@ -94,9 +80,68 @@ const appStore = useAppStore()
 const searchQuery = ref('')
 
 // 好友申请数据
-const friendRequests = ref([]) // 收到的申请
-const myRequests = ref([]) // 我发送的申请
+const friendRequests = ref([]) // 收到的所有申请
+const myRequests = ref([]) // 我发送的所有申请
 const isLoadingRequests = ref(false)
+
+// 合并所有申请记录（收到的和发送的）
+const allRequests = computed(() => {
+  const received = friendRequests.value.map(req => ({
+    ...req,
+    type: 'received' // 标记为收到的申请
+  }))
+
+  const sent = myRequests.value.map(req => ({
+    ...req,
+    type: 'sent' // 标记为发送的申请
+  }))
+
+  // 合并并按时间倒序排序
+  const combined = [...received, ...sent]
+  const sorted = combined.sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+
+  // 去重：同一个用户只保留最新的一条记录
+  const uniqueMap = new Map()
+  sorted.forEach(req => {
+    const userId = req.user_id
+    if (!uniqueMap.has(userId)) {
+      uniqueMap.set(userId, req)
+    }
+  })
+
+  return Array.from(uniqueMap.values())
+})
+
+// 过滤好友请求记录：保留近3天或50个记录
+const filterFriendRequests = (requests: any[]) => {
+  const now = new Date()
+  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
+
+  // 按时间倒序排序
+  const sorted = requests.sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+
+  // 获取近3天的记录
+  const recentThreeDays = sorted.filter(req =>
+    new Date(req.created_at) >= threeDaysAgo
+  )
+
+  // 如果近3天的记录超过50个，保留所有近3天的记录
+  if (recentThreeDays.length > 50) {
+    return recentThreeDays
+  }
+
+  // 如果近3天的记录不足50个，取前50个记录
+  if (sorted.length <= 50) {
+    return sorted
+  }
+
+  // 取前50个记录
+  return sorted.slice(0, 50)
+}
 
 // 加载好友请求
 const loadFriendRequests = async () => {
@@ -125,15 +170,22 @@ const loadFriendRequests = async () => {
       }
     }
 
-    friendRequests.value = requestsData.map((request: any) => ({
+    // 过滤记录
+    const filteredData = filterFriendRequests(requestsData)
+
+    friendRequests.value = filteredData.map((request: any) => ({
       id: request.id,
-      name: request.name,
-      avatar: request.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${request.name}`,
+      name: request.remark || request.nickname || request.name || '未知用户', // 备注优先，其次昵称
+      nickname: request.nickname, // 保留原始昵称
+      remark: request.remark, // 保留备注
+      avatar: request.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${request.nickname || request.name}`,
       message: request.message || '请求添加您为好友',
       status: request.status,
       requestTime: new Date(request.created_at),
+      created_at: request.created_at,
       source: 'search',
       from_user_id: request.from_user_id,
+      user_id: request.user_id,
       yeyu_id: request.yeyu_id,
       phone: request.phone
     }))
@@ -174,14 +226,21 @@ const loadMyRequests = async () => {
       }
     }
 
-    myRequests.value = requestsData.map((request: any) => ({
+    // 过滤记录
+    const filteredData = filterFriendRequests(requestsData)
+
+    myRequests.value = filteredData.map((request: any) => ({
       id: request.id,
-      name: request.name,
-      avatar: request.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${request.name}`,
+      name: request.remark || request.nickname || request.name || '未知用户', // 备注优先，其次昵称
+      nickname: request.nickname, // 保留原始昵称
+      remark: request.remark, // 保留备注
+      avatar: request.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${request.nickname || request.name}`,
       message: request.message || '请求添加您为好友',
       status: request.status,
       requestTime: new Date(request.created_at),
+      created_at: request.created_at,
       to_user_id: request.to_user_id,
+      user_id: request.user_id,
       yeyu_id: request.yeyu_id,
       phone: request.phone
     }))
@@ -191,12 +250,6 @@ const loadMyRequests = async () => {
     console.error('❌ 加载我的申请失败:', error)
     myRequests.value = []
   }
-}
-
-// 跳转到手机联系人页面
-const goToPhoneContacts = () => {
-  console.log('📱 跳转到手机联系人页面')
-  router.push('/phone-contacts')
 }
 
 // 获取我的申请状态文本
@@ -224,7 +277,7 @@ const acceptRequest = async (request: any) => {
     console.log('✅ 接受好友申请:', request.name, request.id)
 
     // 调用后端API处理好友申请
-    const response = await api.contacts.handleFriendRequest(request.id, 'accept')
+    const response = await contactsApi.acceptFriend(request.id)
     console.log('🔍 接受好友申请API响应:', response)
 
     if (response && response.success) {
@@ -249,7 +302,7 @@ const rejectRequest = async (request: any) => {
     console.log('❌ 拒绝好友申请:', request.name, request.id)
 
     // 调用后端API处理好友申请
-    const response = await api.contacts.handleFriendRequest(request.id, 'reject')
+    const response = await contactsApi.rejectFriend(request.id)
     console.log('🔍 拒绝好友申请API响应:', response)
 
     if (response && response.success) {
@@ -272,19 +325,22 @@ const rejectRequest = async (request: any) => {
 // 查看用户资料
 const viewUserProfile = (request: any) => {
   console.log('👤 查看用户资料:', request.name, request)
-  // TODO: 跳转到用户资料页面
-  appStore.showToast(`查看 ${request.name} 的资料`, 'info')
+
+  // 跳转到好友资料页面
+  const userId = request.user_id || request.from_user_id || request.to_user_id
+  if (userId) {
+    console.log('🔗 跳转到好友资料页面，用户ID:', userId)
+    router.push(`/friend-profile/${userId}`)
+  } else {
+    console.error('❌ 无法获取用户ID:', request)
+    appStore.showToast('无法查看用户资料', 'error')
+  }
 }
 
-// 搜索好友
-const searchFriend = () => {
-  if (!searchQuery.value.trim()) {
-    appStore.showToast('请输入搜索内容', 'warning')
-    return
-  }
-
-  appStore.showToast(`搜索：${searchQuery.value}`, 'info')
-  // 这里应该调用搜索API
+// 跳转到搜索好友页面
+const goToSearchFriend = () => {
+  console.log('🔍 跳转到搜索好友页面')
+  router.push('/search-friend')
 }
 
 // 发送好友申请
@@ -323,10 +379,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
 }
+
 .content {
   flex: 1;
   overflow-y: auto;
-  padding-top: 65px; /* 为固定的顶部导航栏留出空间 (25px状态栏 + 40px导航栏) */
 }
 
 .search-section {
@@ -346,15 +402,19 @@ onMounted(() => {
   border-radius: 6px;
   padding: 3px 12px;
   gap: 8px;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
   height: 30px;
   width: 100%;
   flex: 1;
+  cursor: pointer;
 }
 
-.search-bar:focus-within {
-  border-color: #07C160;
-  background: #ffffff;
+.search-bar:hover {
+  background: #f0f0f0;
+}
+
+.search-bar:active {
+  background: #e8e8e8;
 }
 
 .search-bar input {
@@ -363,51 +423,13 @@ onMounted(() => {
   background: transparent;
   outline: none;
   font-size: 15px;
-}
-
-/* 手机联系人区域 */
-.phone-contacts-section {
-  background: white;
-  margin-top: 0;
-}
-
-.phone-contacts-entry {
-  display: flex;
-  align-items: center;
-  padding: 12px;
   cursor: pointer;
-  transition: background-color 0.2s;
-  height: 42px;
-}
-
-.phone-contacts-entry:hover {
-  background: #f8f8f8;
-}
-
-.entry-icon {
-  width: 36px;
-  height: 36px;
-  background: #07C160;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  margin-right: 12px;
-}
-
-.entry-text {
-  flex: 1;
-  font-size: 16px;
-  color: #333;
-}
-
-.entry-arrow {
   color: #999;
 }
+
 .friend-requests {
   background: white;
-  margin-top: 8px;
+  margin-top: 0;
 }
 .section-title {
   padding: 16px;
@@ -430,72 +452,128 @@ onMounted(() => {
   gap: 16px;
 }
 .request-list {
-  padding: 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #E5E5E5;
 }
+
 .request-item {
   display: flex;
   align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 16px;
+  min-height: 60px;
   gap: 12px;
-}
-.request-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
-  overflow: hidden;
+  background: white;
+  transition: background-color 0.2s ease;
   cursor: pointer;
-  transition: transform 0.2s ease;
 }
 
-.request-avatar:hover {
-  transform: scale(1.05);
+.request-item:hover {
+  background-color: #f7f7f7;
 }
+
+.request-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
 .request-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
 .request-info {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 36px;
+  gap: 2px;
 }
+
 .request-name {
-  font-size: 16px;
-  font-weight: 500;
-  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: normal;
+  color: #333;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
 .request-message {
-  font-size: 14px;
-  color: #666;
+  font-size: 12px;
+  color: #999;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .request-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .request-status {
   display: flex;
   align-items: center;
 }
+
 .accept-btn, .reject-btn {
-  padding: 6px 16px;
+  padding: 4px 12px;
   border-radius: 4px;
   border: none;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
+  transition: opacity 0.2s ease;
 }
+
+.accept-btn:hover, .reject-btn:hover {
+  opacity: 0.8;
+}
+
 .accept-btn {
   background: #07C160;
   color: white;
 }
+
 .reject-btn {
   background: #f5f5f5;
   color: #666;
 }
+
 .status-text {
-  padding: 6px 16px;
-  font-size: 14px;
+  font-size: 12px;
   color: #999;
+  white-space: nowrap;
+}
+
+.status-text-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+}
+
+.arrow-received {
+  color: #07C160;
+  flex-shrink: 0;
+}
+
+.arrow-sent {
+  color: #576B95;
+  flex-shrink: 0;
 }
 
 /* 搜索按钮样式 */

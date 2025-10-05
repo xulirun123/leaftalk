@@ -386,7 +386,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAppStore } from '../../../stores/app'
+import { useAppStore } from '../../../shared/stores/appStore'
 import MemberCard from '../../../components/genealogy/MemberCard.vue'
 import MemberDetailPanel from '../../../components/genealogy/MemberDetailPanel.vue'
 import TreeBranch from '../../../components/genealogy/TreeBranch.vue'

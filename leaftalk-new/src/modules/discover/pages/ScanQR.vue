@@ -10,9 +10,22 @@
       <!-- 摄像头预览 -->
       <div class="camera-preview">
         <video ref="videoRef" autoplay muted playsinline class="video-element"></video>
-        
+
+        <!-- 摄像头加载提示 -->
+        <div v-if="!isScanning && !cameraError" class="camera-loading">
+          <iconify-icon icon="heroicons:arrow-path" width="48" class="spinning" style="color: white;"></iconify-icon>
+          <p>正在启动摄像头...</p>
+        </div>
+
+        <!-- 摄像头错误提示 -->
+        <div v-if="cameraError" class="camera-error">
+          <iconify-icon icon="heroicons:exclamation-triangle" width="48" style="color: #FF9500;"></iconify-icon>
+          <p>{{ cameraError }}</p>
+          <button @click="retryCamera" class="retry-btn">重试</button>
+        </div>
+
         <!-- 扫描框 -->
-        <div class="scan-frame">
+        <div v-if="isScanning" class="scan-frame">
           <div class="scan-corners">
             <div class="corner top-left"></div>
             <div class="corner top-right"></div>
@@ -21,15 +34,15 @@
           </div>
           <div class="scan-line" :class="{ scanning: isScanning }"></div>
         </div>
-        
+
         <!-- 提示文字 -->
-        <div class="scan-tips">
+        <div v-if="isScanning" class="scan-tips">
           <p>将二维码放入框内，即可自动扫描</p>
         </div>
       </div>
 
       <!-- 扫描状态提示 -->
-      <div class="scan-status">
+      <div v-if="isScanning" class="scan-status">
         <div class="status-indicator">
           <iconify-icon icon="heroicons:viewfinder-circle" width="24" style="color: white;"></iconify-icon>
           <span>自动识别中...</span>
@@ -199,6 +212,9 @@ const showMyQRDialog = ref(false)
 const userName = ref('叶语用户')
 const userAvatar = ref('https://api.dicebear.com/7.x/avataaars/svg?seed=default')
 
+// 摄像头错误状态
+const cameraError = ref('')
+
 let mediaStream: MediaStream | null = null
 
 // 方法
@@ -265,29 +281,134 @@ const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 
 
 const initCamera = async () => {
   try {
-    const constraints = {
-      video: {
-        facingMode: 'environment', // 后置摄像头
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
+    console.log('🎥 开始初始化摄像头...')
+    cameraError.value = '' // 清除之前的错误
+
+    // 先停止之前的摄像头流（如果存在）
+    if (mediaStream) {
+      console.log('🛑 停止之前的摄像头流...')
+      mediaStream.getTracks().forEach(track => track.stop())
+      mediaStream = null
+    }
+
+    // 检查浏览器是否支持 getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('您的浏览器不支持摄像头功能，请使用现代浏览器（Chrome、Firefox、Safari等）')
+    }
+
+    // 先尝试获取可用的摄像头设备
+    console.log('📹 检查可用的摄像头设备...')
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const videoDevices = devices.filter(device => device.kind === 'videoinput')
+    console.log('📹 找到摄像头设备:', videoDevices.length, '个')
+
+    if (videoDevices.length === 0) {
+      throw new Error('未检测到摄像头设备')
+    }
+
+    // 尝试多种配置，从简单到复杂
+    const constraintsList = [
+      // 配置1: 最简单的配置
+      { video: true },
+      // 配置2: 指定后置摄像头
+      { video: { facingMode: 'environment' } },
+      // 配置3: 指定分辨率
+      {
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      },
+      // 配置4: 使用第一个可用的摄像头
+      { video: { deviceId: videoDevices[0].deviceId } }
+    ]
+
+    let lastError: any = null
+    for (let i = 0; i < constraintsList.length; i++) {
+      try {
+        console.log(`📸 尝试配置 ${i + 1}/${constraintsList.length}...`)
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraintsList[i])
+        console.log(`✅ 配置 ${i + 1} 成功！`)
+        break
+      } catch (err: any) {
+        console.warn(`⚠️ 配置 ${i + 1} 失败:`, err.name, err.message)
+        lastError = err
+        // 等待一小段时间再尝试下一个配置
+        await new Promise(resolve => setTimeout(resolve, 100))
       }
     }
 
-    mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+    if (!mediaStream) {
+      throw lastError || new Error('无法启动摄像头')
+    }
+
+    console.log('✅ 摄像头权限已获取')
+
     if (videoRef.value) {
       videoRef.value.srcObject = mediaStream
+
+      // 等待视频元素准备好
+      await new Promise((resolve, reject) => {
+        if (!videoRef.value) {
+          reject(new Error('视频元素未找到'))
+          return
+        }
+
+        videoRef.value.onloadedmetadata = () => {
+          console.log('✅ 视频元数据已加载')
+          resolve(true)
+        }
+
+        videoRef.value.onerror = (err) => {
+          console.error('❌ 视频元素错误:', err)
+          reject(new Error('视频元素加载失败'))
+        }
+
+        // 超时保护
+        setTimeout(() => reject(new Error('视频加载超时')), 5000)
+      })
+
       isScanning.value = true
+      cameraError.value = ''
+      console.log('✅ 摄像头已启动，开始扫描检测')
 
       // 开始扫描检测
       startScanDetection()
+    } else {
+      console.error('❌ videoRef 未找到')
+      throw new Error('视频元素未找到')
     }
-  } catch (error) {
-    console.error('无法访问摄像头:', error)
-    showToastMessage(
-      instance?.appContext.config.globalProperties.$t('scan.cameraError') || '无法访问摄像头，请检查权限设置',
-      'error'
-    )
+  } catch (error: any) {
+    console.error('❌ 无法访问摄像头:', error)
+
+    let errorMessage = '无法访问摄像头'
+
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      errorMessage = '摄像头权限被拒绝\n请在浏览器设置中允许访问摄像头'
+    } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      errorMessage = '未检测到摄像头设备'
+    } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      errorMessage = '摄像头无法启动\n可能被其他应用占用，或需要重启浏览器'
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+
+    cameraError.value = errorMessage
+    showToastMessage(errorMessage, 'error')
+
+    // 显示备用提示
+    setTimeout(() => {
+      showToastMessage('您可以点击"相册"按钮从相册选择二维码图片', 'info')
+    }, 3000)
   }
+}
+
+// 重试摄像头
+const retryCamera = () => {
+  cameraError.value = ''
+  isScanning.value = false
+  initCamera()
 }
 
 // 真实扫描检测
@@ -856,6 +977,75 @@ onUnmounted(() => {
   flex-direction: column;
   background: #000;
   color: white;
+}
+
+/* 摄像头加载提示 */
+.camera-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 5;
+}
+
+.camera-loading p {
+  margin-top: 16px;
+  font-size: 16px;
+  color: white;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 摄像头错误提示 */
+.camera-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 5;
+  padding: 20px;
+  max-width: 80%;
+}
+
+.camera-error p {
+  margin: 16px 0;
+  font-size: 16px;
+  color: white;
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+.retry-btn {
+  margin-top: 16px;
+  padding: 12px 32px;
+  background: #07C160;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-btn:hover {
+  background: #06ad56;
+}
+
+.retry-btn:active {
+  transform: scale(0.95);
 }
 
 .header {

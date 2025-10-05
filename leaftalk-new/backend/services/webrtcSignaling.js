@@ -68,18 +68,19 @@ class WebRTCSignalingService {
       }
       this.lastOfferSdpByCall.set(callId, offerSdp)
 
-      // 转发 Offer 给目标用户
-      const targetSocketId = this.userSockets.get(String(targetUserId))
-      if (targetSocketId) {
-        this.io.to(targetSocketId).emit('webrtc:offer', {
+      // 转发 Offer 给目标用户（按房间广播，避免多socket映射丢失）
+      const room = `user_${targetUserId}`
+      const roomSize = this.io.sockets.adapter.rooms.get(room)?.size || 0
+      if (roomSize > 0) {
+        this.io.to(room).emit('webrtc:offer', {
           callId,
           fromUserId,
           offer,
           type
         })
-        console.log(`✅ Offer 已转发给用户 ${targetUserId}`)
+        console.log(`✅ Offer 已广播到房间 ${room}（在线连接数: ${roomSize}）`)
       } else {
-        console.warn(`⚠️ 用户 ${targetUserId} 不在线，无法转发 Offer`)
+        console.warn(`⚠️ 房间 ${room} 无在线连接，无法转发 Offer`)
         // 通知发起方对方不在线
         socket.emit('webrtc:error', {
           callId,
@@ -110,10 +111,11 @@ class WebRTCSignalingService {
       }
       this.lastAnswerSdpByCall.set(callId, answerSdp)
 
-      // 转发 Answer 给目标用户
-      const targetSocketId = this.userSockets.get(String(targetUserId))
-      if (targetSocketId) {
-        this.io.to(targetSocketId).emit('webrtc:answer', {
+      // 转发 Answer 给目标用户（按房间广播，避免多 socket 映射丢失）
+      const room = `user_${targetUserId}`
+      const roomSize = this.io.sockets.adapter.rooms.get(room)?.size || 0
+      if (roomSize > 0) {
+        this.io.to(room).emit('webrtc:answer', {
           callId,
           fromUserId,
           answer
@@ -127,7 +129,7 @@ class WebRTCSignalingService {
           console.log(`✅ 通话 ${callId} 已连接`)
         }
       } else {
-        console.warn(`⚠️ 用户 ${targetUserId} 不在线，无法转发 Answer`)}
+        console.warn(`⚠️ 房间 ${room} 无在线连接，无法转发 Answer`)
       }
     } catch (error) {
       console.error('❌ 处理 Answer 失败:', error)
@@ -142,10 +144,11 @@ class WebRTCSignalingService {
     try {
       const fromUserId = socket.userId
       
-      // 转发 ICE Candidate 给目标用户
-      const targetSocketId = this.userSockets.get(String(targetUserId))
-      if (targetSocketId) {
-        this.io.to(targetSocketId).emit('webrtc:ice-candidate', {
+      // 转发 ICE Candidate 给目标用户（按房间广播）
+      const room = `user_${targetUserId}`
+      const roomSize = this.io.sockets.adapter.rooms.get(room)?.size || 0
+      if (roomSize > 0) {
+        this.io.to(room).emit('webrtc:ice-candidate', {
           callId,
           fromUserId,
           candidate
@@ -181,14 +184,14 @@ class WebRTCSignalingService {
         startTime: Date.now()
       })
 
-      // 通知目标用户有来电
-      const targetSocketId = this.userSockets.get(String(targetUserId))
-      console.log(`🔍 查找目标用户 ${targetUserId} 的Socket:`, targetSocketId)
-      console.log(`🔍 当前在线用户:`, Array.from(this.userSockets.keys()))
+      // 通知目标用户有来电（按房间广播，更稳）
+      const room = `user_${targetUserId}`
+      const roomSize = this.io.sockets.adapter.rooms.get(room)?.size || 0
+      console.log(`🔍 用户 ${targetUserId} 的房间 ${room} 当前连接数:`, roomSize)
 
-      if (targetSocketId) {
-        console.log(`📤 发送来电通知给用户 ${targetUserId} (Socket: ${targetSocketId})`)
-        this.io.to(targetSocketId).emit('webrtc:incoming-call', {
+      if (roomSize > 0) {
+        console.log(`📤 发送来电通知到房间 ${room}`)
+        this.io.to(room).emit('webrtc:incoming-call', {
           callId,
           fromUserId,
           type,
@@ -199,7 +202,7 @@ class WebRTCSignalingService {
         })
         console.log(`✅ 来电通知已发送`)
       } else {
-        console.warn(`⚠️ 用户 ${targetUserId} 不在线，无法发送来电通知`)
+        console.warn(`⚠️ 房间 ${room} 无在线连接，无法发送来电通知`)
       }
 
       // 设置通话超时（60秒）
@@ -242,10 +245,11 @@ class WebRTCSignalingService {
       if (this.activeCalls.has(callId)) {
         const call = this.activeCalls.get(callId)
         const targetUserId = call.caller === fromUserId ? call.callee : call.caller
-        const targetSocketId = this.userSockets.get(String(targetUserId))
-        
-        if (targetSocketId) {
-          this.io.to(targetSocketId).emit('webrtc:call-status', {
+        const room = `user_${targetUserId}`
+        const roomSize = this.io.sockets.adapter.rooms.get(room)?.size || 0
+
+        if (roomSize > 0) {
+          this.io.to(room).emit('webrtc:call-status', {
             callId,
             fromUserId,
             status,
@@ -280,12 +284,11 @@ class WebRTCSignalingService {
       duration: Date.now() - call.startTime
     }
 
-    if (callerSocketId) {
-      this.io.to(callerSocketId).emit('webrtc:call-ended', endData)
-    }
-    if (calleeSocketId) {
-      this.io.to(calleeSocketId).emit('webrtc:call-ended', endData)
-    }
+    // 向双方用户房间广播通话结束
+    const callerRoom = `user_${caller}`
+    const calleeRoom = `user_${callee}`
+    this.io.to(callerRoom).emit('webrtc:call-ended', endData)
+    this.io.to(calleeRoom).emit('webrtc:call-ended', endData)
 
     // 清理通话记录
     this.activeCalls.delete(callId)

@@ -174,44 +174,40 @@ const messageTypeIcon = computed(() => {
 // 格式化时间
 const formattedTime = computed(() => {
   const timestamp = props.chat.updatedAt
-  const now = Date.now()
-  const diff = now - timestamp
-  
-  // 1分钟内
-  if (diff < 60000) return '刚刚'
-  
-  // 1小时内
-  if (diff < 3600000) {
-    return `${Math.floor(diff / 60000)}分钟前`
-  }
-  
-  // 今天
-  const today = new Date()
   const messageDate = new Date(timestamp)
-  if (messageDate.toDateString() === today.toDateString()) {
-    return messageDate.toLocaleTimeString('zh-CN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
-  }
-  
-  // 昨天
+  const now = new Date()
+
+  // 获取今天、昨天、前天的日期（只比较年月日）
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
-  if (messageDate.toDateString() === yesterday.toDateString()) {
+  const dayBeforeYesterday = new Date(today)
+  dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2)
+
+  const msgDate = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate())
+
+  // 今天：显示时间
+  if (msgDate.getTime() === today.getTime()) {
+    return messageDate.toLocaleTimeString('zh-CN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // 昨天：显示"昨天"
+  if (msgDate.getTime() === yesterday.getTime()) {
     return '昨天'
   }
-  
-  // 本周
-  if (diff < 7 * 24 * 60 * 60 * 1000) {
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-    return weekdays[messageDate.getDay()]
+
+  // 前天：显示"前天"
+  if (msgDate.getTime() === dayBeforeYesterday.getTime()) {
+    return '前天'
   }
-  
-  // 更早
+
+  // 三天以前：只显示日期（月/日）
   return messageDate.toLocaleDateString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit'
+    month: 'numeric',
+    day: 'numeric'
   })
 })
 

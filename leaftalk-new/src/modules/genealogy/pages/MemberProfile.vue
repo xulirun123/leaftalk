@@ -1,18 +1,5 @@
 <template>
   <div class="member-profile-page">
-    <!-- 顶部导航 -->
-    <MobileTopBar 
-      :title="member?.name || '成员资料'" 
-      :showBack="true"
-      @back="goBack"
-    >
-      <template #right>
-        <button v-if="canEdit" @click="editMode = !editMode" class="edit-btn">
-          <iconify-icon :icon="editMode ? 'heroicons:check' : 'heroicons:pencil'" width="20"></iconify-icon>
-        </button>
-      </template>
-    </MobileTopBar>
-
     <!-- 主要内容 -->
     <div class="profile-content">
       <!-- 基本信息卡片 -->
@@ -196,8 +183,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth'
-import { useAppStore } from '../../../stores/app'
-import MobileTopBar from '../../../components/mobile/MobileTopBar.vue'
+import { useAppStore } from '../../../shared/stores/appStore'
 
 const router = useRouter()
 const route = useRoute()

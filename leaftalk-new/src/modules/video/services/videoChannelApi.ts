@@ -1,7 +1,7 @@
 // 视频号API服务
 // 提供视频号相关的API接口
 
-import { apiClient } from './apiClient'
+import { apiClient } from '../../../shared/services/apiClient'
 
 export interface VideoChannel {
   id: string

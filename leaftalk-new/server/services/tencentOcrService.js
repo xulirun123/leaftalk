@@ -5,6 +5,9 @@
 
 const tencentcloud = require('tencentcloud-sdk-nodejs')
 
+// 确保环境变量已加载
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') })
+
 // 腾讯云OCR配置
 const TENCENT_OCR_CONFIG = {
   SECRET_ID: process.env.TENCENT_SECRET_ID || '',

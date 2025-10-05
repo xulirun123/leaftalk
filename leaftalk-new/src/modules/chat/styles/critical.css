@@ -29,7 +29,7 @@
   padding: 6px 16px !important;
   background: white !important;
   cursor: pointer !important;
-  height: 48px !important;
+  height: 56px !important;
   border-bottom: 1px solid #e0e0e0 !important;
   transition: background-color 0.2s ease !important;
 }
@@ -49,6 +49,16 @@
   position: relative !important;
   margin-right: 12px !important;
   flex-shrink: 0 !important;
+  width: 44px !important;
+  height: 44px !important;
+}
+
+.user-avatar img {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 6px !important;
+  object-fit: cover !important;
+  display: block !important;
 }
 
 .user-details {

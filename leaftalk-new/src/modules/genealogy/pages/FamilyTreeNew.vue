@@ -16,13 +16,13 @@
           <h3>第三世</h3>
           <div class="members-grid">
             <div class="member-card">
-              <img src="/default-avatar.png" alt="张伟" class="member-avatar">
+              <div class="member-avatar">👨</div>
               <h4>张伟</h4>
               <p>家族族长</p>
               <span>1980年生</span>
             </div>
             <div class="member-card">
-              <img src="/default-avatar.png" alt="张强" class="member-avatar">
+              <div class="member-avatar">👨</div>
               <h4>张强</h4>
               <p>家族成员</p>
               <span>1975年生</span>
@@ -34,7 +34,7 @@
           <h3>第二世（父辈）</h3>
           <div class="members-grid">
             <div class="member-card deceased">
-              <img src="/default-avatar.png" alt="张建国" class="member-avatar">
+              <div class="member-avatar">👴</div>
               <h4>张建国</h4>
               <p>家族长老</p>
               <span>1950-2020</span>
@@ -46,13 +46,13 @@
           <h3>第四世（子辈）</h3>
           <div class="members-grid">
             <div class="member-card">
-              <img src="/default-avatar.png" alt="张小明" class="member-avatar">
+              <div class="member-avatar">👦</div>
               <h4>张小明</h4>
               <p>家族后辈</p>
               <span>2005年生</span>
             </div>
             <div class="member-card">
-              <img src="/default-avatar.png" alt="张小红" class="member-avatar">
+              <div class="member-avatar">👧</div>
               <h4>张小红</h4>
               <p>家族后辈</p>
               <span>2008年生</span>
@@ -66,7 +66,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import MobileTopBar from '../../../components/mobile/MobileTopBar.vue'
+import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()
 

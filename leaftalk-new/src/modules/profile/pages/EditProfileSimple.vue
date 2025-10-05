@@ -1,15 +1,5 @@
 <template>
   <div class="edit-profile-page">
-    <MobileTopBar
-      title="个人信息"
-      :showBack="true"
-      @back="goBack"
-    >
-      <template #right>
-        <button class="save-btn" @click="saveProfile">保存</button>
-      </template>
-    </MobileTopBar>
-    
     <!-- 头像区域 -->
     <div class="profile-header">
       <div class="profile-info" @click="goToPersonalInfo">
@@ -160,7 +150,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
 import { useAuthStore } from '../../../stores/auth'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 import WeChatCamera from '../../chat/components/WeChatCamera.vue'
 
 const router = useRouter()

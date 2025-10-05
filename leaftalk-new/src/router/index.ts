@@ -12,12 +12,10 @@ import RegisterNew2024 from '../modules/auth/pages/RegisterNew2024.vue'
 import MobileContacts from '../modules/contacts/pages/MobileContacts.vue'
 import MobileDiscover from '../modules/discover/pages/MobileDiscover.vue'
 import MobileProfile from '../modules/profile/pages/MobileProfile.vue'
-import AddFriendNew from '../modules/contacts/pages/AddFriendNew.vue'
+import AddFriendNew2 from '../modules/contacts/pages/AddFriendNew2.vue'
 
-// WebRTC 通话页面
-import VideoCall from '../modules/webrtc/pages/VideoCall.vue'
-import VoiceCall from '../modules/webrtc/pages/VoiceCall.vue'
-import IncomingCall from '../modules/webrtc/pages/IncomingCall.vue'
+// 新的通话系统
+import { callRoutes } from '../modules/call'
 
 console.log('🔍 路由文件正在加载...')
 
@@ -43,44 +41,6 @@ const routes = [
     }
   },
 
-  // WebRTC 通话路由
-  {
-    path: '/video-call/:id',
-    name: 'VideoCall',
-    component: VideoCall,
-    meta: {
-      title: '视频通话',
-      requiresAuth: true,
-      keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true
-    }
-  },
-  {
-    path: '/voice-call/:id',
-    name: 'VoiceCall',
-    component: VoiceCall,
-    meta: {
-      title: '语音通话',
-      requiresAuth: true,
-      keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true
-    }
-  },
-  {
-    path: '/incoming-call/:callerId',
-    name: 'IncomingCall',
-    component: IncomingCall,
-    meta: {
-      title: '来电',
-      requiresAuth: true,
-      keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true
-    }
-  },
-
 
   {
     path: '/chat/:id',
@@ -90,8 +50,8 @@ const routes = [
       title: '聊天',
       requiresAuth: false,
       keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true  // 聊天页面有自己的导航栏
+      hideTabBar: true
+      // 显示统一的顶部导航栏（不设置 hideTopBar）
     }
   },
   {
@@ -104,6 +64,126 @@ const routes = [
       keepAlive: false,
       hideTopBar: true,
       hideTabBar: true
+    }
+  },
+  {
+    path: '/chat-search/:chatId?',
+    name: 'ChatSearch',
+    component: () => import('../modules/chat/pages/ChatSearchMain.vue'),
+    meta: {
+      title: '搜索聊天记录',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-file/:chatId?',
+    name: 'ChatSearchFile',
+    component: () => import('../modules/chat/pages/ChatSearchFile.vue'),
+    meta: {
+      title: '文件',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-image/:chatId?',
+    name: 'ChatSearchImage',
+    component: () => import('../modules/chat/pages/ChatSearchImage.vue'),
+    meta: {
+      title: '图片',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-link/:chatId?',
+    name: 'ChatSearchLink',
+    component: () => import('../modules/chat/pages/ChatSearchFile.vue'),
+    meta: {
+      title: '链接',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-music/:chatId?',
+    name: 'ChatSearchMusic',
+    component: () => import('../modules/chat/pages/ChatSearchFile.vue'),
+    meta: {
+      title: '音乐',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-video/:chatId?',
+    name: 'ChatSearchVideo',
+    component: () => import('../modules/chat/pages/ChatSearchVideo.vue'),
+    meta: {
+      title: '视频',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-transaction/:chatId?',
+    name: 'ChatSearchTransaction',
+    component: () => import('../modules/chat/pages/ChatSearchFile.vue'),
+    meta: {
+      title: '交易',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-miniprogram/:chatId?',
+    name: 'ChatSearchMiniprogram',
+    component: () => import('../modules/chat/pages/ChatSearchFile.vue'),
+    meta: {
+      title: '小程序',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-videochannel/:chatId?',
+    name: 'ChatSearchVideochannel',
+    component: () => import('../modules/chat/pages/ChatSearchFile.vue'),
+    meta: {
+      title: '视频号',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/chat-search-date/:chatId?',
+    name: 'ChatSearchDate',
+    component: () => import('../modules/chat/pages/ChatSearchDate.vue'),
+    meta: {
+      title: '按日期查找',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
     }
   },
   {
@@ -172,7 +252,7 @@ const routes = [
     name: 'MemberProfile',
     component: () => import('../modules/genealogy/pages/MemberProfile.vue'),
     meta: {
-      title: '成员资料 - 叶语',
+      title: '成员资料',
       requiresAuth: true,
       keepAlive: false
     }
@@ -227,16 +307,16 @@ const routes = [
       keepAlive: false
     }
   },
-  {
-    path: '/genealogy/:genealogyId/meetings',
-    name: 'FamilyMeetings',
-    component: () => import('../modules/genealogy/pages/FamilyMeetings.vue'),
-    meta: {
-      title: '家族会议 - 叶语',
-      requiresAuth: true,
-      keepAlive: false
-    }
-  },
+  // {
+  //   path: '/genealogy/:genealogyId/meetings',
+  //   name: 'FamilyMeetings',
+  //   component: () => import('../modules/genealogy/pages/FamilyMeetings.vue'),
+  //   meta: {
+  //     title: '家族会议 - 叶语',
+  //     requiresAuth: true,
+  //     keepAlive: false
+  //   }
+  // },
   {
     path: '/genealogy/:genealogyId/albums',
     name: 'FamilyAlbums',
@@ -247,16 +327,16 @@ const routes = [
       keepAlive: false
     }
   },
-  {
-    path: '/genealogy/:genealogyId/sacred-cooperation',
-    name: 'SacredCooperation',
-    component: () => import('../modules/genealogy/pages/SacredCooperation.vue'),
-    meta: {
-      title: '圣地合作 - 叶语',
-      requiresAuth: true,
-      keepAlive: false
-    }
-  },
+  // {
+  //   path: '/genealogy/:genealogyId/sacred-cooperation',
+  //   name: 'SacredCooperation',
+  //   component: () => import('../modules/genealogy/pages/SacredCooperation.vue'),
+  //   meta: {
+  //     title: '圣地合作 - 叶语',
+  //     requiresAuth: true,
+  //     keepAlive: false
+  //   }
+  // },
   // 暂时注释掉有语法错误的TombSweeping组件
   // {
   //   path: '/genealogy/:genealogyId/tomb-sweeping',
@@ -273,7 +353,7 @@ const routes = [
     name: 'VirtualOfferings',
     component: () => import('../modules/genealogy/pages/VirtualOfferings.vue'),
     meta: {
-      title: '虚拟祭祀商品 - 叶语',
+      title: '虚拟祭祀商品',
       requiresAuth: true,
       keepAlive: false
     }
@@ -283,7 +363,7 @@ const routes = [
     name: 'MemorialWorship',
     component: () => import('../modules/genealogy/pages/MemorialWorship.vue'),
     meta: {
-      title: '祭奠祭扫 - 叶语',
+      title: '祭奠祭扫',
       requiresAuth: true,
       keepAlive: false
     }
@@ -303,7 +383,7 @@ const routes = [
     name: 'OnlineSearch',
     component: () => import('../modules/genealogy/pages/OnlineSearch.vue'),
     meta: {
-      title: '线上寻亲 - 叶语',
+      title: '线上寻亲',
       requiresAuth: true,
       keepAlive: false
     }
@@ -323,7 +403,7 @@ const routes = [
     name: 'MetaverseIntegration',
     component: () => import('../modules/genealogy/pages/MetaverseIntegration.vue'),
     meta: {
-      title: '元宇宙家谱 - 叶语',
+      title: '元宇宙家谱',
       requiresAuth: true,
       keepAlive: false
     }
@@ -503,7 +583,9 @@ const routes = [
     meta: {
       title: '朋友圈',
       requiresAuth: false,
-      hideTabBar: true
+      hideTabBar: true,
+      hideTopBar: true,  // 朋友圈页面没有导航栏
+      hideStatusBar: true  // 也不要状态栏
     }
   },
   {
@@ -513,8 +595,7 @@ const routes = [
     meta: {
       title: '身份验证',
       requiresAuth: true,
-      hideTabBar: true,
-      hideTopBar: true
+      hideTabBar: true
     }
   },
 
@@ -525,19 +606,17 @@ const routes = [
     meta: {
       title: '收付款',
       requiresAuth: true,
-      hideTabBar: true,
-      hideTopBar: true
+      hideTabBar: true
     }
   },
   {
-    path: '/payment-qr',
-    name: 'PaymentQR',
+    path: '/payment-auth',
+    name: 'PaymentAuth',
     component: () => import('../modules/payment/pages/PaymentAuth.vue'),
     meta: {
       title: '身份验证',
       requiresAuth: true,
-      hideTabBar: true,
-      hideTopBar: true
+      hideTabBar: true
     }
   },
 
@@ -575,6 +654,51 @@ const routes = [
     }
   },
   {
+    path: '/add-friend',
+    name: 'AddFriend',
+    component: AddFriendNew2,
+    meta: {
+      title: '添加朋友',
+      requiresAuth: false,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/search-friend',
+    name: 'SearchFriend',
+    component: () => import('../modules/contacts/pages/SearchFriend.vue'),
+    meta: {
+      title: '搜索好友',
+      requiresAuth: false,
+      keepAlive: true,  // 启用缓存，保持搜索状态
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/enterprise-contacts',
+    name: 'EnterpriseContacts',
+    component: () => import('../modules/contacts/pages/EnterpriseContacts.vue'),
+    meta: {
+      title: '企业叶语联系人',
+      requiresAuth: false,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/face-to-face-add',
+    name: 'FaceToFaceAdd',
+    component: () => import('../modules/contacts/pages/FaceToFaceAdd.vue'),
+    meta: {
+      title: '面对面添加好友',
+      requiresAuth: false,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
     path: '/phone-contacts',
     name: 'PhoneContacts',
     component: () => import('../modules/contacts/pages/PhoneContacts.vue'),
@@ -590,7 +714,7 @@ const routes = [
     name: 'MiniProgramStore',
     component: () => import('../modules/discover/pages/MiniProgramStore.vue'),
     meta: {
-      title: '小程序序商店',
+      title: '小程序商店',
       requiresAuth: true,
       keepAlive: true
     }
@@ -610,7 +734,7 @@ const routes = [
     name: 'LiveHall',
     component: () => import('../modules/video/pages/LiveHall.vue'),
     meta: {
-      title: '直播间大厅',
+      title: '直播大厅',
       requiresAuth: true,
       keepAlive: true
     }
@@ -714,8 +838,7 @@ const routes = [
       title: '身份验证',
       requiresAuth: true,
       keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true
+      hideTabBar: true
     }
   },
 
@@ -818,7 +941,9 @@ const routes = [
     meta: {
       title: '直播间',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTopBar: true,  // 直播间没有导航栏
+      hideTabBar: true   // 直播间也没有底部导航栏
     }
   },
 
@@ -840,7 +965,6 @@ const routes = [
       title: '聊天信息',
       requiresAuth: true,
       keepAlive: false,
-      hideTopBar: true,
       hideTabBar: true
     }
   },
@@ -973,7 +1097,8 @@ const routes = [
     meta: {
       title: '选择联系人',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTopBar: false
     }
   },
   {
@@ -1155,13 +1280,48 @@ const routes = [
     }
   },
   {
+    path: '/settings/chat-background-gallery',
+    name: 'ChatBackgroundGallery',
+    component: () => import('../modules/settings/pages/ChatBackgroundGallery.vue'),
+    meta: {
+      title: '选择背景',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/settings/photo-album',
+    name: 'PhotoAlbum',
+    component: () => import('../modules/settings/pages/PhotoAlbum.vue'),
+    meta: {
+      title: '选择照片',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/settings/take-photo',
+    name: 'TakePhoto',
+    component: () => import('../modules/settings/pages/TakePhoto.vue'),
+    meta: {
+      title: '拍照',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
     path: '/services',
     name: 'Services',
     component: () => import('../modules/profile/pages/Services.vue'),
     meta: {
       title: '服务',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTopBar: true
     }
   },
   {
@@ -1366,8 +1526,7 @@ const routes = [
       title: '转账',
       requiresAuth: true,
       keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true
+      hideTabBar: true
     }
   },
   {
@@ -1378,8 +1537,7 @@ const routes = [
       title: '聊天测试',
       requiresAuth: true,
       keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true
+      hideTabBar: true
     }
   },
   {
@@ -1410,6 +1568,7 @@ const routes = [
       title: '搜索',
       requiresAuth: true,
       keepAlive: false
+      // 搜索页面显示全局导航栏，搜索框在导航栏下面
     }
   },
 
@@ -1418,9 +1577,10 @@ const routes = [
     name: 'CreateGroup',
     component: () => import('../modules/chat/pages/CreateGroup.vue'),
     meta: {
-      title: '发起群聊',
+      title: '选择联系人',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTabBar: true
     }
   },
   {
@@ -1430,7 +1590,9 @@ const routes = [
     meta: {
       title: '扫一扫',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTopBar: true,  // 扫描页面没有导航栏
+      hideTabBar: true
     }
   },
 
@@ -1474,6 +1636,30 @@ const routes = [
       title: '位置',
       requiresAuth: true,
       keepAlive: false
+    }
+  },
+  {
+    path: '/location-picker',
+    name: 'LocationPicker',
+    component: () => import('../modules/location/pages/LocationPickerLeaflet.vue'),
+    meta: {
+      title: '位置',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTopBar: true,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/map-test',
+    name: 'MapTest',
+    component: () => import('../modules/location/pages/LocationPickerLeaflet.vue'),
+    meta: {
+      title: '地图测试',
+      requiresAuth: false,
+      keepAlive: false,
+      hideTopBar: true,
+      hideTabBar: true
     }
   },
 
@@ -1582,6 +1768,7 @@ const routes = [
       title: '收藏',
       requiresAuth: true,
       keepAlive: false
+      // 移除 hideTopBar，使用全局导航栏
     }
   },
   {
@@ -1708,7 +1895,10 @@ const routes = [
       title: '图标测试',
       requiresAuth: false
     }
-  }
+  },
+
+  // 新的通话系统路由
+  ...callRoutes
 ]
 
 const router = createRouter({
@@ -1733,9 +1923,31 @@ console.log('🔍 /add-friend 路由:', routes.find(r => r.path === '/add-friend
 
 // 基本路由守卫
 router.beforeEach(async (to, from, next) => {
-  // 设置页面标题
-  if (to.meta?.title) {
-    document.title = to.meta.title as string
+  // 设置页面标题 - 确保 meta.title 被正确设置
+  let pageTitle = '叶语'
+
+  // 优先使用路由配置中的 meta.title
+  if (to.meta?.title && typeof to.meta.title === 'string') {
+    pageTitle = to.meta.title
+  } else {
+    // 如果 meta.title 不存在，根据路径设置默认标题
+    const titleMap: Record<string, string> = {
+      '/add-friend': '添加朋友',
+      '/new-friends': '新的朋友',
+      '/contacts': '通讯录',
+      '/chat': '微信',
+      '/discover': '发现',
+      '/profile': '我',
+      '/moments': '朋友圈'
+    }
+    pageTitle = titleMap[to.path] || '叶语'
+  }
+
+  document.title = pageTitle
+
+  // 强制设置 meta.title（确保后续可以读取）
+  if (!to.meta.title) {
+    to.meta.title = pageTitle
   }
 
   console.log('🚀 路由导航:', {
@@ -1743,7 +1955,8 @@ router.beforeEach(async (to, from, next) => {
     to: to.path,
     name: to.name,
     matched: to.matched.length,
-    requiresAuth: to.meta?.requiresAuth
+    requiresAuth: to.meta?.requiresAuth,
+    title: pageTitle
   })
 
   // 🛡️ 根本防护：阻止访问自聊天URL

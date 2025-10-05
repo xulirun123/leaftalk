@@ -45,7 +45,7 @@ const chatItemManager = useChatItemManager(props.sendToServerFn)
 
 // 消息发送接口
 interface MessageData {
-  type: 'text' | 'image' | 'voice' | 'video' | 'file'
+  type: 'text' | 'image' | 'voice' | 'video' | 'file' | 'location'
   content: string | File
 }
 
@@ -347,6 +347,11 @@ const sendFileMessage = (file: File) => {
   return sendMessage({ type: 'file', content: file })
 }
 
+// 发送位置消息
+const sendLocationMessage = (locationData: string) => {
+  return sendMessage({ type: 'location', content: locationData })
+}
+
 // 暴露方法给父组件
 defineExpose({
   sendMessage,
@@ -354,7 +359,8 @@ defineExpose({
   sendImageMessage,
   sendVoiceMessage,
   sendVideoMessage,
-  sendFileMessage
+  sendFileMessage,
+  sendLocationMessage
 })
 </script>
 

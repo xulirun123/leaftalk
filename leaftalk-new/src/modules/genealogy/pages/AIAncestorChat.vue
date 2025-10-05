@@ -413,8 +413,8 @@
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth'
-import { useAppStore } from '../../../stores/app'
-import MobileTopBar from '../../../components/mobile/MobileTopBar.vue'
+import { useAppStore } from '../../../shared/stores/appStore'
+import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 // 语音识别类型声明
 declare global {

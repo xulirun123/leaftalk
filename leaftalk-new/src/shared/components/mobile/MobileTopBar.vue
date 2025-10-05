@@ -1,5 +1,5 @@
 <template>
-  <div class="mobile-top-bar">
+  <div class="mobile-top-bar" :style="{ background: backgroundColor }">
     <!-- 状态栏 -->
     <div class="status-bar">
       <span class="time">{{ currentTime }}</span>
@@ -24,7 +24,12 @@
           class="action-btn"
           @click="handleButtonClick(btn)"
         >
-          <iconify-icon :icon="btn.icon" width="20"></iconify-icon>
+          <template v-if="btn.text">
+            <span class="action-text">{{ btn.text }}</span>
+          </template>
+          <template v-else>
+            <iconify-icon :icon="btn.icon" width="20"></iconify-icon>
+          </template>
         </button>
       </div>
     </div>
@@ -42,20 +47,23 @@ interface Props {
   title?: string
   showBack?: boolean
   rightButtons?: Array<{
-    icon: string
+    icon?: string
+    text?: string
     action: string
   }>
+  backgroundColor?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: '叶语',
   showBack: false,
-  rightButtons: () => []
+  rightButtons: () => [],
+  backgroundColor: '#e5e5e5'
 })
 
 const emit = defineEmits<{
   back: []
-  buttonClick: [button: { icon: string; action: string }]
+  buttonClick: [button: any]
 }>()
 
 const currentTime = ref('')
@@ -71,7 +79,8 @@ const handleBack = () => {
   emit('back')
 }
 
-const handleButtonClick = (button: { icon: string; action: string }) => {
+const handleButtonClick = (button: any) => {
+  console.log('🔘 MobileTopBar handleButtonClick:', button)
   emit('buttonClick', button)
 }
 
@@ -83,7 +92,7 @@ onMounted(() => {
 
 <style scoped>
 .mobile-top-bar {
-  background: #e5e5e5;
+  /* background 通过 :style 动态设置，不在这里硬编码 */
   flex-shrink: 0; /* 防止被压缩 */
   /* 移除 fixed 定位，使用正常文档流 */
 }
@@ -161,7 +170,7 @@ onMounted(() => {
 }
 
 .action-btn {
-  width: 32px;
+  min-width: 32px;
   height: 32px;
   border: none;
   background: none;
@@ -170,6 +179,10 @@ onMounted(() => {
   justify-content: center;
   cursor: pointer;
   color: #333;
+}
+.action-text {
+  font-size: 16px;
+  color: #07C160;
 }
 
 .back-btn:hover,

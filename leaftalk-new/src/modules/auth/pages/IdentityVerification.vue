@@ -154,7 +154,7 @@
 
           <div class="action-buttons">
             <button @click="goToHome" class="action-btn primary">
-              进入叶语首页
+              {{ sessionStorage.getItem('verification_return_path') ? '返回' : '进入叶语首页' }}
               <iconify-icon icon="heroicons:arrow-right" width="16"></iconify-icon>
             </button>
           </div>
@@ -289,9 +289,17 @@ const getMaritalStatusText = (status) => {
   return statusMap[status] || status
 }
 
-// 跳转到首页
+// 跳转到首页或返回原页面
 const goToHome = () => {
-  router.push('/')
+  // 检查是否有返回路径
+  const returnPath = sessionStorage.getItem('verification_return_path')
+
+  if (returnPath) {
+    sessionStorage.removeItem('verification_return_path')
+    router.push(returnPath)
+  } else {
+    router.push('/')
+  }
 }
 
 // 安全的Toast显示

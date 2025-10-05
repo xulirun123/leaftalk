@@ -312,8 +312,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAIStore } from '../../stores/ai'
-import type { AIAssistant } from '../../stores/ai'
+import { useAIStore } from '../../../stores/ai'
+import type { AIAssistant } from '../../../stores/ai'
 
 const router = useRouter()
 const aiStore = useAIStore()

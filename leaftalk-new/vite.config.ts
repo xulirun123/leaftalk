@@ -5,19 +5,32 @@ import { fileURLToPath, URL } from 'node:url'
 import { resolve } from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    vue({
-      template: {
-        compilerOptions: {
-          // 将iconify-icon标记为自定义元素
-          isCustomElement: (tag) => {
-            return tag === 'iconify-icon' || tag.startsWith('iconify-')
+export default defineConfig(({ mode }) => {
+  // 生产环境完全模拟开发环境
+  const isDev = mode === 'development'
+
+  return {
+    // 定义环境变量，让生产环境和开发环境功能一致
+    define: {
+      __ENABLE_ALL_FEATURES__: true,  // 启用所有功能，不区分开发/生产环境
+      __DEV_MODE__: true,  // 保持开发模式的功能
+      'process.env.NODE_ENV': JSON.stringify(isDev ? 'development' : 'development'), // 强制为development
+      'import.meta.env.DEV': true,  // 强制为开发模式
+      'import.meta.env.PROD': false  // 强制不为生产模式
+    },
+
+    plugins: [
+      vue({
+        template: {
+          compilerOptions: {
+            // 将iconify-icon标记为自定义元素
+            isCustomElement: (tag) => {
+              return tag === 'iconify-icon' || tag.startsWith('iconify-')
+            }
           }
         }
-      }
-    })
-  ],
+      })
+    ],
 
   resolve: {
     alias: {
@@ -57,33 +70,22 @@ export default defineConfig({
       }
     }
   },
-  build: {
-    // 增加chunk大小限制
-    chunkSizeWarningLimit: 2000,
-    // 代码分割优化
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          // 将Vue相关库打包到一个chunk
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          // 将UI组件库打包到一个chunk
-          'ui-vendor': ['@iconify/iconify'],
-          // 将工具库打包到一个chunk
-          'utils-vendor': ['axios']
+    build: {
+      // 生产构建完全模拟开发环境
+      minify: false,  // 不压缩，保持开发环境一致
+      sourcemap: true,  // 生成源码映射，方便调试
+      chunkSizeWarningLimit: 2000,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vue-vendor': ['vue', 'vue-router', 'pinia'],
+            'ui-vendor': ['@iconify/iconify'],
+            'utils-vendor': ['axios']
+          }
         }
-      }
-    },
-    // 压缩配置
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
-    },
-    // 资源内联阈值
-    assetsInlineLimit: 4096,
-    // 启用CSS代码分割
-    cssCodeSplit: true
+      },
+      assetsInlineLimit: 4096,
+      cssCodeSplit: false  // 禁用CSS代码分割，确保所有样式都在主CSS文件中
+    }
   }
 })

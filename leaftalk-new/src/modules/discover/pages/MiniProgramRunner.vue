@@ -135,9 +135,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useI18n } from '../../composables/useI18n'
+import { useI18n } from '../../../shared/composables/useI18n'
 import { useAppStore } from '../../../shared/stores/appStore'
-import { miniProgramManager, type MiniProgramInfo, type MiniProgramRuntime } from '../../utils/miniProgram'
+import { miniProgramManager, type MiniProgram, type MiniProgramRuntime } from '../utils/miniProgram'
 
 const route = useRoute()
 const router = useRouter()

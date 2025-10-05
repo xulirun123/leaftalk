@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通话API修复测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { border-color: #28a745; background-color: #d4edda; }
+        .error { border-color: #dc3545; background-color: #f8d7da; }
+        .warning { border-color: #ffc107; background-color: #fff3cd; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        .log { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔧 通话API修复测试</h1>
+    
+    <div class="test-section">
+        <h3>🏥 服务器健康检查</h3>
+        <button class="btn-primary" onclick="testHealth()">检查服务器状态</button>
+        <div id="health-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🗄️ 数据库连接测试</h3>
+        <button class="btn-primary" onclick="testDatabase()">测试数据库连接</button>
+        <div id="db-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📞 通话API测试</h3>
+        <button class="btn-success" onclick="testCallAPI()">测试发起通话</button>
+        <div id="call-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📋 测试日志</h3>
+        <button class="btn-danger" onclick="clearLogs()">清空日志</button>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const baseURL = 'http://localhost:8893'
+        const logsDiv = document.getElementById('logs')
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString()
+            const logEntry = document.createElement('div')
+            logEntry.className = 'log'
+            logEntry.innerHTML = `[${timestamp}] ${type.toUpperCase()}: ${message}`
+            logsDiv.appendChild(logEntry)
+            logsDiv.scrollTop = logsDiv.scrollHeight
+            console.log(`[${timestamp}] ${type.toUpperCase()}: ${message}`)
+        }
+        
+        function showResult(elementId, success, message, data = null) {
+            const element = document.getElementById(elementId)
+            element.className = `test-section ${success ? 'success' : 'error'}`
+            element.innerHTML = `
+                <p>${success ? '✅' : '❌'} ${message}</p>
+                ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `
+        }
+        
+        async function testHealth() {
+            log('开始健康检查测试...')
+            try {
+                const response = await fetch(`${baseURL}/health`)
+                const data = await response.json()
+                
+                if (response.ok) {
+                    showResult('health-result', true, '服务器运行正常', data)
+                    log('健康检查成功', 'success')
+                } else {
+                    showResult('health-result', false, `服务器响应错误: ${response.status}`, data)
+                    log(`健康检查失败: ${response.status}`, 'error')
+                }
+            } catch (error) {
+                showResult('health-result', false, `连接失败: ${error.message}`)
+                log(`健康检查异常: ${error.message}`, 'error')
+            }
+        }
+        
+        async function testDatabase() {
+            log('开始数据库连接测试...')
+            try {
+                const response = await fetch(`${baseURL}/test-db`)
+                const data = await response.json()
+                
+                if (response.ok && data.success) {
+                    showResult('db-result', true, '数据库连接正常', data)
+                    log(`数据库连接成功，用户数: ${data.userCount}`, 'success')
+                } else {
+                    showResult('db-result', false, `数据库连接失败: ${data.error || '未知错误'}`, data)
+                    log(`数据库连接失败: ${data.error}`, 'error')
+                }
+            } catch (error) {
+                showResult('db-result', false, `数据库测试异常: ${error.message}`)
+                log(`数据库测试异常: ${error.message}`, 'error')
+            }
+        }
+        
+        async function testCallAPI() {
+            log('开始通话API测试...')
+            try {
+                const requestData = {
+                    targetUserId: 2,
+                    type: 'video'
+                }
+                
+                log(`发送请求: ${JSON.stringify(requestData)}`)
+                
+                const response = await fetch(`${baseURL}/api/call/initiate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                })
+                
+                const data = await response.json()
+                
+                if (response.ok && data.success) {
+                    showResult('call-result', true, '通话API调用成功', data)
+                    log(`通话API成功，通话ID: ${data.data.callId}`, 'success')
+                } else {
+                    showResult('call-result', false, `通话API失败: ${data.error || '未知错误'}`, data)
+                    log(`通话API失败: ${data.error}`, 'error')
+                }
+            } catch (error) {
+                showResult('call-result', false, `通话API异常: ${error.message}`)
+                log(`通话API异常: ${error.message}`, 'error')
+            }
+        }
+        
+        function clearLogs() {
+            logsDiv.innerHTML = ''
+            log('日志已清空')
+        }
+        
+        // 页面加载时自动运行测试
+        window.onload = async () => {
+            log('页面加载完成，开始自动测试...')
+            await testHealth()
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            await testDatabase()
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            await testCallAPI()
+            log('自动测试完成！')
+        }
+    </script>
+</body>
+</html>

@@ -171,7 +171,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
-import { useI18n } from '../../composables/useI18n'
+import { useI18n } from '../../../shared/composables/useI18n'
 import { videoAPI } from '../../services/api'
 
 const router = useRouter()

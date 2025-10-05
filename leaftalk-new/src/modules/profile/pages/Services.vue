@@ -1,12 +1,5 @@
 <template>
   <div class="services-page">
-    <!-- 顶部导航栏 -->
-    <MobileTopBar 
-      title="服务" 
-      :show-back="true" 
-      @back="goBack"
-    />
-
     <!-- 叶语豆和钱包按钮区域 -->
     <div class="service-buttons-container">
       <div class="service-button" @click="goToYeyuBeans">
@@ -50,7 +43,6 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()
 

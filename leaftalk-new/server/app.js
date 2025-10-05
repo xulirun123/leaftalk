@@ -1,5 +1,11 @@
 // 叶语统一服务器入口文件
-require('dotenv').config({ path: '../.env' })
+const dotenv = require('dotenv')
+const _resolve = require('path').resolve
+let _env = dotenv.config({ path: _resolve(__dirname, '.env'), override: true })
+if (_env.error) {
+  _env = dotenv.config({ path: _resolve(__dirname, '..', '.env'), override: true })
+}
+
 
 const express = require('express')
 const cors = require('cors')
@@ -18,16 +24,29 @@ const PORT = 8893
 
 // 中间件配置
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'null'], // 'null' 允许 file:// 协议
+    origin: [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:3000',  // 部署环境前端
+        'http://127.0.0.1:3000',  // 部署环境前端
+        'null'
+    ], // 'null' 允许 file:// 协议
     credentials: true
 }))
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+// 增加请求体大小限制，支持 base64 图片上传
+app.use(express.json({ limit: '50mb' }))
+app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 
 // Socket.IO配置
 const io = socketIo(server, {
     cors: {
-        origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'null'], // 'null' 允许 file:// 协议
+        origin: [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://localhost:3000',  // 部署环境前端
+            'http://127.0.0.1:3000',  // 部署环境前端
+            'null'
+        ], // 'null' 允许 file:// 协议
         methods: ['GET', 'POST'],
         credentials: true
     },
@@ -95,10 +114,10 @@ const dbConfig = {
     password: process.env.DB_PASSWORD || 'password',
     database: process.env.DB_NAME || 'leaftalk-new',
     charset: 'utf8mb4',
+    waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    acquireTimeout: 60000,
-    timeout: 60000
+    connectTimeout: 60000
 }
 
 // 调试：打印数据库配置
@@ -110,24 +129,141 @@ console.log('  DB_NAME:', process.env.DB_NAME)
 console.log('  实际使用的数据库:', dbConfig.database)
 
 // 创建数据库连接池
-const pool = mysql.createPool(dbConfig)
-const db = pool // 为了兼容性，创建db别名
-console.log('✅ 数据库连接池创建成功')
-// 确保用户表增加二维码字段（MySQL 8+ 支持 IF NOT EXISTS）
-async function ensureUserQrColumn() {
+let pool
+let db
+const dbInitDiag = { tried: [], errors: [] }
+
+async function initDbWithFallback() {
+  const tried = []
+  dbInitDiag.tried = []
+  dbInitDiag.errors = []
+
+  const candidates = []
+  const envUser = process.env.DB_USER || 'root'
+  const envPass = process.env.DB_PASSWORD ?? ''
+  // 1) 优先尝试 .env 提供的账号
+  candidates.push({ user: envUser, password: envPass })
+  // 2) 常见账号名 + 已知密码
+  const commonUsers = ['leaftalk', 'admin', 'mysql', 'user']
+  for (const u of commonUsers) {
+    if (!candidates.find(c => c.user === u && c.password === envPass)) {
+      candidates.push({ user: u, password: envPass })
+    }
+  }
+  // 3) 尝试 root 无密码（常见本地环境）
+  if (!candidates.find(c => c.user === 'root' && c.password === '')) {
+    candidates.push({ user: 'root', password: '' })
+  }
+
+  for (const cand of candidates) {
+    try {
+      const testPool = mysql.createPool({ ...dbConfig, user: cand.user, password: cand.password })
+      await testPool.execute('SELECT 1')
+      pool = testPool
+      db = pool
+      app.set('db', pool)
+      const masked = cand.password ? '***' : '(empty)'
+      console.log(`✅ 数据库连接池创建成功，使用账号: ${cand.user} / ${masked}`)
+      return
+    } catch (e) {
+      const label = `${cand.user}:${cand.password ? '***' : '(empty)'}`
+      tried.push(label)
+      dbInitDiag.tried.push(label)
+      dbInitDiag.errors.push({ user: cand.user, code: e && e.code, errno: e && e.errno, message: (e && e.message) || String(e) })
+      console.warn('⚠️ 数据库连接失败，尝试下一个账号:', { user: cand.user, code: e && e.code, message: e && e.message })
+    }
+  }
+
+  throw new Error(`无法连接数据库，已尝试账号: ${tried.join(', ')}`)
+}
+
+// 启动数据库初始化，并保存就绪Promise
+const dbReady = initDbWithFallback().catch(err => {
+  console.error('❌ 数据库初始化失败:', err && (err.stack || err.message || err))
+})
+// --- Startup tasks: run after DB is ready ---
+async function ensureUser1And2AreFriends() {
   try {
-    await pool.execute(`
-      ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS qr_code_url VARCHAR(255) DEFAULT NULL
+    if (!pool) {
+      console.warn('⚠️ 数据库未就绪，跳过初始化默认好友关系')
+      return
+    }
+    const [existing] = await pool.execute(`
+      SELECT * FROM friendships
+      WHERE (user_id = 1 AND friend_id = 2) OR (user_id = 2 AND friend_id = 1)
     `)
-  } catch (e) {
-    console.warn('⚠️ 确保用户二维码字段失败(可能已存在):', e.message)
+    // @ts-ignore
+    if (!existing || existing.length === 0) {
+      console.log('🔗 添加用户1和用户2的好友关系...')
+      await pool.execute(`
+        INSERT INTO friendships (user_id, friend_id, status, created_at, updated_at) VALUES
+        (1, 2, 'accepted', NOW(), NOW()),
+        (2, 1, 'accepted', NOW(), NOW())
+      `)
+      console.log('✅ 用户1和用户2现在互为好友')
+    } else {
+      console.log('✅ 用户1和用户2已经是好友')
+    }
+  } catch (error) {
+    console.error('❌ 设置用户1和用户2好友关系失败:', error)
   }
 }
 
-// 在启动时后台执行一次，避免阻塞
+async function initStartupTasks() {
+  try {
+    await ensureUser1And2AreFriends()
+  } catch (e) {
+    console.warn('⚠️ 启动任务执行出现问题:', e && (e.message || e))
+  }
+}
+
+// 在数据库就绪后运行启动任务
+if (dbReady && typeof dbReady.then === 'function') {
+  dbReady.then(() => initStartupTasks()).catch(() => initStartupTasks())
+}
+
+// 在数据库就绪前阻塞路由处理；若未初始化则按需重新初始化
+app.use(async (req, res, next) => {
+  if (!pool) {
+    try {
+      // 优先等待已有的初始化过程
+      if (typeof dbReady?.then === 'function') {
+        await dbReady
+      }
+      // 若仍未就绪，按需重试初始化
+      if (!pool) {
+        await initDbWithFallback()
+      }
+    } catch (e) {
+      console.error('❌ 按需初始化数据库失败:', e?.message || e)
+      return res.status(500).json({ success: false, error: '数据库未初始化', detail: e?.message || String(e), diag: dbInitDiag })
+    }
+  }
+  next()
+})
+
+// 确保用户表增加二维码字段（兼容不支持 IF NOT EXISTS 的 MySQL 版本）
+async function ensureUserQrColumn() {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'qr_code_url'`
+    )
+    // @ts-ignore - rows 来自 mysql2/promise
+    if (!rows || rows.length === 0) {
+      await pool.execute(`ALTER TABLE users ADD COLUMN qr_code_url VARCHAR(255) DEFAULT NULL`)
+      console.log('✅ 已添加 qr_code_url 列')
+    } else {
+      console.log('ℹ️ qr_code_url 列已存在')
+    }
+  } catch (e) {
+    console.warn('⚠️ 确保用户二维码字段失败:', e?.message || e)
+  }
+}
+
+// 在启动时后台执行一次，等待数据库就绪后再执行，避免未就绪导致报错
 ;(async () => {
-  try { await ensureUserQrColumn() } catch { /* ignore */ }
+  try { await dbReady; await ensureUserQrColumn() } catch (e) { /* ignore */ }
 })()
 // 确保用户信息常用字段存在（gender, region, signature, qr_code_url）
 async function ensureUserProfileColumns() {
@@ -177,8 +313,8 @@ async function initMessageTable() {
     }
 }
 
-// 立即初始化消息表
-initMessageTable()
+// 等待数据库就绪后再初始化消息表
+;(async () => { try { await dbReady; await initMessageTable() } catch (e) {} })()
 
 // JWT密钥
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -591,17 +727,17 @@ app.post('/api/auth/login', async (req, res) => {
             })
         }
 
-        // 查询用户（支持叶语号或手机号登录）
+        // 查询用户（支持叶语号/手机号/用户名 登录）
         const [users] = await db.execute(
-            'SELECT * FROM users WHERE yeyu_id = ? OR phone = ?',
-            [username, username]
+            'SELECT * FROM users WHERE yeyu_id = ? OR phone = ? OR username = ?',
+            [username, username, username]
         )
 
         if (users.length === 0) {
             console.log('❌ 用户不存在:', username)
             return res.status(401).json({
                 success: false,
-                error: '账户不存在，请检查叶语号或手机号'
+                error: '账户不存在，请检查叶语号、手机号或用户名'
             })
         }
 
@@ -934,6 +1070,154 @@ app.get('/api/auth/verify', authenticateToken, async (req, res) => {
     }
 })
 
+// 检查身份证号绑定情况（允许多个用户绑定同一身份证）
+app.get('/api/users/check-identity', authenticateToken, async (req, res) => {
+    try {
+        const { idNumber } = req.query
+        const currentUserId = req.user.userId
+
+        console.log('🔍 检查身份证号绑定情况:', idNumber)
+
+        if (!idNumber) {
+            return res.json({
+                success: true,
+                exists: false,
+                bindingCount: 0,
+                message: '身份证号为空'
+            })
+        }
+
+        // 查询已绑定该身份证的用户（包括当前用户）
+        const [users] = await pool.execute(
+            'SELECT id, real_name, yeyu_id FROM users WHERE id_card = ?',
+            [idNumber]
+        )
+
+        // 检查当前用户是否已经绑定了这个身份证
+        const currentUserBound = users.some(user => user.id === currentUserId)
+
+        res.json({
+            success: true,
+            exists: users.length > 0,
+            bindingCount: users.length,
+            currentUserBound: currentUserBound,
+            data: {
+                exists: users.length > 0,
+                bindingCount: users.length,
+                currentUserBound: currentUserBound,
+                boundUsers: users.map(user => ({
+                    id: user.id,
+                    name: user.real_name,
+                    yeyuId: user.yeyu_id
+                }))
+            },
+            message: users.length > 0
+                ? `该身份证已绑定${users.length}个账号${currentUserBound ? '（包括当前账号）' : ''}`
+                : '身份证号可用'
+        })
+
+    } catch (error) {
+        console.error('❌ 检查身份证号失败:', error)
+        res.status(500).json({
+            success: false,
+            error: '检查身份证号失败'
+        })
+    }
+})
+
+// 搜索用户API（通过叶语号或手机号）
+app.get('/api/users/search', authenticateToken, async (req, res) => {
+    try {
+        const { q } = req.query
+        const currentUserId = req.user.userId
+
+        console.log('🔍 搜索用户:', { query: q, currentUserId })
+
+        if (!q || !q.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: '搜索关键词不能为空',
+                code: 400
+            })
+        }
+
+        const query = q.trim()
+
+        // 检查是否搜索自己
+        const [currentUser] = await db.execute(
+            'SELECT yeyu_id, phone FROM users WHERE id = ?',
+            [currentUserId]
+        )
+
+        if (currentUser.length > 0) {
+            const user = currentUser[0]
+            if (query === user.yeyu_id || query === user.phone) {
+                return res.status(400).json({
+                    success: false,
+                    message: '不能添加自己为好友',
+                    code: 400,
+                    data: { searchingSelf: true }
+                })
+            }
+        }
+
+        // 搜索用户（通过叶语号或手机号）
+        const [users] = await db.execute(
+            'SELECT id, yeyu_id, username, nickname, avatar, phone, gender, region, signature FROM users WHERE (yeyu_id = ? OR phone = ?) AND id != ?',
+            [query, query, currentUserId]
+        )
+
+        console.log('🔍 搜索结果:', users.length, '个用户')
+
+        if (users.length === 0) {
+            return res.json({
+                success: false,
+                message: '未找到匹配的用户',
+                code: 404,
+                data: []
+            })
+        }
+
+        // 检查是否已经是好友
+        const userId = users[0].id
+        const [friendships] = await db.execute(
+            'SELECT status FROM friendships WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)',
+            [currentUserId, userId, userId, currentUserId]
+        )
+
+        const isFriend = friendships.length > 0 && friendships[0].status === 'accepted'
+
+        const result = users.map(user => ({
+            id: user.id,
+            yeyuId: user.yeyu_id,
+            name: user.nickname || user.username,
+            nickname: user.nickname,
+            avatar: user.avatar,
+            phone: user.phone,
+            gender: user.gender,
+            region: user.region,
+            signature: user.signature,
+            isFriend: isFriend
+        }))
+
+        res.json({
+            success: true,
+            data: result,
+            message: '搜索成功',
+            code: 200
+        })
+
+    } catch (error) {
+        console.error('❌ 搜索用户失败:', error)
+        res.status(500).json({
+            success: false,
+            message: '搜索用户失败',
+            code: 500,
+            error: error.message
+        })
+    }
+})
+
 // 获取用户信息API
 app.get('/api/users/:userId', authenticateToken, async (req, res) => {
     try {
@@ -1089,6 +1373,76 @@ app.get('/api/users/check/:phone', async (req, res) => {
         res.status(500).json({
             success: false,
             error: '检查用户失败'
+        })
+    }
+})
+
+
+
+// 提交身份认证信息
+app.post('/api/users/identity', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId
+        const {
+            name,
+            idNumber,
+            gender,
+            birthDate,
+            address,
+            fatherName,
+            motherName,
+            maritalStatus,
+            spouseName
+        } = req.body
+
+        console.log('🔍 提交身份认证信息:', { userId, name, idNumber })
+
+        // 更新用户身份信息
+        await pool.execute(`
+            UPDATE users SET
+                real_name = ?,
+                id_card = ?,
+                gender = ?,
+                birth_date = ?,
+                father_name = ?,
+                mother_name = ?,
+                verification_status = 'verified',
+                updated_at = NOW()
+            WHERE id = ?
+        `, [name, idNumber, gender, birthDate, fatherName, motherName, userId])
+
+        // 查询更新后的用户信息
+        const [users] = await pool.execute(
+            'SELECT id, yeyu_id, nickname, real_name, verification_status FROM users WHERE id = ?',
+            [userId]
+        )
+
+        if (users.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: '用户不存在'
+            })
+        }
+
+        res.json({
+            success: true,
+            message: '身份认证成功',
+            data: {
+                user: {
+                    id: users[0].id,
+                    yeyuId: users[0].yeyu_id,
+                    nickname: users[0].nickname,
+                    realName: users[0].real_name,
+                    verified: users[0].verification_status === 'verified'
+                }
+            }
+        })
+
+    } catch (error) {
+        console.error('❌ 身份认证失败:', error)
+        res.status(500).json({
+            success: false,
+            error: '身份认证失败'
         })
     }
 })
@@ -1333,12 +1687,17 @@ app.post('/api/ocr/idcard', upload.single('image'), async (req, res) => {
             })
         }
 
-        // 导入OCR服务
-        const OCRService = require('./services/ocrService')
-        const ocrService = new OCRService()
+        // 使用全局腾讯云OCR服务实例
+        if (!global.tencentOcrService) {
+            const TencentOcrService = require('./services/tencentOcrService')
+            global.tencentOcrService = new TencentOcrService()
+            console.log('🔧 创建全局腾讯云OCR服务实例')
+        }
+
+        console.log('🔍 腾讯云OCR客户端状态:', global.tencentOcrService.client ? '已初始化' : '未初始化')
 
         // 执行OCR识别
-        const result = await ocrService.recognizeIDCard(req.file.buffer)
+        const result = await global.tencentOcrService.recognizeIdCard(req.file.buffer)
 
         console.log('✅ OCR识别完成:', result.success ? '成功' : '失败')
 
@@ -1363,7 +1722,7 @@ app.post('/api/ocr/idcard', upload.single('image'), async (req, res) => {
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
     try {
         const [users] = await pool.execute(
-            'SELECT id, yeyu_id, nickname, avatar, phone, real_name, verification_status, gender, region, signature, qr_code_url FROM users WHERE id = ?',
+            'SELECT id, yeyu_id, nickname, avatar, phone, real_name, verification_status, gender, region, signature, qr_code_url, require_friend_verification FROM users WHERE id = ?',
             [req.user.userId]
         )
 
@@ -1893,9 +2252,9 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
     try {
         await ensureUserProfileColumns()
         const userId = req.user.userId
-        const { nickname, avatar, phone, real_name, gender, region, signature, qrCodeUrl, qr_code_url } = req.body
+        const { nickname, avatar, phone, real_name, gender, region, signature, qrCodeUrl, qr_code_url, require_friend_verification } = req.body
 
-        console.log('🔄 更新用户信息:', { userId, nickname, avatar, phone, real_name, gender, region, signature })
+        console.log('🔄 更新用户信息:', { userId, nickname, avatar, phone, real_name, gender, region, signature, require_friend_verification })
 
         // 构建动态更新SQL
         const updateFields = []
@@ -1934,6 +2293,10 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
             updateFields.push('qr_code_url = ?')
             updateValues.push(qrFinal)
         }
+        if (require_friend_verification !== undefined) {
+            updateFields.push('require_friend_verification = ?')
+            updateValues.push(require_friend_verification ? 1 : 0)
+        }
 
         if (updateFields.length === 0) {
             return res.status(400).json({
@@ -1952,7 +2315,7 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
 
         // 获取更新后的用户信息
         const [users] = await pool.execute(
-            'SELECT id, yeyu_id, nickname, avatar, phone, real_name, verification_status, gender, region, signature, qr_code_url FROM users WHERE id = ?',
+            'SELECT id, yeyu_id, nickname, avatar, phone, real_name, verification_status, gender, region, signature, qr_code_url, require_friend_verification FROM users WHERE id = ?',
             [userId]
         )
 
@@ -2550,6 +2913,151 @@ app.get('/api/identity/status', async (req, res) => {
     }
 })
 
+// ==================== 聊天背景设置 API ====================
+
+// 获取用户的所有聊天背景设置
+app.get('/api/chat-backgrounds', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId
+
+        // 从 user_settings 表中获取 chat_backgrounds JSON 字段
+        const [settings] = await pool.execute(
+            'SELECT chat_backgrounds FROM user_settings WHERE user_id = ?',
+            [userId]
+        )
+
+        let backgrounds = {}
+        if (settings.length > 0 && settings[0].chat_backgrounds) {
+            try {
+                backgrounds = JSON.parse(settings[0].chat_backgrounds)
+            } catch (e) {
+                console.error('❌ 解析聊天背景JSON失败:', e)
+            }
+        }
+
+        console.log('✅ 获取聊天背景设置成功:', { userId, count: Object.keys(backgrounds).length })
+
+        res.json({
+            success: true,
+            data: backgrounds
+        })
+    } catch (error) {
+        console.error('❌ 获取聊天背景设置失败:', error)
+        res.status(500).json({
+            success: false,
+            error: '获取聊天背景设置失败'
+        })
+    }
+})
+
+// 保存单个聊天的背景设置
+app.post('/api/chat-backgrounds/:chatId', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId
+        const { chatId } = req.params
+        const { background } = req.body
+
+        console.log('🎨 保存聊天背景:', { userId, chatId, backgroundLength: background?.length || 0 })
+
+        // 检查用户设置是否存在
+        const [existingSettings] = await pool.execute(
+            'SELECT id, chat_backgrounds FROM user_settings WHERE user_id = ?',
+            [userId]
+        )
+
+        let backgrounds = {}
+        if (existingSettings.length > 0 && existingSettings[0].chat_backgrounds) {
+            try {
+                backgrounds = JSON.parse(existingSettings[0].chat_backgrounds)
+            } catch (e) {
+                console.error('❌ 解析现有聊天背景JSON失败:', e)
+            }
+        }
+
+        // 更新指定聊天的背景
+        backgrounds[chatId] = background
+
+        const backgroundsJSON = JSON.stringify(backgrounds)
+
+        if (existingSettings.length > 0) {
+            // 更新现有设置
+            await pool.execute(
+                'UPDATE user_settings SET chat_backgrounds = ?, updated_at = NOW() WHERE user_id = ?',
+                [backgroundsJSON, userId]
+            )
+        } else {
+            // 创建新设置记录
+            await pool.execute(
+                'INSERT INTO user_settings (user_id, chat_backgrounds, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
+                [userId, backgroundsJSON]
+            )
+        }
+
+        console.log('✅ 聊天背景保存成功:', { userId, chatId })
+
+        res.json({
+            success: true,
+            message: '聊天背景保存成功'
+        })
+    } catch (error) {
+        console.error('❌ 保存聊天背景失败:', error)
+        res.status(500).json({
+            success: false,
+            error: '保存聊天背景失败'
+        })
+    }
+})
+
+// 删除单个聊天的背景设置
+app.delete('/api/chat-backgrounds/:chatId', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId
+        const { chatId } = req.params
+
+        console.log('🗑️ 删除聊天背景:', { userId, chatId })
+
+        // 获取现有设置
+        const [existingSettings] = await pool.execute(
+            'SELECT id, chat_backgrounds FROM user_settings WHERE user_id = ?',
+            [userId]
+        )
+
+        if (existingSettings.length > 0 && existingSettings[0].chat_backgrounds) {
+            let backgrounds = {}
+            try {
+                backgrounds = JSON.parse(existingSettings[0].chat_backgrounds)
+            } catch (e) {
+                console.error('❌ 解析聊天背景JSON失败:', e)
+            }
+
+            // 删除指定聊天的背景
+            delete backgrounds[chatId]
+
+            const backgroundsJSON = JSON.stringify(backgrounds)
+
+            await pool.execute(
+                'UPDATE user_settings SET chat_backgrounds = ?, updated_at = NOW() WHERE user_id = ?',
+                [backgroundsJSON, userId]
+            )
+
+            console.log('✅ 聊天背景删除成功:', { userId, chatId })
+        }
+
+        res.json({
+            success: true,
+            message: '聊天背景删除成功'
+        })
+    } catch (error) {
+        console.error('❌ 删除聊天背景失败:', error)
+        res.status(500).json({
+            success: false,
+            error: '删除聊天背景失败'
+        })
+    }
+})
+
+// ==================== 开发环境测试 API ====================
+
 // 开发环境测试API
 app.get('/api/dev/test-token', async (req, res) => {
     try {
@@ -3011,8 +3519,8 @@ app.get('/api/contacts/:friendId/remark-pack', authenticateToken, async (req, re
     const row = rows[0]
     let tags = []
     let phones = []
-    try { tags = row.tags ? JSON.parse(row.tags) : [] } catch {}
-    try { phones = row.phones ? JSON.parse(row.phones) : [] } catch {}
+    try { tags = row.tags ? JSON.parse(row.tags) : [] } catch (e) {}
+    try { phones = row.phones ? JSON.parse(row.phones) : [] } catch (e) {}
 
     return res.json({ success: true, data: { remark: row.remark || '', tags, phones, description: row.description || '', updated_at: row.updated_at } })
   } catch (e) {
@@ -3185,45 +3693,314 @@ app.get('/api/friends/requests', authenticateToken, async (req, res) => {
     try {
         // friend_requests 表已存在，直接查询
 
-        // 获取收到的好友请求
+        // 获取收到的好友请求 - 返回所有状态（pending, accepted, rejected）
+        // 同时查询备注信息（如果已经是好友）
         const [requests] = await pool.execute(`
-            SELECT fr.id, fr.message, fr.created_at, fr.status,
-                   u.id as user_id, u.yeyu_id, u.nickname, u.avatar
+            SELECT fr.id, fr.message, fr.created_at, fr.updated_at, fr.status,
+                   u.id as user_id, u.yeyu_id, u.nickname, u.avatar,
+                   f.remark
             FROM friend_requests fr
-            JOIN users u ON fr.requester_id = u.id
-            WHERE fr.requestee_id = ? AND fr.status = 'pending'
+            JOIN users u ON fr.from_user_id = u.id
+            LEFT JOIN friendships f ON (
+                (f.user_id = ? AND f.friend_id = u.id) OR
+                (f.friend_id = ? AND f.user_id = u.id)
+            ) AND f.status = 'accepted'
+            WHERE fr.to_user_id = ?
             ORDER BY fr.created_at DESC
-        `, [req.user.userId])
+        `, [req.user.userId, req.user.userId, req.user.userId])
+
+        console.log(`📥 收到的好友请求数量: ${requests.length}`)
 
         res.json({
             success: true,
             data: requests
         })
     } catch (error) {
-        console.error('获取好友请求失败:', error)
+        console.error('❌ 获取好友请求失败:', error)
         res.status(500).json({ error: '获取好友请求失败' })
     }
 })
 
 app.get('/api/friends/requests/sent', authenticateToken, async (req, res) => {
     try {
-        // 获取发送的好友请求
+        // 获取发送的好友请求 - 返回所有状态（pending, accepted, rejected）
+        // 同时查询备注信息（如果已经是好友）
         const [requests] = await pool.execute(`
-            SELECT fr.id, fr.message, fr.created_at, fr.status,
-                   u.id as user_id, u.yeyu_id, u.nickname, u.avatar
+            SELECT fr.id, fr.message, fr.created_at, fr.updated_at, fr.status,
+                   u.id as user_id, u.yeyu_id, u.nickname, u.avatar,
+                   f.remark
             FROM friend_requests fr
-            JOIN users u ON fr.requestee_id = u.id
-            WHERE fr.requester_id = ?
+            JOIN users u ON fr.to_user_id = u.id
+            LEFT JOIN friendships f ON (
+                (f.user_id = ? AND f.friend_id = u.id) OR
+                (f.friend_id = ? AND f.user_id = u.id)
+            ) AND f.status = 'accepted'
+            WHERE fr.from_user_id = ?
             ORDER BY fr.created_at DESC
-        `, [req.user.userId])
+        `, [req.user.userId, req.user.userId, req.user.userId])
+
+        console.log(`📤 发送的好友请求数量: ${requests.length}`)
 
         res.json({
             success: true,
             data: requests
         })
     } catch (error) {
-        console.error('获取我的申请失败:', error)
+        console.error('❌ 获取我的申请失败:', error)
         res.status(500).json({ error: '获取我的申请失败' })
+    }
+})
+
+// 添加好友API
+app.post('/api/contacts/add', authenticateToken, async (req, res) => {
+    try {
+        const currentUserId = req.user.userId
+        const { userId, message } = req.body
+
+        console.log('📤 发送好友请求:', { from: currentUserId, to: userId, message })
+
+        if (!userId) {
+            return res.status(400).json({
+                success: false,
+                message: '缺少用户ID',
+                code: 400
+            })
+        }
+
+        // 检查是否添加自己
+        if (Number(userId) === Number(currentUserId)) {
+            return res.status(400).json({
+                success: false,
+                message: '不能添加自己为好友',
+                code: 400
+            })
+        }
+
+        // 检查今日添加好友次数（一天最多20次）
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const todayStr = today.toISOString().split('T')[0]
+
+        const [todayRequests] = await db.execute(
+            'SELECT COUNT(*) as count FROM friend_requests WHERE from_user_id = ? AND DATE(created_at) = ?',
+            [currentUserId, todayStr]
+        )
+
+        const todayCount = todayRequests[0].count
+        if (todayCount >= 20) {
+            return res.status(429).json({
+                success: false,
+                message: '今日添加好友次数已达上限（20次），请明天再试',
+                code: 429
+            })
+        }
+
+        console.log(`📊 今日已添加好友次数: ${todayCount}/20`)
+
+        // 检查目标用户是否存在，并获取其验证设置
+        const [targetUsers] = await db.execute(
+            'SELECT id, nickname, require_friend_verification FROM users WHERE id = ?',
+            [userId]
+        )
+
+        if (targetUsers.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: '用户不存在',
+                code: 404
+            })
+        }
+
+        const targetUser = targetUsers[0]
+        const requireVerification = targetUser.require_friend_verification !== 0 // 默认需要验证
+
+        // 检查是否已经是好友
+        const [existingFriendship] = await db.execute(
+            'SELECT * FROM friendships WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)',
+            [currentUserId, userId, userId, currentUserId]
+        )
+
+        if (existingFriendship.length > 0 && existingFriendship[0].status === 'accepted') {
+            return res.status(400).json({
+                success: false,
+                message: '已经是好友了',
+                code: 400
+            })
+        }
+
+        // 检查是否已经发送过好友请求
+        const [existingRequest] = await db.execute(
+            'SELECT * FROM friend_requests WHERE from_user_id = ? AND to_user_id = ? AND status = ?',
+            [currentUserId, userId, 'pending']
+        )
+
+        if (existingRequest.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: '已经发送过好友请求，请等待对方回应',
+                code: 400
+            })
+        }
+
+        // 根据目标用户的设置决定是直接成为好友还是发送请求
+        if (requireVerification) {
+            // 需要验证：创建好友请求
+            await db.execute(
+                'INSERT INTO friend_requests (from_user_id, to_user_id, message, status, created_at) VALUES (?, ?, ?, ?, NOW())',
+                [currentUserId, userId, message || '我想加你为好友', 'pending']
+            )
+
+            console.log('✅ 好友请求发送成功（需要验证）')
+
+            res.json({
+                success: true,
+                message: '好友请求已发送',
+                code: 200,
+                requireVerification: true
+            })
+        } else {
+            // 不需要验证：直接成为好友
+            // 创建双向好友关系
+            await db.execute(
+                'INSERT INTO friendships (user_id, friend_id, status, created_at) VALUES (?, ?, ?, NOW())',
+                [currentUserId, userId, 'accepted']
+            )
+            await db.execute(
+                'INSERT INTO friendships (user_id, friend_id, status, created_at) VALUES (?, ?, ?, NOW())',
+                [userId, currentUserId, 'accepted']
+            )
+
+            // 同时创建一条已接受的好友请求记录（用于历史记录）
+            await db.execute(
+                'INSERT INTO friend_requests (from_user_id, to_user_id, message, status, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+                [currentUserId, userId, message || '我想加你为好友', 'accepted']
+            )
+
+            console.log('✅ 直接成为好友（无需验证）')
+
+            res.json({
+                success: true,
+                message: '已成为好友',
+                code: 200,
+                requireVerification: false
+            })
+        }
+
+    } catch (error) {
+        console.error('❌ 发送好友请求失败:', error)
+        res.status(500).json({
+            success: false,
+            message: '发送好友请求失败',
+            code: 500,
+            error: error.message
+        })
+    }
+})
+
+// 接受好友请求API
+app.post('/api/contacts/accept/:requestId', authenticateToken, async (req, res) => {
+    try {
+        const currentUserId = req.user.userId
+        const { requestId } = req.params
+
+        console.log('✅ 接受好友请求:', { requestId, currentUserId })
+
+        // 查询好友请求
+        const [requests] = await db.execute(
+            'SELECT * FROM friend_requests WHERE id = ? AND to_user_id = ? AND status = ?',
+            [requestId, currentUserId, 'pending']
+        )
+
+        if (requests.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: '好友请求不存在或已处理',
+                code: 404
+            })
+        }
+
+        const request = requests[0]
+        const fromUserId = request.from_user_id
+
+        // 更新好友请求状态
+        await db.execute(
+            'UPDATE friend_requests SET status = ?, updated_at = NOW() WHERE id = ?',
+            ['accepted', requestId]
+        )
+
+        // 创建双向好友关系
+        await db.execute(
+            'INSERT INTO friendships (user_id, friend_id, status, created_at) VALUES (?, ?, ?, NOW())',
+            [currentUserId, fromUserId, 'accepted']
+        )
+        await db.execute(
+            'INSERT INTO friendships (user_id, friend_id, status, created_at) VALUES (?, ?, ?, NOW())',
+            [fromUserId, currentUserId, 'accepted']
+        )
+
+        console.log('✅ 好友请求已接受，好友关系已建立')
+
+        res.json({
+            success: true,
+            message: '已接受好友请求',
+            code: 200
+        })
+
+    } catch (error) {
+        console.error('❌ 接受好友请求失败:', error)
+        res.status(500).json({
+            success: false,
+            message: '接受好友请求失败',
+            code: 500,
+            error: error.message
+        })
+    }
+})
+
+// 拒绝好友请求API
+app.post('/api/contacts/reject/:requestId', authenticateToken, async (req, res) => {
+    try {
+        const currentUserId = req.user.userId
+        const { requestId } = req.params
+
+        console.log('❌ 拒绝好友请求:', { requestId, currentUserId })
+
+        // 查询好友请求
+        const [requests] = await db.execute(
+            'SELECT * FROM friend_requests WHERE id = ? AND to_user_id = ? AND status = ?',
+            [requestId, currentUserId, 'pending']
+        )
+
+        if (requests.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: '好友请求不存在或已处理',
+                code: 404
+            })
+        }
+
+        // 更新好友请求状态
+        await db.execute(
+            'UPDATE friend_requests SET status = ?, updated_at = NOW() WHERE id = ?',
+            ['rejected', requestId]
+        )
+
+        console.log('✅ 好友请求已拒绝')
+
+        res.json({
+            success: true,
+            message: '已拒绝好友请求',
+            code: 200
+        })
+
+    } catch (error) {
+        console.error('❌ 拒绝好友请求失败:', error)
+        res.status(500).json({
+            success: false,
+            message: '拒绝好友请求失败',
+            code: 500,
+            error: error.message
+        })
     }
 })
 
@@ -3350,139 +4127,58 @@ app.post('/api/qr/decode', authenticateToken, async (req, res) => {
     }
 })
 
-// 启动服务器 - 使用HTTP server以支持WebSocket
-server.listen(PORT, () => {
-    console.log(`🚀 叶语统一服务器启动成功！`)
+// 临时API：删除所有测试用户和当前用户，只保留用户1和用户2
+app.get('/api/debug/cleanup-users', async (req, res) => {
+    try {
+        console.log('🧹 开始清理数据库，删除测试用户和当前用户...')
 
-    // 确保用户1和用户2互为好友
-    async function ensureUser1And2AreFriends() {
-        try {
-            // 检查用户1和用户2是否已经是好友
-            const [existing] = await pool.execute(`
-                SELECT * FROM friendships
-                WHERE (user_id = 1 AND friend_id = 2) OR (user_id = 2 AND friend_id = 1)
-            `)
+        // 查询当前所有用户
+        const [allUsers] = await pool.execute('SELECT id, username, nickname, yeyu_id FROM users ORDER BY id')
+        console.log('📋 清理前的所有用户:', allUsers)
 
-            if (existing.length === 0) {
-                console.log('🔗 添加用户1和用户2的好友关系...')
-                await pool.execute(`
-                    INSERT INTO friendships (user_id, friend_id, status, created_at, updated_at) VALUES
-                    (1, 2, 'accepted', NOW(), NOW()),
-                    (2, 1, 'accepted', NOW(), NOW())
-                `)
-                console.log('✅ 用户1和用户2现在互为好友')
-            } else {
-                console.log('✅ 用户1和用户2已经是好友')
-            }
-        } catch (error) {
-            console.error('❌ 设置用户1和用户2好友关系失败:', error)
-        }
+        // 删除除用户1和用户2之外的所有用户
+        await pool.execute('DELETE FROM users WHERE id NOT IN (1, 2)')
+        console.log('🗑️ 已删除除用户1和用户2之外的所有用户')
+
+        // 删除涉及已删除用户的好友关系
+        await pool.execute('DELETE FROM friendships WHERE user_id NOT IN (1, 2) OR friend_id NOT IN (1, 2)')
+        console.log('🗑️ 已删除涉及已删除用户的好友关系')
+
+        // 删除涉及已删除用户的好友请求
+        await pool.execute('DELETE FROM friend_requests WHERE requester_id NOT IN (1, 2) OR requestee_id NOT IN (1, 2)')
+        console.log('🗑️ 已删除涉及已删除用户的好友请求')
+
+        // 删除涉及已删除用户的黑名单
+        await pool.execute('DELETE FROM user_blacklist WHERE user_id NOT IN (1, 2) OR blocked_user_id NOT IN (1, 2)')
+        console.log('🗑️ 已删除涉及已删除用户的黑名单')
+
+        // 删除涉及已删除用户的星标好友
+        await pool.execute('DELETE FROM star_friends WHERE user_id NOT IN (1, 2) OR friend_id NOT IN (1, 2)')
+        console.log('🗑️ 已删除涉及已删除用户的星标好友')
+
+        // 删除涉及已删除用户的好友备注
+        await pool.execute('DELETE FROM friend_remarks WHERE user_id NOT IN (1, 2) OR friend_id NOT IN (1, 2)')
+        console.log('🗑️ 已删除涉及已删除用户的好友备注')
+
+        // 查询清理后的用户
+        const [remainingUsers] = await pool.execute('SELECT id, username, nickname, yeyu_id FROM users ORDER BY id')
+        console.log('📋 清理后剩余的用户:', remainingUsers)
+
+        // 查询清理后的好友关系
+        const [remainingFriendships] = await pool.execute('SELECT * FROM friendships ORDER BY id')
+        console.log('📋 清理后剩余的好友关系:', remainingFriendships)
+
+        res.json({
+            success: true,
+            message: '数据库清理完成，只保留用户1和用户2',
+            before: allUsers,
+            after: remainingUsers,
+            friendships: remainingFriendships
+        })
+    } catch (error) {
+        console.error('❌ 数据库清理失败:', error)
+        res.status(500).json({ error: '数据库清理失败' })
     }
-
-    // 启动时确保好友关系
-    ensureUser1And2AreFriends()
-
-    // 临时API：删除所有测试用户和当前用户，只保留用户1和用户2
-    app.get('/api/debug/cleanup-users', async (req, res) => {
-        try {
-            console.log('🧹 开始清理数据库，删除测试用户和当前用户...')
-
-            // 查询当前所有用户
-            const [allUsers] = await pool.execute('SELECT id, username, nickname, yeyu_id FROM users ORDER BY id')
-            console.log('📋 清理前的所有用户:', allUsers)
-
-            // 删除除用户1和用户2之外的所有用户
-            await pool.execute('DELETE FROM users WHERE id NOT IN (1, 2)')
-            console.log('🗑️ 已删除除用户1和用户2之外的所有用户')
-
-            // 删除涉及已删除用户的好友关系
-            await pool.execute('DELETE FROM friendships WHERE user_id NOT IN (1, 2) OR friend_id NOT IN (1, 2)')
-            console.log('🗑️ 已删除涉及已删除用户的好友关系')
-
-            // 删除涉及已删除用户的好友请求
-            await pool.execute('DELETE FROM friend_requests WHERE requester_id NOT IN (1, 2) OR requestee_id NOT IN (1, 2)')
-            console.log('🗑️ 已删除涉及已删除用户的好友请求')
-
-            // 删除涉及已删除用户的黑名单
-            await pool.execute('DELETE FROM user_blacklist WHERE user_id NOT IN (1, 2) OR blocked_user_id NOT IN (1, 2)')
-            console.log('🗑️ 已删除涉及已删除用户的黑名单')
-
-            // 删除涉及已删除用户的星标好友
-            await pool.execute('DELETE FROM star_friends WHERE user_id NOT IN (1, 2) OR friend_id NOT IN (1, 2)')
-            console.log('🗑️ 已删除涉及已删除用户的星标好友')
-
-            // 删除涉及已删除用户的好友备注
-            await pool.execute('DELETE FROM friend_remarks WHERE user_id NOT IN (1, 2) OR friend_id NOT IN (1, 2)')
-            console.log('🗑️ 已删除涉及已删除用户的好友备注')
-
-            // 查询清理后的用户
-            const [remainingUsers] = await pool.execute('SELECT id, username, nickname, yeyu_id FROM users ORDER BY id')
-            console.log('📋 清理后剩余的用户:', remainingUsers)
-
-            // 查询清理后的好友关系
-            const [remainingFriendships] = await pool.execute('SELECT * FROM friendships ORDER BY id')
-            console.log('📋 清理后剩余的好友关系:', remainingFriendships)
-
-            res.json({
-                success: true,
-                message: '数据库清理完成，只保留用户1和用户2',
-                before: allUsers,
-                after: remainingUsers,
-                friendships: remainingFriendships
-            })
-        } catch (error) {
-            console.error('❌ 数据库清理失败:', error)
-            res.status(500).json({ error: '数据库清理失败' })
-        }
-    })
-    console.log(`📍 主服务: http://localhost:${PORT}`)
-    console.log(`📡 WebSocket服务已启用`)
-    console.log(`🌐 HTTP API: http://localhost:${PORT}`)
-    console.log(`🔌 WebSocket: ws://localhost:${PORT}`)
-    console.log(`🔍 健康检查: http://localhost:${PORT}/health`)
-    console.log(`🔑 测试Token: http://localhost:${PORT}/api/dev/test-token`)
-    console.log(`👤 身份状态: http://localhost:${PORT}/api/identity/status`)
-    console.log(`⏰ 启动时间: ${new Date().toLocaleString()}`)
-
-    // 自动启动WebRTC服务
-    if (process.env.AUTO_START_WEBRTC !== 'false') {
-        console.log(`🔄 正在启动WebRTC服务...`)
-        const { spawn } = require('child_process')
-        const webrtcProcess = spawn('node', ['start-webrtc.js'], {
-            cwd: './webrtc',
-            stdio: 'inherit'
-        })
-
-        webrtcProcess.on('error', (error) => {
-            console.error('❌ WebRTC服务启动失败:', error.message)
-        })
-
-        webrtcProcess.on('exit', (code) => {
-            console.log(`📴 WebRTC服务退出，代码: ${code}`)
-        })
-    } else {
-        console.log(`📝 WebRTC服务: 请单独启动 webrtc/start-webrtc.js`)
-    }
-
-    // 定期清理离线用户
-    setInterval(() => {
-        const now = Date.now()
-        const timeout = 60000 // 60秒超时
-
-        for (const [userId, userInfo] of onlineUsers.entries()) {
-            if (userInfo.lastHeartbeat && (now - userInfo.lastHeartbeat) > timeout) {
-                console.log(`⏰ 用户 ${userId} 心跳超时，标记为离线`)
-                onlineUsers.delete(userId)
-
-                // 广播用户离线状态
-                io.emit('user_status', {
-                    userId,
-                    status: 'offline',
-                    lastSeen: userInfo.lastHeartbeat || userInfo.joinTime
-                })
-            }
-        }
-    }, 30000) // 每30秒检查一次
 })
 
 // 确保 user_blacklist 表存在
@@ -4038,9 +4734,76 @@ const webrtcSignaling = new WebRTCSignalingService(io)
 app.set('webrtcSignaling', webrtcSignaling)
 console.log('🎯 WebRTC信令服务已启动')
 
-// WebRTC 通话 API
-const webrtcCallsRouter = require('../backend/routes/webrtcCalls')
-app.use('/api/webrtc-calls', authenticateToken, webrtcCallsRouter)
-console.log('✅ WebRTC Calls API mounted on /api/webrtc-calls')
+// 通话 API (仿微信通话系统)
+const callRouter = require('../backend/routes/callRoutes')
+app.use('/api/call', authenticateToken, callRouter)
+console.log('✅ Call API mounted on /api/call')
+
+// 小程序 API
+app.get('/api/miniapps', authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    data: []
+  })
+})
+
+// 附近的人 API
+app.post('/api/nearby/users', authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    data: []
+  })
+})
+
+// 地图地理编码 API
+app.get('/api/map/geocoder', authenticateToken, (req, res) => {
+  const { location } = req.query
+  res.json({
+    success: true,
+    data: {
+      address: '未知位置',
+      location: location
+    }
+  })
+})
+
+// 启动服务器
+if (require.main === module) {
+  // 只有直接运行此文件时才启动服务器
+  server.listen(PORT, () => {
+    console.log('🚀 叶语服务器启动成功！')
+    console.log(`📍 HTTP服务: http://localhost:${PORT}`)
+    console.log(`🔌 WebSocket服务: ws://localhost:${PORT}`)
+    console.log(`⏰ 启动时间: ${new Date().toLocaleString('zh-CN')}`)
+    console.log('================================')
+  })
+
+  // 错误处理
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ 端口 ${PORT} 已被占用，请关闭占用进程或更换端口`)
+    } else {
+      console.error('❌ 服务器启动失败:', error.message)
+    }
+    process.exit(1)
+  })
+
+  // 优雅关闭
+  process.on('SIGINT', async () => {
+    console.log('\n👋 正在关闭服务器...')
+    server.close(() => {
+      console.log('✅ 服务器已关闭')
+      process.exit(0)
+    })
+  })
+
+  process.on('SIGTERM', async () => {
+    console.log('\n👋 正在关闭服务器...')
+    server.close(() => {
+      console.log('✅ 服务器已关闭')
+      process.exit(0)
+    })
+  })
+}
 
 module.exports = app

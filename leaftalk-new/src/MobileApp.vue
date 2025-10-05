@@ -7,13 +7,19 @@
       :subtitle="pageSubtitle"
       :show-back="showBackButton"
       :right-buttons="topBarButtons"
+      :background-color="topBarBackgroundColor"
       @button-click="handleTopBarClick"
       @back="handleBack"
     />
 
     <!-- 主内容区 -->
     <div :class="['mobile-content', { 'no-top-bar': !showTopBar, 'no-tab-bar': !showTabBar }]">
-      <router-view />
+      <router-view v-slot="{ Component, route }">
+        <keep-alive>
+          <component :is="Component" :key="route.meta?.keepAlive ? route.name : route.path" v-if="route.meta?.keepAlive" />
+        </keep-alive>
+        <component :is="Component" :key="route.path" v-if="!route.meta?.keepAlive" />
+      </router-view>
     </div>
 
     <!-- 移动端底部导航 -->
@@ -36,7 +42,8 @@
     <!-- 实时消息接收器 -->
     <RealtimeMessageReceiver :show-status="false" />
 
-
+    <!-- 全局通话悬浮窗（呼叫/通话中且开启迷你模式时显示） -->
+    <FloatingCallWidget />
 
     <!-- 开发环境调试信息 (可选) -->
     <div v-if="isDevelopment && false" class="dev-debug-info">
@@ -52,14 +59,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted, inject, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from './shared/stores/appStore'
+import { useAuthStore } from './stores/auth'
 import { useChatStore } from './modules/chat/stores/chatStore'
+import { useContactStore } from './modules/contacts/stores/contactsStore'
 import { messagePersistenceService } from './modules/chat/services/messagePersistenceService'
 import MobileTopBar from './shared/components/mobile/MobileTopBar.vue'
 import MobileTabBar from './shared/components/mobile/MobileTabBar.vue'
 import RealtimeMessageReceiver from './modules/chat/components/RealtimeMessageReceiver.vue'
+import FloatingCallWidget from './shared/components/call/FloatingCallWidget.vue'
 
 import { DBDebugger } from './modules/chat/utils/dbDebugger'
 import { useGlobalLanguage } from './shared/composables/useGlobalLanguage'
@@ -69,7 +79,9 @@ import { useGlobalLanguage } from './shared/composables/useGlobalLanguage'
 const router = useRouter()
 const route = useRoute()
 const appStore = useAppStore()
+const authStore = useAuthStore()
 const chatStore = useChatStore()
+const contactStore = useContactStore()
 const eventBus = inject('eventBus')
 
 // 使用全局语言管理
@@ -163,22 +175,86 @@ const currentTab = computed(() => {
   return 'chats'
 })
 
-// 页面标题 - 使用翻译函数
-const pageTitle = computed(() => {
+// 页面标题 - 使用 ref 而不是 computed，通过 watch 更新
+const pageTitle = ref(t('app.name') || '叶语')
+
+// 顶部导航栏背景色 - 所有页面统一使用灰色
+const topBarBackgroundColor = computed(() => {
+  return '#E5E5E5'
+})
+
+// 计算标题的函数
+const calculatePageTitle = () => {
   if (!route || !route.path) return t('app.name') || '叶语'
 
-  // 优先使用路由meta.title
-  if (route.meta && (route.meta as any).title) {
-    return String((route.meta as any).title)
+  console.log('📋 计算页面标题:', {
+    path: route.path,
+    metaTitle: route.meta?.title,
+    meta: route.meta
+  })
+
+  // 优先使用路由 meta.title（直接字符串）
+  if (route.meta?.title && typeof route.meta.title === 'string') {
+    console.log('✅ 使用 meta.title:', route.meta.title)
+    return route.meta.title
+  }
+
+  // 处理动态路由 - 聊天页面
+  if (route.path.startsWith('/chat/')) {
+    // 从路由参数中获取聊天对象ID
+    const chatId = route.params.id as string
+    console.log('🔍 计算聊天页面标题, chatId:', chatId)
+
+    if (chatId) {
+      // 解析聊天ID (格式: chat_1_2)
+      const parts = chatId.split('_')
+      if (parts.length === 3) {
+        const currentUserId = parseInt(parts[1])
+        const otherUserId = parseInt(parts[2])
+        const authStore = useAuthStore()
+        const actualOtherId = authStore.user?.id === currentUserId ? otherUserId : currentUserId
+
+        console.log('👤 对方用户ID:', actualOtherId, '当前用户ID:', authStore.user?.id)
+
+        // 尝试从备注中获取名字
+        try {
+          const saved = JSON.parse(localStorage.getItem(`friend_remark_${actualOtherId}`) || 'null')
+          const remark = saved?.remark
+          if (remark) {
+            console.log('✅ 从备注获取名字:', remark)
+            return remark
+          }
+        } catch {}
+
+        // 尝试从联系人列表中获取名字
+        console.log('📋 联系人列表数量:', contactStore.contacts.length)
+        const contact = contactStore.contacts.find(c => c.id === actualOtherId)
+        if (contact) {
+          const displayName = contact.remark || contact.nickname || contact.name || '聊天'
+          console.log('✅ 从联系人获取名字:', displayName, contact)
+          return displayName
+        } else {
+          console.log('⚠️ 未在联系人列表中找到用户:', actualOtherId)
+        }
+      }
+    }
+    console.log('⚠️ 使用默认标题: 聊天')
+    return '聊天'
+  }
+
+  // 处理动态路由 - 好友详细资料
+  if (route.path.startsWith('/friend-profile/')) {
+    return t('profile.personalInfo') || '个人信息'
   }
 
   // 翻译键映射
-  const titleKeyMap = {
+  const titleKeyMap: Record<string, string> = {
     '/': 'app.name',
     '/chat': 'nav.chat',
     '/contacts': 'nav.contacts',
     '/new-friends': 'contacts.newFriends',
     '/friend-profile': 'profile.personalInfo',
+    '/add-friend': 'contacts.addFriend',  // 添加这个映射
     '/genealogy': 'nav.genealogy',
     '/genealogy/advanced-search': 'genealogy.advancedSearch',
     '/genealogy/layout-styles': 'genealogy.layoutStyles',
@@ -226,19 +302,15 @@ const pageTitle = computed(() => {
     '/settings/language-selector': 'settings.language'
   }
 
-  // 处理动态路由
-  if (route.path.startsWith('/friend-profile/')) {
-    return t('profile.personalInfo') || '个人信息'
-  }
-
   const titleKey = titleKeyMap[route.path]
   if (titleKey) {
     const translated = t(titleKey)
     return translated !== titleKey ? translated : (titleKey.split('.').pop() || '叶语')
   }
 
+  console.log('⚠️ 使用默认标题: 叶语')
   return t('app.name') || '叶语'
-})
+}
 
 const pageSubtitle = computed(() => {
   if (!route || !route.path) return ''
@@ -255,6 +327,21 @@ const pageSubtitle = computed(() => {
 const topBarButtons = computed(() => {
   if (!route || !route.path) return []
 
+  // 选择联系人页：右上角“完成”文本按钮
+  if (route.path === '/select-contact') {
+    return [{ action: 'selectContactConfirm', text: '完成' } as any]
+  }
+
+  // 发起群聊页：右上角"完成"文本按钮
+  if (route.path === '/create-group') {
+    return [{ action: 'createGroupConfirm', text: '完成' } as any]
+  }
+
+  // 选择背景页：右上角"完成"文本按钮
+  if (route.path === '/settings/chat-background-gallery') {
+    return [{ action: 'chatBackgroundConfirm', text: '完成' } as any]
+  }
+
   // 首页（聊天列表）的按钮
   if (route.path === '/') {
     return [
@@ -263,9 +350,9 @@ const topBarButtons = computed(() => {
     ]
   }
 
-  // 聊天页面的按钮
+  // 聊天页面的按钮 - 横排三点
   if (route.path.startsWith('/chat/')) {
-    return [{ icon: 'lucide:more-vertical', action: 'chatInfo' }]
+    return [{ icon: 'heroicons:ellipsis-horizontal', action: 'chatInfo' }]
   }
 
   // 个人信息页面的按钮
@@ -285,6 +372,11 @@ const topBarButtons = computed(() => {
       { icon: 'heroicons:magnifying-glass', action: 'search' },
       { icon: 'heroicons:plus-circle', action: 'showAddMenu' }
     ]
+  }
+
+  // 新朋友页面：右上角"添加朋友"文本按钮
+  if (route.path === '/new-friends') {
+    return [{ text: '添加朋友', action: 'addFriend' } as any]
   }
 
   if (route.path === '/discover') {
@@ -308,23 +400,54 @@ const showBackButton = computed(() => {
 // 处理顶部导航栏按钮点击
 const handleTopBarClick = (payload: any) => {
   const action = typeof payload === 'string' ? payload : payload?.action
-  console.log('Top bar button clicked:', payload)
+  console.log('🔥 Top bar button clicked:', payload, 'action:', action)
+  console.log('🔥 eventBus:', eventBus)
 
   switch (action) {
     case 'search':
       router.push('/search')
       break
     case 'showAddMenu':
+      console.log('🔥 showAddMenu action triggered')
       if (eventBus) {
+        console.log('🔥 Emitting showAddMenu event')
         eventBus.emit('showAddMenu')
+        console.log('🔥 showAddMenu event emitted')
+      } else {
+        console.error('❌ eventBus is not available!')
       }
       break
     case 'addFriend':
       router.push('/add-friend')
       break
     case 'chatInfo':
-      const chatId = route.params.id
-      router.push(`/chat-info/${chatId}`)
+      // 解析聊天ID获取对方用户ID
+      const chatId = route.params.id as string
+      console.log('🔍 点击聊天详情按钮, chatId:', chatId)
+      if (chatId) {
+        const parts = chatId.split('_')
+        console.log('🔍 解析chatId parts:', parts, 'length:', parts.length)
+        // chatId 格式可能是 "userId1_userId2" (2个部分) 或 "chat_userId1_userId2" (3个部分)
+        if (parts.length === 2) {
+          // 格式: "userId1_userId2"
+          const userId1 = parts[0]
+          const userId2 = parts[1]
+          const currentUserId = String(authStore.user?.id)
+          const actualOtherId = currentUserId === userId1 ? userId2 : userId1
+          console.log('🔍 跳转到聊天详情页:', `/chat-info/${actualOtherId}`)
+          router.push(`/chat-info/${actualOtherId}`)
+        } else if (parts.length === 3) {
+          // 格式: "chat_userId1_userId2"
+          const userId1 = parts[1]
+          const userId2 = parts[2]
+          const currentUserId = String(authStore.user?.id)
+          const actualOtherId = currentUserId === userId1 ? userId2 : userId1
+          console.log('🔍 跳转到聊天详情页:', `/chat-info/${actualOtherId}`)
+          router.push(`/chat-info/${actualOtherId}`)
+        } else {
+          console.error('❌ chatId 格式不正确:', chatId, parts)
+        }
+      }
       break
     case 'friendSettings':
       const friendId = route.params.id
@@ -332,6 +455,21 @@ const handleTopBarClick = (payload: any) => {
       break
     case 'friendRemarkSave':
       if (eventBus) { eventBus.emit('friendRemarkSave') }
+      break
+    case 'selectContactConfirm':
+      if (eventBus) { eventBus.emit('selectContact:confirm') }
+      break
+    case 'createGroupConfirm':
+      if (eventBus) { eventBus.emit('createGroup:confirm') }
+      break
+    case 'chatBackgroundConfirm':
+      console.log('🎨 [MobileApp] chatBackgroundConfirm 按钮被点击')
+      if (eventBus) {
+        eventBus.emit('chatBackground:confirm')
+        console.log('🎨 [MobileApp] chatBackground:confirm 事件已触发')
+      } else {
+        console.error('❌ [MobileApp] eventBus 未初始化')
+      }
       break
 
     default:
@@ -341,6 +479,11 @@ const handleTopBarClick = (payload: any) => {
 
 // 处理返回按钮
 const handleBack = () => {
+  // 选择联系人页（通话邀请）返回到通话页面
+  if (route.path === '/select-contact' && route.query.from === 'callInvite') {
+    router.push({ name: 'Call', query: { action: 'active' } })
+    return
+  }
   router.back()
 }
 
@@ -504,6 +647,67 @@ onMounted(async () => {
   console.log('  - window.testDirectNavigation() - 测试直接URL修改')
   console.log('  - window.testWindowLocation() - 测试window.location修改')
 })
+
+// 监听路由变化，确保标题正确更新
+watch(
+  () => [route.path, route.meta, route.meta?.title],
+  () => {
+    console.log('🔄 路由变化，更新标题')
+    // 延迟一点确保 route.meta 已经更新
+    setTimeout(() => {
+      pageTitle.value = calculatePageTitle()
+      console.log('📋 标题已更新为:', pageTitle.value)
+    }, 10)
+  },
+  { immediate: true, deep: true }
+)
+
+// 监听联系人列表变化，更新聊天页面标题
+watch(
+  () => contactStore.contacts.length,
+  () => {
+    if (route.path.startsWith('/chat/')) {
+      console.log('👥 联系人列表已更新，重新计算聊天标题')
+      pageTitle.value = calculatePageTitle()
+      console.log('📋 标题已更新为:', pageTitle.value)
+    }
+  }
+)
+
+// 定期检查聊天页面标题（确保即使 meta 更新没有触发 watch 也能更新）
+let titleCheckInterval: any = null
+watch(
+  () => route.path,
+  (newPath) => {
+    // 清除之前的定时器
+    if (titleCheckInterval) {
+      clearInterval(titleCheckInterval)
+      titleCheckInterval = null
+    }
+
+    // 如果是聊天页面，启动定期检查
+    if (newPath.startsWith('/chat/')) {
+      console.log('🔄 启动聊天页面标题定期检查')
+      titleCheckInterval = setInterval(() => {
+        const newTitle = calculatePageTitle()
+        if (newTitle !== pageTitle.value && newTitle !== '聊天') {
+          console.log('🔄 定期检查发现标题变化:', pageTitle.value, '->', newTitle)
+          pageTitle.value = newTitle
+        }
+      }, 500) // 每500ms检查一次
+
+      // 5秒后停止检查（标题应该已经加载完成）
+      setTimeout(() => {
+        if (titleCheckInterval) {
+          clearInterval(titleCheckInterval)
+          titleCheckInterval = null
+          console.log('⏹️ 停止聊天页面标题定期检查')
+        }
+      }, 5000)
+    }
+  },
+  { immediate: true }
+)
 
 
 </script>

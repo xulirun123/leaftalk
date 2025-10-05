@@ -128,8 +128,8 @@
     </div>
 
 
-    <!-- 拍照/录像 切换文本按钮（位于拍摄按钮正上方） -->
-    <div class="mode-toggle">
+    <!-- 拍照/录像 切换文本按钮（位于拍摄按钮正上方）- 只允许拍照模式时隐藏 -->
+    <div v-if="!isPhotoOnlyMode" class="mode-toggle">
       <button class="mode-btn" @click="toggleMode">
         {{ mode === 'photo' ? '拍照' : (isRecording ? '录像中' : '录像') }}
       </button>
@@ -171,14 +171,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, watch, computed, inject } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 
 import { useAppStore } from '../../../shared/stores/appStore'
 
 const router = useRouter()
+const route = useRoute()
 const appStore = useAppStore()
+
+// 检查是否只允许拍照模式（从聊天背景设置进入）
+const isPhotoOnlyMode = computed(() => route.query.mode === 'photo-only')
+const fromChatBackground = computed(() => route.query.from === 'chat-background')
 
 // 状态
 const isClosing = ref(false)
@@ -208,8 +213,15 @@ const initCamera = async () => {
         setZoom(Math.max(zoomMin.value, 0.8))
       }, 500)
     }
-  } catch (e) {
-    console.error('摄像头初始化失败', e)
+  } catch (e: any) {
+    // 静默处理摄像头初始化失败
+    // 这是正常情况：摄像头可能被占用、权限未授予、或设备不支持
+    // 不在控制台输出错误，避免干扰用户
+    if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+      // 摄像头被占用或无法启动，静默失败
+      return
+    }
+    // 其他错误也静默处理
   }
 }
 
@@ -227,6 +239,8 @@ const switchCamera = async () => {
 }
 
 const toggleMode = () => {
+  // 如果是只允许拍照模式，不允许切换
+  if (isPhotoOnlyMode.value) return
   if (isRecording.value) return
   mode.value = mode.value === 'photo' ? 'video' : 'photo'
 }
@@ -563,7 +577,55 @@ const sendFromPreview = async () => {
   if (previewBlob.value) {
     const blob = previewBlob.value
 
-    // 检查文件大小限制（100MB）
+    // 如果是从聊天背景设置进入，保存为背景
+    if (fromChatBackground.value) {
+      // 检查文件大小限制（5MB）
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (blob.size > maxSize) {
+        alert(`图片文件大小不能超过5MB\n当前大小: ${(blob.size / 1024 / 1024).toFixed(1)}MB`)
+        return
+      }
+
+      // 将 Blob 转换为 base64
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const imageUrl = e.target?.result as string
+
+        // 获取当前聊天ID（从 query 参数）
+        const chatId = route.query.chatId as string || 'default'
+        console.log('📝 当前聊天ID:', chatId)
+
+        // 使用新的背景管理工具保存
+        import('../utils/chatBackgroundManager').then(({ saveChatBackground }) => {
+          saveChatBackground(chatId, `custom:${imageUrl}`)
+          console.log('✅ 聊天背景已保存:', chatId)
+
+          // 触发事件通知聊天页面更新背景
+          const eventBus = inject('eventBus') as any
+          if (eventBus) {
+            eventBus.emit('chatBackground:updated', {
+              chatId,
+              background: `custom:${imageUrl}`
+            })
+            console.log('📢 已触发 chatBackground:updated 事件')
+          }
+
+          console.log('✅ 背景设置成功')
+
+          // 跳转到聊天页面（返回三级，从拍摄页 -> 聊天背景页 -> 聊天详情页 -> 聊天页面）
+          showPreview.value = false
+          stopCamera()
+          router.go(-3)
+        })
+      }
+      reader.onerror = () => {
+        alert('图片读取失败，请重试')
+      }
+      reader.readAsDataURL(blob)
+      return
+    }
+
+    // 正常聊天模式：检查文件大小限制（100MB）
     const maxSize = 100 * 1024 * 1024 // 100MB
     if (blob.size > maxSize) {
       alert(`文件太大了！\n文件大小: ${(blob.size / 1024 / 1024).toFixed(1)}MB\n最大支持: 100MB\n\n请重新拍摄或选择较短的录像时间。`)

@@ -1,7 +1,5 @@
 <template>
   <div class="video-channels">
-    <MobileTopBar :title="`${friendInfo.name}的视频号`" :show-back="true" @back="goBack" />
-    
     <div class="content">
       <!-- 频道信息头部 -->
       <div class="channel-header">
@@ -103,7 +101,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 import { useAppStore } from '../../../shared/stores/appStore'
 
 const router = useRouter()

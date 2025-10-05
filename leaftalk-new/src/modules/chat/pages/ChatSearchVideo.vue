@@ -1,0 +1,333 @@
+<template>
+  <div class="chat-search-video">
+    <MobileTopBar 
+      title="视频" 
+      :show-back="true"
+      @back="goBack"
+      class="dark-theme-bar"
+    />
+    
+    <div class="page-content">
+      <div v-if="isLoading" class="loading-container">
+        <iconify-icon icon="heroicons:arrow-path" width="24" color="#999" class="loading-icon"></iconify-icon>
+        <p>加载中...</p>
+      </div>
+      
+      <div v-else-if="monthsData.length === 0" class="empty-container">
+        <iconify-icon icon="heroicons:video-camera" width="48" color="#666"></iconify-icon>
+        <p>最近三个月没有视频消息</p>
+      </div>
+      
+      <div v-else class="videos-scroll-area">
+        <div v-for="monthData in monthsData" :key="monthData.key" class="month-section">
+          <div class="month-title">{{ monthData.title }}</div>
+          <div class="video-grid">
+            <div v-for="video in monthData.videos" :key="video.id" class="video-item" @click="openVideo(video)">
+              <div class="video-thumbnail">
+                <img :src="video.thumbnailUrl" :alt="video.content" />
+                <div class="play-icon">
+                  <iconify-icon icon="heroicons:play-circle" width="32" color="white"></iconify-icon>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import MobileTopBar from '@/shared/components/mobile/MobileTopBar.vue'
+import { messagePersistenceService } from '@/modules/chat/services/messagePersistenceService'
+
+const router = useRouter()
+const route = useRoute()
+
+const isLoading = ref(true)
+const videoMessages = ref<any[]>([])
+
+// 辅助函数
+const getToday = () => {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+const formatMonthKey = (date: Date) => {
+  const year = date.getFullYear()
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  return `${year}-${month}`
+}
+
+// 加载视频消息
+const loadVideoMessages = async () => {
+  try {
+    isLoading.value = true
+    const chatId = route.params.chatId as string
+    
+    if (!chatId) {
+      console.warn('⚠️ 没有提供 chatId')
+      return
+    }
+    
+    console.log('🎬 开始加载视频消息，chatId:', chatId)
+    
+    const messages = await messagePersistenceService.getLatestMessages(chatId, 1000)
+    
+    if (!messages || messages.length === 0) {
+      console.log('📭 该会话没有消息记录')
+      videoMessages.value = []
+      return
+    }
+    
+    const now = getToday()
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+    
+    const videos = messages.filter(msg => {
+      if (msg.type !== 'video') return false
+      const timestamp = Number(msg.timestamp)
+      if (!timestamp) return false
+      const date = new Date(timestamp)
+      return date >= threeMonthsAgo && date <= now
+    })
+    
+    console.log('🎬 找到视频消息数量:', videos.length)
+    videoMessages.value = videos
+  } catch (error) {
+    console.error('❌ 加载视频消息失败:', error)
+    videoMessages.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 计算属性 - 按月份分组视频（倒序）
+const monthsData = computed(() => {
+  if (videoMessages.value.length === 0) return []
+  
+  const monthsMap = new Map<string, any[]>()
+  
+  videoMessages.value.forEach(msg => {
+    const timestamp = Number(msg.timestamp)
+    const date = new Date(timestamp)
+    const monthKey = formatMonthKey(date)
+    
+    if (!monthsMap.has(monthKey)) {
+      monthsMap.set(monthKey, [])
+    }
+    
+    monthsMap.get(monthKey)!.push({
+      id: msg.id,
+      videoUrl: msg.content,
+      thumbnailUrl: msg.content, // TODO: 实际应该有缩略图字段
+      timestamp: timestamp,
+      senderId: msg.senderId,
+      content: msg.content
+    })
+  })
+  
+  const months: any[] = []
+  const sortedKeys = Array.from(monthsMap.keys()).sort().reverse()
+  
+  sortedKeys.forEach(key => {
+    const [year, month] = key.split('-')
+    const videos = monthsMap.get(key)!
+    videos.sort((a, b) => b.timestamp - a.timestamp)
+    
+    months.push({
+      key: key,
+      title: `${year}年${parseInt(month)}月`,
+      videos: videos
+    })
+  })
+  
+  console.log('📅 按月份分组的视频数据:', months)
+  
+  return months
+})
+
+const goBack = () => {
+  router.back()
+}
+
+const openVideo = (video: any) => {
+  console.log('🎬 打开视频:', video)
+}
+
+onMounted(async () => {
+  await loadVideoMessages()
+})
+</script>
+
+<style scoped>
+.chat-search-video {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+}
+
+/* 深色主题导航栏 */
+.chat-search-video :deep(.dark-theme-bar) {
+  background: #1a1a1a !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .status-bar) {
+  background: #1a1a1a !important;
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .status-bar .time) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .status-bar .battery) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .status-bar iconify-icon) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .status-icons iconify-icon) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .nav-bar) {
+  background: #1a1a1a !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .nav-title) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .back-btn) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .back-btn iconify-icon) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .action-btn) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .action-btn iconify-icon) {
+  color: white !important;
+}
+
+.chat-search-video :deep(.dark-theme-bar .action-text) {
+  color: #07C160 !important;
+}
+
+.page-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.loading-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  gap: 12px;
+}
+
+.loading-container p {
+  color: #999;
+}
+
+.loading-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.empty-container p {
+  font-size: 15px;
+  color: #999;
+}
+
+.videos-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 0;
+}
+
+.month-section {
+  margin-bottom: 24px;
+}
+
+.month-title {
+  font-size: 14px;
+  color: #aaa;
+  padding: 0 16px 12px 16px;
+  text-align: left;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.video-item {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  cursor: pointer;
+  background: #2a2a2a;
+}
+
+.video-thumbnail {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.video-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s;
+}
+
+.play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.video-item:active .video-thumbnail img {
+  transform: scale(0.95);
+}
+</style>
+

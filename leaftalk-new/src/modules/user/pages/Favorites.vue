@@ -1,16 +1,5 @@
 <template>
   <div class="favorites-page">
-    <!-- 顶部导航栏 -->
-    <div class="header">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24" style="color: #333;"></iconify-icon>
-      </button>
-      <div class="header-title">{{ $t('profile.favorites') }}</div>
-      <button class="search-btn" @click="toggleSearch">
-        <iconify-icon icon="heroicons:magnifying-glass" width="20" style="color: #333;"></iconify-icon>
-      </button>
-    </div>
-
     <!-- 搜索框 -->
     <div v-if="showSearch" class="search-container">
       <input 
@@ -79,7 +68,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
-import { useFavoritesStore } from '../../stores/favorites'
+import { useFavoritesStore } from '../../../stores/favoritesStore'
 
 const router = useRouter()
 const appStore = useAppStore()
@@ -121,12 +110,14 @@ const getItemColor = (type: string) => {
   return colors[type] || '#999'
 }
 
-// 格式化时间
-const formatTime = (time: Date) => {
+// 格式化时间（支持时间戳 number）
+const formatTime = (timestamp: number | Date | undefined) => {
+  if (!timestamp) return '未知时间'
+  const base = typeof timestamp === 'number' ? new Date(timestamp) : timestamp
   const now = new Date()
-  const diff = now.getTime() - time.getTime()
+  const diff = now.getTime() - base.getTime()
   const days = Math.floor(diff / (24 * 60 * 60 * 1000))
-  
+
   if (days === 0) {
     const hours = Math.floor(diff / (60 * 60 * 1000))
     if (hours === 0) {
@@ -137,7 +128,7 @@ const formatTime = (time: Date) => {
   } else if (days < 7) {
     return `${days}天前`
   } else {
-    return time.toLocaleDateString()
+    return base.toLocaleDateString()
   }
 }
 
@@ -206,7 +197,9 @@ const shareFavorite = () => {
 onMounted(() => {
   console.log('收藏页面已加载')
   // 初始化收藏store
-  favoritesStore.init()
+  favoritesStore.initializeFavorites()
+  // 加载收藏数据
+  favoritesStore.fetchFavorites()
 })
 </script>
 

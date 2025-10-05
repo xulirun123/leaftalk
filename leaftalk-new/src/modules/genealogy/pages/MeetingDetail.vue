@@ -62,8 +62,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAppStore } from '../../../stores/app'
-import MobileTopBar from '../../../components/mobile/MobileTopBar.vue'
+import { useAppStore } from '../../../shared/stores/appStore'
+import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 import { generateDefaultAvatar } from '../../../utils/userInfo'
 
 const router = useRouter()

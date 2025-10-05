@@ -1,12 +1,5 @@
 <template>
   <div class="change-yeyu-id">
-    <!-- 统一顶部导航栏 -->
-    <MobileTopBar
-      title="叶语号"
-      :show-back="true"
-      @back="goBack"
-    />
-
     <div class="content">
       <!-- 当前叶语号 -->
       <div class="current-section">
@@ -107,7 +100,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../../stores/auth'
 import { useAppStore } from '../../../shared/stores/appStore'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

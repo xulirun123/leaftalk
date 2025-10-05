@@ -174,11 +174,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useChatStore } from '../chat/stores/chatStore'
-import { useContactStore } from './stores/contactStore'
+import { useChatStore } from '../../chat/stores/chatStore'
+import { useContactStore } from '../../../stores/contactStore'
 import { useAuthStore } from '../../../stores/auth'
-import { usePaymentStore } from '../../stores/payment'
-import { useSmartAuth } from '../composables/useSmartAuth'
+import { usePaymentStore } from '../../../stores/payment'
+import { useSmartAuth } from '../../../shared/composables/useSmartAuth'
+import { requireVerification } from '../../../shared/utils/verificationCheck'
 
 const router = useRouter()
 const route = useRoute()
@@ -256,7 +257,13 @@ const { isAuthReturn, triggerAuth } = useAuthFlow(
   ['chatId', 'chatType', 'chatName'] // 保留这些参数
 )
 
-onMounted(() => {
+onMounted(async () => {
+  // 检查实名认证状态
+  const isVerified = await requireVerification('转账功能', route.fullPath)
+  if (!isVerified) {
+    return // 未认证，已跳转到实名认证页面
+  }
+
   chatId.value = route.query.chatId as string || ''
   chatType.value = route.query.chatType as string || 'private'
   chatName.value = decodeURIComponent(route.query.chatName as string || '')

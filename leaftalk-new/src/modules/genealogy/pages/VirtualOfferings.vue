@@ -1,18 +1,5 @@
 <template>
   <div class="virtual-offerings-page">
-    <!-- 顶部导航 -->
-    <MobileTopBar 
-      title="虚拟祭祀商品" 
-      :showBack="true"
-      @back="goBack"
-    >
-      <template #right>
-        <button @click="showCart" class="cart-btn">
-          <iconify-icon icon="heroicons:shopping-cart" width="20"></iconify-icon>
-          <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
-        </button>
-      </template>
-    </MobileTopBar>
 
     <!-- 分类标签 -->
     <div class="category-tabs">
@@ -244,8 +231,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAppStore } from '../../../stores/app'
-import MobileTopBar from '../../../components/mobile/MobileTopBar.vue'
+import { useAppStore } from '../../../shared/stores/appStore'
+
 
 const router = useRouter()
 const route = useRoute()
