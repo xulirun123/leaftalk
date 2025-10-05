@@ -1850,10 +1850,11 @@ onUnmounted(() => {
 
 /* 搜索关键词高亮 */
 .message-bubble :deep(mark.search-highlight) {
-  background-color: transparent;
-  color: #07C160;
+  background-color: #FFEB3B;
+  color: #333;
   font-weight: 500;
-  padding: 0;
+  padding: 2px 4px;
+  border-radius: 2px;
 }
 
 .message-wrapper + .message-wrapper .message-item {
