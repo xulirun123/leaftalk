@@ -129,16 +129,9 @@
 
 
     <!-- 拍照/录像 切换文本按钮（位于拍摄按钮正上方）- 只允许拍照模式时隐藏 -->
-    <!-- isPhotoOnlyMode: {{ isPhotoOnlyMode }} -->
     <div v-if="!isPhotoOnlyMode" class="mode-toggle">
       <button class="mode-btn" @click="toggleMode">
         {{ mode === 'photo' ? '拍照' : (isRecording ? '录像中' : '录像') }}
-      </button>
-    </div>
-    <!-- 调试：如果是只拍照模式，显示提示 -->
-    <div v-else class="mode-toggle" style="opacity: 0.5;">
-      <button class="mode-btn" disabled>
-        仅拍照模式
       </button>
     </div>
 
@@ -189,16 +182,7 @@ const route = useRoute()
 const appStore = useAppStore()
 
 // 检查是否只允许拍照模式（从聊天背景设置进入）
-const isPhotoOnlyMode = computed(() => {
-  const result = route.query.mode === 'photo-only'
-  console.log('📷 相机模式检查:', {
-    queryMode: route.query.mode,
-    isPhotoOnlyMode: result,
-    from: route.query.from,
-    fullQuery: route.query
-  })
-  return result
-})
+const isPhotoOnlyMode = computed(() => route.query.mode === 'photo-only')
 const fromChatBackground = computed(() => route.query.from === 'chat-background')
 
 // 状态
@@ -710,18 +694,26 @@ onUnmounted(() => { stopCamera() })
   bottom: 140px; /* 增加与拍摄按钮的距离 */
   left: 0;
   right: 0;
+  z-index: 10; /* 确保在其他元素之上 */
 
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .mode-btn {
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.6);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.5);
-  border-radius: 16px;
-  padding: 6px 14px;
-  font-size: 14px;
+  border: 2px solid rgba(255,255,255,0.8);
+  border-radius: 20px;
+  padding: 8px 20px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mode-btn:active {
+  background: rgba(0,0,0,0.8);
+  transform: scale(0.95);
 }
 
 .bottom-controls {
