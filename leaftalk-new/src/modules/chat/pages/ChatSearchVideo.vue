@@ -34,11 +34,20 @@
         </div>
       </div>
     </div>
+
+    <!-- 视频预览 -->
+    <div v-if="showPreview" class="media-preview-overlay" @click="closePreview">
+      <button class="preview-close-btn" @click.stop="closePreview" aria-label="关闭">✕</button>
+      <div class="preview-video-wrap" @click.stop="togglePreviewPlayback">
+        <video ref="previewVideoRef" :src="previewSrc" class="preview-video" playsinline></video>
+        <button v-if="!isPreviewPlaying" class="preview-play-btn" aria-label="播放">▶</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import MobileTopBar from '@/shared/components/mobile/MobileTopBar.vue'
 import { messagePersistenceService } from '@/modules/chat/services/messagePersistenceService'
@@ -48,6 +57,10 @@ const route = useRoute()
 
 const isLoading = ref(true)
 const videoMessages = ref<any[]>([])
+const showPreview = ref(false)
+const previewSrc = ref('')
+const previewVideoRef = ref<HTMLVideoElement | null>(null)
+const isPreviewPlaying = ref(false)
 
 // 辅助函数
 const getToday = () => {
@@ -154,6 +167,38 @@ const goBack = () => {
 
 const openVideo = (video: any) => {
   console.log('🎬 打开视频:', video)
+  previewSrc.value = video.videoUrl
+  showPreview.value = true
+  isPreviewPlaying.value = false
+
+  nextTick(() => {
+    if (previewVideoRef.value) {
+      previewVideoRef.value.play()
+      isPreviewPlaying.value = true
+    }
+  })
+}
+
+const closePreview = () => {
+  if (previewVideoRef.value) {
+    previewVideoRef.value.pause()
+    previewVideoRef.value.currentTime = 0
+  }
+  showPreview.value = false
+  previewSrc.value = ''
+  isPreviewPlaying.value = false
+}
+
+const togglePreviewPlayback = () => {
+  if (!previewVideoRef.value) return
+
+  if (isPreviewPlaying.value) {
+    previewVideoRef.value.pause()
+    isPreviewPlaying.value = false
+  } else {
+    previewVideoRef.value.play()
+    isPreviewPlaying.value = true
+  }
 }
 
 onMounted(async () => {
@@ -328,6 +373,77 @@ onMounted(async () => {
 
 .video-item:active .video-thumbnail img {
   transform: scale(0.95);
+}
+
+/* 视频预览 */
+.media-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 24px;
+  transition: background 0.2s;
+}
+
+.preview-close-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.preview-video-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 90%;
+  height: 90%;
+}
+
+.preview-video {
+  max-width: 100%;
+  max-height: 100%;
+  background: #000;
+}
+
+.preview-play-btn {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.preview-play-btn:active {
+  background: rgba(0, 0, 0, 0.7);
 }
 </style>
 

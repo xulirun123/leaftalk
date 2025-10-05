@@ -46,6 +46,12 @@
         </div>
       </div>
     </div>
+
+    <!-- 图片预览 -->
+    <div v-if="showPreview" class="media-preview-overlay" @click="closePreview">
+      <button class="preview-close-btn" @click.stop="closePreview" aria-label="关闭">✕</button>
+      <img :src="previewSrc" class="preview-image" @click.stop />
+    </div>
   </div>
 </template>
 
@@ -60,6 +66,8 @@ const route = useRoute()
 
 const isLoading = ref(true)
 const imageMessages = ref<any[]>([])
+const showPreview = ref(false)
+const previewSrc = ref('')
 
 // 获取今天的日期（只包含年月日）
 const getToday = () => {
@@ -181,7 +189,13 @@ const goBack = () => {
 
 const openImage = (image: any) => {
   console.log('🖼️ 打开图片:', image)
-  // TODO: 实现图片预览功能
+  previewSrc.value = image.imageUrl
+  showPreview.value = true
+}
+
+const closePreview = () => {
+  showPreview.value = false
+  previewSrc.value = ''
 }
 
 // 生命周期
@@ -361,6 +375,48 @@ onMounted(async () => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* 图片预览 */
+.media-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 24px;
+  transition: background 0.2s;
+}
+
+.preview-close-btn:active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.preview-image {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
 }
 </style>
 
