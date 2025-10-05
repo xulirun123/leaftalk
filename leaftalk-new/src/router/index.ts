@@ -73,7 +73,7 @@ const routes = [
     meta: {
       title: '搜索聊天记录',
       requiresAuth: true,
-      keepAlive: false,
+      keepAlive: true,  // 启用页面缓存
       hideTabBar: true,
       hideTopBar: true
     }

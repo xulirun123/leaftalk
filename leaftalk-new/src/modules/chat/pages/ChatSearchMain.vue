@@ -148,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import StatusBar from '@/shared/components/mobile/StatusBar.vue'
 import MusicPlayer from '@/modules/chat/components/MusicPlayer.vue'
@@ -844,6 +844,13 @@ onMounted(async () => {
       searchInput.value.focus()
     }
   })
+})
+
+// 页面激活时（从其他页面返回）
+onActivated(() => {
+  console.log('🔄 搜索页面被激活，保持之前的搜索状态')
+  // 不需要做任何操作，因为 keep-alive 会保持所有状态
+  // searchKeyword、hasSearched、selectedCategory、filteredResults 都会保持
 })
 </script>
 

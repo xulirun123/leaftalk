@@ -40,7 +40,7 @@
           <div class="message-content" :class="{ 'own-content': message.isOwn }">
             <div class="message-bubble" :class="{ 'own-bubble': message.isOwn, 'message-failed': message.status === 'failed', 'is-location': message.type === 'location' }"
                  :style="message.isOwn && message.type === 'text' ? 'padding: 8px 15px 8px 12px !important;' : ''">
-              <p v-if="message.type === 'text'" :style="message.isOwn ? 'margin: 0; padding-right: 0;' : 'margin: 0;'">{{ message.content }}</p>
+              <p v-if="message.type === 'text'" :style="message.isOwn ? 'margin: 0; padding-right: 0;' : 'margin: 0;'" v-html="highlightMessageContent(message)"></p>
               <img
                 v-else-if="message.type === 'image'"
                 :src="message.content"
@@ -167,6 +167,9 @@ const route = useRoute()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const eventBus = inject('eventBus') as any
+
+// 搜索关键词高亮
+const searchHighlightKeyword = ref<string>('')
 
 // ========== 聊天背景管理（已重写，使用新的工具函数） ==========
 // 背景样式 ref（保留用于调试面板显示）
@@ -1076,6 +1079,11 @@ const scrollToBottom = (force = false) => {
 const scrollToMessage = (messageId: string, highlightKeyword?: string) => {
   console.log('📍 定位到消息:', messageId, '高亮关键词:', highlightKeyword)
 
+  // 保存搜索关键词用于高亮
+  if (highlightKeyword) {
+    searchHighlightKeyword.value = highlightKeyword
+  }
+
   nextTick(() => {
     // 查找消息元素
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
@@ -1102,6 +1110,30 @@ const scrollToMessage = (messageId: string, highlightKeyword?: string) => {
       scrollToBottom(true)
     }
   })
+}
+
+// 高亮消息内容中的关键词
+const highlightMessageContent = (message: any) => {
+  const content = message.content || ''
+
+  // 如果没有搜索关键词，直接返回原内容
+  if (!searchHighlightKeyword.value) {
+    return content
+  }
+
+  // 转义HTML特殊字符
+  const escapeHtml = (text: string) => {
+    const div = document.createElement('div')
+    div.textContent = text
+    return div.innerHTML
+  }
+
+  const escapedContent = escapeHtml(content)
+  const keyword = searchHighlightKeyword.value
+
+  // 使用正则表达式进行不区分大小写的替换
+  const regex = new RegExp(`(${keyword})`, 'gi')
+  return escapedContent.replace(regex, '<mark class="search-highlight">$1</mark>')
 }
 
 // 监听用户滚动行为
@@ -1814,6 +1846,14 @@ onUnmounted(() => {
   padding: 8px;
   margin-left: -8px;
   margin-right: -8px;
+}
+
+/* 搜索关键词高亮 */
+.message-bubble :deep(mark.search-highlight) {
+  background-color: transparent;
+  color: #07C160;
+  font-weight: 500;
+  padding: 0;
 }
 
 .message-wrapper + .message-wrapper .message-item {
