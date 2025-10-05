@@ -24,7 +24,14 @@
           <div class="video-grid">
             <div v-for="video in monthData.videos" :key="video.id" class="video-item" @click="openVideo(video)">
               <div class="video-thumbnail">
-                <img :src="video.thumbnailUrl" :alt="video.content" />
+                <!-- 使用 video 元素作为缩略图 -->
+                <video
+                  :src="video.videoUrl"
+                  class="thumbnail-video"
+                  muted
+                  playsinline
+                  preload="metadata"
+                ></video>
                 <div class="play-icon">
                   <iconify-icon icon="heroicons:play-circle" width="32" color="white"></iconify-icon>
                 </div>
@@ -359,13 +366,16 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   position: relative;
+  background: #1a1a1a;
 }
 
-.video-thumbnail img {
+.video-thumbnail img,
+.video-thumbnail .thumbnail-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.2s;
+  display: block;
 }
 
 .play-icon {
@@ -376,7 +386,8 @@ onMounted(async () => {
   pointer-events: none;
 }
 
-.video-item:active .video-thumbnail img {
+.video-item:active .video-thumbnail img,
+.video-item:active .video-thumbnail .thumbnail-video {
   transform: scale(0.95);
 }
 
