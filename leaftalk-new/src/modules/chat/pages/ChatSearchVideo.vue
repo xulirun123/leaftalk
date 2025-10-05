@@ -97,6 +97,10 @@ const loadVideoMessages = async () => {
 
     console.log('📨 加载到消息数量:', messages.length)
 
+    // 打印所有消息类型用于调试
+    const messageTypes = messages.map(msg => msg.type)
+    console.log('📋 所有消息类型:', [...new Set(messageTypes)])
+
     const videos = messages.filter(msg => {
       if (msg.type !== 'video') return false
       const timestamp = Number(msg.timestamp)

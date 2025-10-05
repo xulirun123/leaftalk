@@ -106,6 +106,15 @@ const loadImageMessages = async () => {
 
     console.log('📨 加载到消息数量:', messages.length)
 
+    // 打印所有消息类型用于调试
+    const messageTypes = messages.map(msg => msg.type)
+    console.log('📋 所有消息类型:', [...new Set(messageTypes)])
+
+    // 打印前几条消息示例
+    if (messages.length > 0) {
+      console.log('📋 前3条消息示例:', messages.slice(0, 3))
+    }
+
     // 过滤出图片类型的消息
     const images = messages.filter(msg => {
       // 只保留图片类型的消息
