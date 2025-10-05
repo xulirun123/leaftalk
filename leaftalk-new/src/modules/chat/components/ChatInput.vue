@@ -548,7 +548,12 @@ const selectPhoto = () => {
 
 const takePhoto = () => {
   closePanels()
-  router.push('/chat-camera')
+  console.log('📷 从功能面板跳转到拍摄页面（应该支持拍照和录像）')
+  // 明确传递空的 query 对象，确保不会携带之前的参数
+  router.push({
+    path: '/chat-camera',
+    query: {} // 空的 query，不传递 mode 参数，允许拍照和录像
+  })
 }
 
 const selectVideo = () => {

@@ -129,9 +129,16 @@
 
 
     <!-- 拍照/录像 切换文本按钮（位于拍摄按钮正上方）- 只允许拍照模式时隐藏 -->
+    <!-- isPhotoOnlyMode: {{ isPhotoOnlyMode }} -->
     <div v-if="!isPhotoOnlyMode" class="mode-toggle">
       <button class="mode-btn" @click="toggleMode">
         {{ mode === 'photo' ? '拍照' : (isRecording ? '录像中' : '录像') }}
+      </button>
+    </div>
+    <!-- 调试：如果是只拍照模式，显示提示 -->
+    <div v-else class="mode-toggle" style="opacity: 0.5;">
+      <button class="mode-btn" disabled>
+        仅拍照模式
       </button>
     </div>
 
@@ -182,7 +189,16 @@ const route = useRoute()
 const appStore = useAppStore()
 
 // 检查是否只允许拍照模式（从聊天背景设置进入）
-const isPhotoOnlyMode = computed(() => route.query.mode === 'photo-only')
+const isPhotoOnlyMode = computed(() => {
+  const result = route.query.mode === 'photo-only'
+  console.log('📷 相机模式检查:', {
+    queryMode: route.query.mode,
+    isPhotoOnlyMode: result,
+    from: route.query.from,
+    fullQuery: route.query
+  })
+  return result
+})
 const fromChatBackground = computed(() => route.query.from === 'chat-background')
 
 // 状态
