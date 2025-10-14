@@ -298,7 +298,7 @@ async function initMessageTable() {
                 sender_id VARCHAR(50) NOT NULL,
                 receiver_id VARCHAR(50) NOT NULL,
                 content TEXT NOT NULL,
-                message_type ENUM('text', 'image', 'voice', 'video', 'file') DEFAULT 'text',
+                type ENUM('text', 'image', 'voice', 'video', 'file', 'system', 'group_invite', 'contact', 'custom_emoji', 'link', 'location', 'announcement') DEFAULT 'text',
                 status ENUM('sent', 'delivered', 'read') DEFAULT 'sent',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -308,6 +308,211 @@ async function initMessageTable() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `)
         console.log('✅ 消息表检查/创建完成')
+
+        // 更新 messages 表的 type 字段，确保包含所有消息类型
+        try {
+          console.log('🔄 开始更新 messages.type 字段...')
+          await db.execute(`
+            ALTER TABLE messages
+            MODIFY COLUMN \`type\` ENUM('text', 'image', 'voice', 'video', 'file', 'system', 'group_invite', 'contact', 'custom_emoji', 'link', 'location', 'announcement') DEFAULT 'text'
+          `)
+          console.log('✅ messages.type 字段已更新，现在支持所有消息类型')
+        } catch (error) {
+          console.error('❌ 更新 messages.type 字段失败:', error.message)
+          console.error('完整错误:', error)
+        }
+
+        // 修复旧的邀请消息：将 type='text' 但内容是 group_invite 的消息更新为正确类型
+        try {
+          console.log('🔄 修复旧的邀请消息类型...')
+          const [result] = await db.execute(`
+            UPDATE messages
+            SET \`type\` = 'group_invite'
+            WHERE \`type\` = 'text'
+            AND (content LIKE '%"type":"group_invite"%' OR content LIKE '%\\"type\\":\\"group_invite\\"%')
+          `)
+          if (result.affectedRows > 0) {
+            console.log(`✅ 已修复 ${result.affectedRows} 条旧的邀请消息`)
+          } else {
+            console.log('ℹ️ 没有需要修复的旧邀请消息')
+          }
+        } catch (error) {
+          console.error('❌ 修复旧邀请消息失败:', error.message)
+        }
+
+        // 创建群二维码表
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS group_qrcodes (
+                id VARCHAR(100) PRIMARY KEY,
+                group_id VARCHAR(100) NOT NULL,
+                qrcode_data TEXT NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at DATETIME NOT NULL,
+                INDEX idx_group_id (group_id),
+                INDEX idx_expires_at (expires_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `)
+        console.log('✅ 群二维码表检查/创建完成')
+
+        // 创建进群申请表
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS group_join_requests (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                group_id VARCHAR(100) NOT NULL,
+                user_id INT NOT NULL,
+                message VARCHAR(255) DEFAULT NULL,
+                status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+                inviter_id INT DEFAULT NULL COMMENT '邀请人ID',
+                invite_code VARCHAR(50) DEFAULT NULL COMMENT '邀请码',
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME DEFAULT NULL,
+                INDEX idx_group_id (group_id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_status (status),
+                INDEX idx_invite_code (invite_code)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `)
+        console.log('✅ 进群申请表检查/创建完成')
+
+        // 创建群聊邀请链接表
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS group_invite_links (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                group_id VARCHAR(100) NOT NULL,
+                invite_code VARCHAR(50) UNIQUE NOT NULL COMMENT '邀请码',
+                inviter_id INT NOT NULL COMMENT '创建邀请链接的用户ID',
+                max_uses INT DEFAULT NULL COMMENT '最大使用次数，NULL表示无限制',
+                used_count INT DEFAULT 0 COMMENT '已使用次数',
+                expire_at DATETIME DEFAULT NULL COMMENT '过期时间，NULL表示永不过期',
+                created_at DATETIME NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE COMMENT '是否有效',
+                INDEX idx_group_id (group_id),
+                INDEX idx_invite_code (invite_code),
+                INDEX idx_inviter_id (inviter_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `)
+        console.log('✅ 群聊邀请链接表检查/创建完成')
+
+        // 检查并添加 group_invite_links.inviter_id 字段（如果不存在）
+        try {
+          const [columns] = await db.execute(`
+            SHOW COLUMNS FROM group_invite_links LIKE 'inviter_id'
+          `)
+
+          if (columns.length === 0) {
+            await db.execute(`
+              ALTER TABLE group_invite_links
+              ADD COLUMN inviter_id INT NOT NULL COMMENT '创建邀请链接的用户ID' AFTER invite_code
+            `)
+            console.log('✅ group_invite_links.inviter_id 字段已添加')
+          } else {
+            console.log('ℹ️ group_invite_links.inviter_id 字段已存在')
+          }
+        } catch (error) {
+          console.error('❌ 检查/添加 group_invite_links.inviter_id 字段失败:', error.message)
+        }
+
+        // 检查并添加 group_join_requests.inviter_id 字段（如果不存在）
+        try {
+          const [columns2] = await db.execute(`
+            SHOW COLUMNS FROM group_join_requests LIKE 'inviter_id'
+          `)
+
+          if (columns2.length === 0) {
+            await db.execute(`
+              ALTER TABLE group_join_requests
+              ADD COLUMN inviter_id INT DEFAULT NULL COMMENT '邀请人ID' AFTER status
+            `)
+            console.log('✅ group_join_requests.inviter_id 字段已添加')
+          } else {
+            console.log('ℹ️ group_join_requests.inviter_id 字段已存在')
+          }
+        } catch (error) {
+          console.error('❌ 检查/添加 group_join_requests.inviter_id 字段失败:', error.message)
+        }
+
+        // 检查并添加 group_join_requests.invite_code 字段（如果不存在）
+        try {
+          const [columns3] = await db.execute(`
+            SHOW COLUMNS FROM group_join_requests LIKE 'invite_code'
+          `)
+
+          if (columns3.length === 0) {
+            await db.execute(`
+              ALTER TABLE group_join_requests
+              ADD COLUMN invite_code VARCHAR(50) DEFAULT NULL COMMENT '邀请码' AFTER inviter_id
+            `)
+            console.log('✅ group_join_requests.invite_code 字段已添加')
+
+            // 添加索引
+            try {
+              await db.execute(`
+                ALTER TABLE group_join_requests
+                ADD INDEX idx_invite_code (invite_code)
+              `)
+              console.log('✅ invite_code 索引已添加')
+            } catch (e) {
+              console.log('ℹ️ invite_code 索引可能已存在')
+            }
+          } else {
+            console.log('ℹ️ group_join_requests.invite_code 字段已存在')
+          }
+        } catch (error) {
+          console.error('❌ 检查/添加 group_join_requests.invite_code 字段失败:', error.message)
+        }
+
+        // 创建群聊邀请申请表（普通成员邀请需要审核）
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS group_invite_requests (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                group_id VARCHAR(100) NOT NULL COMMENT '群聊ID',
+                inviter_id INT NOT NULL COMMENT '邀请人ID（普通成员）',
+                invitee_id INT NOT NULL COMMENT '被邀请人ID',
+                reason TEXT COMMENT '邀请理由',
+                status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending' COMMENT '审核状态',
+                reviewer_id INT DEFAULT NULL COMMENT '审核人ID（群主或管理员）',
+                invite_code VARCHAR(50) DEFAULT NULL COMMENT '审核通过后生成的邀请码',
+                created_at DATETIME NOT NULL,
+                reviewed_at DATETIME DEFAULT NULL COMMENT '审核时间',
+                INDEX idx_group_id (group_id),
+                INDEX idx_inviter_id (inviter_id),
+                INDEX idx_invitee_id (invitee_id),
+                INDEX idx_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `)
+        console.log('✅ 群聊邀请申请表检查/创建完成')
+
+        // 添加 require_approval 字段到 groups 表
+        try {
+            await db.execute(`
+                ALTER TABLE \`groups\`
+                ADD COLUMN \`require_approval\` TINYINT(1) DEFAULT 0 COMMENT '是否需要进群验证'
+            `)
+            console.log('✅ groups 表添加 require_approval 字段成功')
+        } catch (alterError) {
+            // 字段可能已存在，忽略错误
+            if (alterError.message.includes('Duplicate column name')) {
+                console.log('ℹ️ require_approval 字段已存在')
+            } else {
+                console.log('ℹ️ require_approval 字段添加失败:', alterError.message)
+            }
+        }
+
+        // 添加 is_dissolved 字段到 groups 表
+        try {
+            await db.execute(`
+                ALTER TABLE \`groups\`
+                ADD COLUMN \`is_dissolved\` TINYINT(1) DEFAULT 0 COMMENT '是否已解散'
+            `)
+            console.log('✅ groups 表添加 is_dissolved 字段成功')
+        } catch (alterError) {
+            // 字段可能已存在，忽略错误
+            if (alterError.message.includes('Duplicate column name')) {
+                console.log('ℹ️ is_dissolved 字段已存在')
+            } else {
+                console.error('❌ 添加 is_dissolved 字段失败:', alterError.message)
+            }
+        }
     } catch (error) {
         console.error('❌ 创建消息表失败:', error)
     }
@@ -469,6 +674,8 @@ io.on('connection', (socket) => {
     // 用户加入房间
     socket.on('join_user_room', async (data) => {
         try {
+            console.log('🔥 收到 join_user_room 事件:', data)
+
             const { userId } = data
             if (!userId) {
                 console.warn('⚠️ 用户ID缺失')
@@ -492,7 +699,10 @@ io.on('connection', (socket) => {
                 lastHeartbeat: Date.now()
             })
 
-            userSockets.set(socket.id, userId)
+            userSockets.set(userId, socket.id)
+
+            console.log(`🔥 userSockets 已设置: userId=${userId}, socketId=${socket.id}`)
+            console.log(`🔥 当前 userSockets 内容:`, Array.from(userSockets.entries()))
 
             console.log(`👤 用户 ${userId} 已加入WebSocket房间`)
 
@@ -582,14 +792,45 @@ io.on('connection', (socket) => {
                 }
             }
 
-            // 发送给接收者
-            const receiverRoom = `user_${message.receiverId}`
-            socket.to(receiverRoom).emit('new_message', message)
+            // 检查是否为群聊消息
+            const isGroupMessage = message.receiverId && message.receiverId.startsWith('group_')
+
+            if (isGroupMessage) {
+                // 群聊消息：发送给所有群成员
+                console.log('📢 群聊消息，查询群成员...')
+
+                try {
+                    // 查询群成员
+                    const [members] = await pool.execute(
+                        'SELECT user_id FROM group_members WHERE group_id = ?',
+                        [message.receiverId]
+                    )
+
+                    console.log(`👥 找到群成员数量: ${members.length}`)
+
+                    // 发送给所有群成员（除了发送者自己）
+                    let sentCount = 0
+                    for (const member of members) {
+                        if (member.user_id !== parseInt(message.senderId)) {
+                            const memberRoom = `user_${member.user_id}`
+                            socket.to(memberRoom).emit('new_message', message)
+                            sentCount++
+                        }
+                    }
+
+                    console.log(`✅ 群聊消息已发送给 ${sentCount} 个成员`)
+                } catch (error) {
+                    console.error('❌ 查询群成员失败:', error)
+                }
+            } else {
+                // 私聊消息：发送给接收者
+                const receiverRoom = `user_${message.receiverId}`
+                socket.to(receiverRoom).emit('new_message', message)
+                console.log(`✅ 私聊消息已发送: ${message.senderId} -> ${message.receiverId}`)
+            }
 
             // 发送给发送者确认
             callback({ success: true, messageId: message.id })
-
-            console.log(`✅ 消息已发送: ${message.senderId} -> ${message.receiverId}`)
 
             // 模拟消息状态更新
             setTimeout(() => {
@@ -681,20 +922,28 @@ io.on('connection', (socket) => {
     socket.on('disconnect', (reason) => {
         console.log('❌ WebSocket连接断开:', socket.id, reason)
 
-        const userId = userSockets.get(socket.id)
-        if (userId) {
+        // 反向查找：通过 socket.id 找到对应的 userId
+        let disconnectedUserId = null
+        for (const [userId, socketId] of userSockets.entries()) {
+            if (socketId === socket.id) {
+                disconnectedUserId = userId
+                break
+            }
+        }
+
+        if (disconnectedUserId) {
             // 移除在线用户记录
-            onlineUsers.delete(userId)
-            userSockets.delete(socket.id)
+            onlineUsers.delete(disconnectedUserId)
+            userSockets.delete(disconnectedUserId)
 
             // 广播用户离线状态
             socket.broadcast.emit('user_status', {
-                userId,
+                userId: disconnectedUserId,
                 status: 'offline',
                 lastSeen: Date.now()
             })
 
-            console.log(`👤 用户 ${userId} 已离线`)
+            console.log(`👤 用户 ${disconnectedUserId} 已离线`)
         }
     })
 
@@ -716,21 +965,22 @@ app.get('/health', (req, res) => {
 // 用户认证路由 - 叶语号或手机号登录
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { username, password } = req.body
+        const { username, phone, password } = req.body
+        const loginIdentifier = username || phone
 
-        console.log('🔍 登录请求参数:', { username, password: password ? '***' : undefined })
+        console.log('🔍 登录请求参数:', { username, phone, password: password ? '***' : undefined })
 
-        if (!username) {
+        if (!loginIdentifier) {
             return res.status(400).json({
                 success: false,
                 error: '请输入叶语号或手机号'
             })
         }
 
-        // 查询用户（支持叶语号/手机号/用户名 登录）
+        // 查询用户（支持叶语号/手机号登录）
         const [users] = await db.execute(
-            'SELECT * FROM users WHERE yeyu_id = ? OR phone = ? OR username = ?',
-            [username, username, username]
+            'SELECT * FROM users WHERE yeyu_id = ? OR phone = ?',
+            [loginIdentifier, loginIdentifier]
         )
 
         if (users.length === 0) {
@@ -1223,6 +1473,34 @@ app.get('/api/users/:userId', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params
 
+        // 检查是否是系统用户
+        if (userId === 'system' || userId === '0') {
+            return res.json({
+                success: true,
+                data: {
+                    id: 'system',
+                    yeyu_id: 'SYSTEM',
+                    username: 'system',
+                    nickname: '系统消息',
+                    avatar: '/system-avatar.png',
+                    phone: null,
+                    gender: null,
+                    region: '',
+                    signature: '系统消息',
+                    qr_code_url: null
+                }
+            })
+        }
+
+        // 检查是否是特殊路径（如 group, me 等）
+        if (userId === 'group' || userId === 'me' || userId === 'current') {
+            return res.status(400).json({
+                success: false,
+                message: `无效的用户ID: ${userId}`,
+                error: '请使用正确的用户ID或叶语号'
+            })
+        }
+
         // 查询用户信息（包含地区、性别、签名）
         const [users] = await db.execute(
             'SELECT id, yeyu_id, username, nickname, avatar, phone, gender, region, signature, qr_code_url FROM users WHERE id = ? OR yeyu_id = ?',
@@ -1266,6 +1544,12 @@ app.get('/api/users/:userId/avatar', async (req, res) => {
     try {
         const { userId } = req.params
 
+        // 过滤系统消息（userId 为 0 或 system）
+        if (userId === '0' || userId === 'system') {
+            console.log('⚠️ 系统消息请求头像，返回默认头像')
+            return res.redirect('https://api.dicebear.com/7.x/avataaars/svg?seed=system')
+        }
+
         // 查询用户信息
         const [users] = await pool.execute(
             'SELECT avatar FROM users WHERE id = ? OR yeyu_id = ?',
@@ -1289,7 +1573,9 @@ app.get('/api/users/:userId/avatar', async (req, res) => {
 // 用户注册路由
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { phone, password, nickname } = req.body
+        const { phone, password, nickname, username } = req.body
+
+        console.log('📝 收到注册请求:', { phone, nickname, username })
 
         // 检查手机号是否已存在
         const [existingUsers] = await pool.execute(
@@ -1298,10 +1584,13 @@ app.post('/api/auth/register', async (req, res) => {
         )
 
         if (existingUsers.length > 0) {
-            return res.status(400).json({ error: '手机号已注册' })
+            return res.status(400).json({
+                success: false,
+                message: '手机号已注册'
+            })
         }
 
-        // 生成叶语号
+        // 生成叶语号（如果前端没有提供）
         const generateYeyuId = () => {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
             let result = ''
@@ -1311,7 +1600,7 @@ app.post('/api/auth/register', async (req, res) => {
             return result
         }
 
-        let yeyuId = generateYeyuId()
+        let yeyuId = username || generateYeyuId()
 
         // 确保叶语号唯一
         while (true) {
@@ -1326,24 +1615,54 @@ app.post('/api/auth/register', async (req, res) => {
         // 加密密码
         const hashedPassword = await bcrypt.hash(password, 10)
 
+        // 生成随机头像
+        const avatarSeed = Math.random().toString(36).substring(7)
+        const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`
+
         // 插入新用户
         const [result] = await pool.execute(
-            'INSERT INTO users (yeyu_id, username, phone, password, nickname, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-            [yeyuId, yeyuId, phone, hashedPassword, nickname]
+            'INSERT INTO users (yeyu_id, phone, password, nickname, avatar, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+            [yeyuId, phone, hashedPassword, nickname, avatar]
         )
 
+        // 生成 JWT token
+        const token = jwt.sign(
+            {
+                userId: result.insertId,
+                yeyuId: yeyuId,
+                phone: phone
+            },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        )
+
+        const user = {
+            id: result.insertId,
+            yeyu_id: yeyuId,
+            username: yeyuId,
+            phone,
+            nickname,
+            avatar,
+            verification_status: 'unverified'
+        }
+
+        console.log('✅ 注册成功:', user)
+
         res.json({
+            success: true,
             message: '注册成功',
-            user: {
-                id: result.insertId,
-                yeyu_id: yeyuId,
-                phone,
-                nickname
+            data: {
+                token,
+                user
             }
         })
     } catch (error) {
-        console.error('注册失败:', error)
-        res.status(500).json({ error: '注册失败' })
+        console.error('❌ 注册失败:', error)
+        res.status(500).json({
+            success: false,
+            message: '注册失败',
+            error: error.message
+        })
     }
 })
 
@@ -3264,22 +3583,6 @@ app.post('/api/user/avatar', authenticateToken, upload.single('avatar'), async (
             [avatarUrl, userId]
         )
 
-        // 保存到user_avatars表
-        await db.execute(`
-            INSERT INTO user_avatars (user_id, avatar_url, avatar_type, file_name, file_path,
-                                    file_type, file_size, is_current, is_active)
-            VALUES (?, ?, 'upload', ?, ?, ?, ?, 1, 1)
-            ON DUPLICATE KEY UPDATE
-            avatar_url = VALUES(avatar_url),
-            file_name = VALUES(file_name),
-            file_path = VALUES(file_path),
-            file_type = VALUES(file_type),
-            file_size = VALUES(file_size),
-            is_current = 1,
-            updated_at = CURRENT_TIMESTAMP
-        `, [userId, avatarUrl, req.file.originalname, relativePath,
-            path.extname(req.file.originalname), req.file.size])
-
         console.log('✅ 头像上传成功:', avatarUrl)
 
         res.json({
@@ -4299,7 +4602,7 @@ app.get('/api/chat/messages/:userId', authenticateToken, async (req, res) => {
         const safeOffset = Math.max(0, parseInt(offset) || 0)
 
         const [messages] = await db.execute(`
-            SELECT id, sender_id, receiver_id, content, message_type, status, created_at
+            SELECT id, sender_id, receiver_id, content, type as message_type, status, created_at
             FROM messages
             WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
             ORDER BY created_at DESC
@@ -4333,7 +4636,7 @@ const getChatSessions = async (req, res) => {
                 m1.sender_id,
                 m1.receiver_id,
                 m1.content as last_message,
-                m1.message_type as last_message_type,
+                m1.type as last_message_type,
                 m1.created_at as last_message_time,
                 m1.status
             FROM messages m1
@@ -4806,4 +5109,2014 @@ if (require.main === module) {
   })
 }
 
-module.exports = app
+// ==================== 群聊功能 API ====================
+
+// 初始化群聊表（仅在表不存在时创建）
+app.post('/api/groups/init-tables', async (req, res) => {
+  try {
+    await dbReady
+
+    // 创建 groups 表
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`groups\` (
+        \`id\` VARCHAR(50) PRIMARY KEY COMMENT '群聊ID，格式：group_时间戳',
+        \`name\` VARCHAR(100) NOT NULL COMMENT '群聊名称（显示在聊天列表）',
+        \`title\` VARCHAR(100) DEFAULT NULL COMMENT '群聊标题（显示在聊天页面顶部）',
+        \`avatar\` LONGTEXT DEFAULT NULL COMMENT '群聊头像（base64或URL）',
+        \`creator_id\` INT NOT NULL COMMENT '创建者用户ID',
+        \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        INDEX \`idx_creator\` (\`creator_id\`),
+        INDEX \`idx_created_at\` (\`created_at\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='群聊表'
+    `)
+
+    // 创建 group_members 表
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS \`group_members\` (
+        \`id\` INT AUTO_INCREMENT PRIMARY KEY COMMENT '自增ID',
+        \`group_id\` VARCHAR(50) NOT NULL COMMENT '群聊ID',
+        \`user_id\` INT NOT NULL COMMENT '用户ID',
+        \`role\` ENUM('creator', 'admin', 'member') DEFAULT 'member' COMMENT '角色',
+        \`joined_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
+        UNIQUE KEY \`uk_group_user\` (\`group_id\`, \`user_id\`),
+        INDEX \`idx_group_id\` (\`group_id\`),
+        INDEX \`idx_user_id\` (\`user_id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='群成员表'
+    `)
+
+    // 为 messages 表添加索引
+    try {
+      await pool.execute(`
+        ALTER TABLE \`messages\`
+        ADD INDEX \`idx_receiver_created\` (\`receiver_id\`, \`created_at\`)
+      `)
+    } catch (e) {
+      // 索引可能已存在，忽略错误
+      if (e.code !== 'ER_DUP_KEYNAME') {
+        console.warn('添加索引失败:', e.message)
+      }
+    }
+
+    console.log('✅ 群聊表初始化成功')
+    res.json({ success: true, message: '群聊表初始化成功' })
+  } catch (error) {
+    console.error('❌ 初始化群聊表失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 创建群聊
+app.post('/api/groups/create', async (req, res) => {
+  try {
+    await dbReady
+    const { id, name, title, avatar, creatorId, members } = req.body
+
+    console.log('📝 创建群聊:', { id, name, title, creatorId, memberCount: members?.length })
+
+    // 验证参数
+    if (!id || !name || !creatorId || !members || members.length === 0) {
+      return res.status(400).json({ success: false, error: '参数不完整' })
+    }
+
+    // 开始事务
+    const connection = await pool.getConnection()
+    await connection.beginTransaction()
+
+    try {
+      // 1. 插入群聊记录
+      await connection.execute(
+        'INSERT INTO `groups` (id, name, title, avatar, creator_id) VALUES (?, ?, ?, ?, ?)',
+        [id, name, title || null, avatar || null, creatorId]
+      )
+
+      // 2. 插入群成员记录
+      for (const member of members) {
+        const role = member.id === creatorId ? 'creator' : 'member'
+        await connection.execute(
+          'INSERT INTO `group_members` (group_id, user_id, role) VALUES (?, ?, ?)',
+          [id, member.id, role]
+        )
+      }
+
+      await connection.commit()
+      console.log('✅ 群聊创建成功:', id)
+
+      res.json({ success: true, data: { id, name, title, avatar, creatorId, members } })
+    } catch (error) {
+      await connection.rollback()
+      throw error
+    } finally {
+      connection.release()
+    }
+  } catch (error) {
+    console.error('❌ 创建群聊失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 获取用户的所有群聊
+app.get('/api/groups/my-groups', async (req, res) => {
+  try {
+    await dbReady
+    const userId = req.query.userId
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: '缺少用户ID' })
+    }
+
+    console.log('📋 获取用户群聊列表:', userId)
+
+    // 查询用户加入的所有群聊
+    const [groups] = await pool.execute(`
+      SELECT g.*, gm.role, gm.joined_at
+      FROM \`groups\` g
+      INNER JOIN \`group_members\` gm ON g.id = gm.group_id
+      WHERE gm.user_id = ?
+      ORDER BY g.updated_at DESC
+    `, [userId])
+
+    console.log('✅ 找到群聊数量:', groups.length)
+
+    // 为每个群聊获取最后一条消息
+    const groupsWithLastMessage = await Promise.all(groups.map(async (group) => {
+      try {
+        const [messages] = await pool.execute(`
+          SELECT content, type, created_at
+          FROM \`messages\`
+          WHERE receiver_id = ?
+          ORDER BY created_at DESC
+          LIMIT 1
+        `, [group.id])
+
+        if (messages.length > 0) {
+          group.last_message = messages[0].content
+          group.last_message_type = messages[0].type
+          group.last_message_time = messages[0].created_at
+        } else {
+          group.last_message = ''
+          group.last_message_type = 'text'
+          group.last_message_time = group.updated_at
+        }
+      } catch (error) {
+        console.warn('⚠️ 获取群聊最后消息失败:', group.id, error)
+        group.last_message = ''
+        group.last_message_type = 'text'
+        group.last_message_time = group.updated_at
+      }
+      return group
+    }))
+
+    res.json({ success: true, data: groupsWithLastMessage })
+  } catch (error) {
+    console.error('❌ 获取群聊列表失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 获取群聊详情
+app.get('/api/groups/:groupId', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+
+    console.log('📋 获取群聊详情:', groupId)
+
+    // 查询群聊信息
+    const [groups] = await pool.execute(`
+      SELECT id, name, title, avatar, creator_id, require_approval, created_at, updated_at
+      FROM \`groups\`
+      WHERE id = ?
+    `, [groupId])
+
+    if (groups.length === 0) {
+      return res.status(404).json({ success: false, error: '群聊不存在' })
+    }
+
+    console.log('✅ 找到群聊信息')
+
+    res.json({ success: true, data: groups[0] })
+  } catch (error) {
+    console.error('❌ 获取群聊详情失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 获取群聊成员列表
+app.get('/api/groups/:groupId/members', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const currentUserId = req.user.userId
+
+    console.log('👥 获取群成员列表:', groupId, '类型:', typeof groupId, '当前用户:', currentUserId)
+
+    // 检查群是否已解散
+    const [groupInfo] = await pool.execute(
+      'SELECT is_dissolved FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    if (groupInfo.length > 0 && groupInfo[0].is_dissolved === 1) {
+      // 群已解散，只返回当前用户自己
+      console.log('⚠️ 群已解散，只返回当前用户')
+      const [currentUser] = await pool.execute(
+        'SELECT id, nickname, avatar, yeyu_id FROM `users` WHERE id = ?',
+        [currentUserId]
+      )
+
+      if (currentUser.length > 0) {
+        res.json({
+          success: true,
+          data: [{
+            id: currentUser[0].id,
+            nickname: currentUser[0].nickname,
+            avatar: currentUser[0].avatar,
+            yeyu_id: currentUser[0].yeyu_id,
+            role: 'member',
+            joined_at: null,
+            group_nickname: null
+          }],
+          isDissolved: true
+        })
+      } else {
+        res.json({ success: true, data: [], isDissolved: true })
+      }
+      return
+    }
+
+    // 查询群成员（包含群内昵称）
+    const [members] = await pool.execute(`
+      SELECT u.id, u.nickname, u.avatar, u.yeyu_id, gm.role, gm.joined_at, gm.nickname as group_nickname
+      FROM \`group_members\` gm
+      INNER JOIN \`users\` u ON gm.user_id = u.id
+      WHERE gm.group_id = ?
+      ORDER BY gm.joined_at ASC
+    `, [groupId])
+
+    console.log('✅ 找到群成员数量:', members.length)
+
+    res.json({ success: true, data: members, isDissolved: false })
+  } catch (error) {
+    console.error('❌ 获取群成员失败:', error)
+    console.error('❌ 错误详情:', error.stack)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 设置我在本群的昵称
+app.post('/api/groups/:groupId/set-nickname', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { nickname } = req.body
+    const userId = req.user.userId
+
+    console.log('📝 设置群昵称:', { groupId, userId, nickname })
+
+    // 验证用户是否是群成员
+    const [members] = await pool.execute(
+      'SELECT id FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, userId]
+    )
+
+    if (members.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: '您不是该群成员',
+        code: 403
+      })
+    }
+
+    // 更新群昵称
+    await pool.execute(
+      'UPDATE `group_members` SET nickname = ? WHERE group_id = ? AND user_id = ?',
+      [nickname || null, groupId, userId]
+    )
+
+    console.log('✅ 群昵称设置成功')
+
+    res.json({
+      success: true,
+      message: '昵称设置成功',
+      data: { nickname }
+    })
+  } catch (error) {
+    console.error('❌ 设置群昵称失败:', error)
+    res.status(500).json({
+      success: false,
+      message: '设置昵称失败',
+      error: error.message
+    })
+  }
+})
+
+// 退出群聊
+app.post('/api/groups/:groupId/leave', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const userId = req.user.userId
+
+    console.log('🚪 用户退出群聊:', { groupId, userId })
+
+    // 验证用户是否是群成员
+    const [members] = await pool.execute(
+      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, userId]
+    )
+
+    if (members.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: '您不是该群成员',
+        code: 403
+      })
+    }
+
+    // 检查是否是群主
+    if (members[0].role === 'creator') {
+      return res.status(403).json({
+        success: false,
+        message: '群主不能退出群聊，请先转让群主或解散群聊',
+        code: 403
+      })
+    }
+
+    // 从群成员表中删除该用户
+    await pool.execute(
+      'DELETE FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, userId]
+    )
+
+    // 更新群成员数量
+    const [groupMembers] = await pool.execute(
+      'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
+      [groupId]
+    )
+    const memberCount = groupMembers[0].count
+
+    console.log('✅ 用户已退出群聊，当前群成员数:', memberCount)
+
+    res.json({
+      success: true,
+      message: '已退出群聊',
+      data: { memberCount }
+    })
+  } catch (error) {
+    console.error('❌ 退出群聊失败:', error)
+    res.status(500).json({
+      success: false,
+      message: '退出群聊失败',
+      error: error.message
+    })
+  }
+})
+
+// 获取群公告
+app.get('/api/groups/:groupId/announcement', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+
+    const [rows] = await pool.execute(
+      'SELECT * FROM `group_announcements` WHERE group_id = ? ORDER BY updated_at DESC LIMIT 1',
+      [groupId]
+    )
+
+    if (rows.length > 0) {
+      res.json({ success: true, data: rows[0] })
+    } else {
+      res.json({ success: true, data: null })
+    }
+  } catch (error) {
+    console.error('❌ 获取群公告失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 更新群公告
+app.put('/api/groups/:groupId/announcement', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { content, editorId, editorNickname, sendNotification } = req.body
+
+    // 检查是否已存在公告
+    const [existing] = await pool.execute(
+      'SELECT * FROM `group_announcements` WHERE group_id = ?',
+      [groupId]
+    )
+
+    if (existing.length > 0) {
+      // 更新现有公告
+      await pool.execute(
+        'UPDATE `group_announcements` SET content = ?, editor_id = ?, editor_nickname = ?, updated_at = NOW() WHERE group_id = ?',
+        [content, editorId, editorNickname, groupId]
+      )
+    } else {
+      // 创建新公告
+      await pool.execute(
+        'INSERT INTO `group_announcements` (group_id, content, editor_id, editor_nickname, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+        [groupId, content, editorId, editorNickname]
+      )
+    }
+
+    // 如果需要发送通知，创建系统消息
+    if (sendNotification) {
+      console.log('📢 发送群公告通知')
+
+      // 创建群公告消息ID
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // 保存公告消息到数据库（senderId 设置为发布者ID）
+      try {
+        await pool.execute(
+          'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+          [messageId, editorId, groupId, content, 'announcement']
+        )
+        console.log('✅ 群公告消息已保存到数据库')
+      } catch (msgError) {
+        console.error('❌ 保存公告消息失败:', msgError)
+      }
+
+      // 通过WebSocket发送公告消息给所有群成员
+      try {
+        const [members] = await pool.execute(
+          'SELECT user_id FROM `group_members` WHERE group_id = ?',
+          [groupId]
+        )
+
+        console.log(`📢 找到 ${members.length} 个群成员`)
+
+        members.forEach(member => {
+          const memberId = member.user_id
+          const userSocketId = userSockets.get(memberId)
+
+          if (userSocketId) {
+            // 创建群公告消息（每个成员收到的消息略有不同）
+            const announcementMessage = {
+              id: messageId,
+              senderId: editorId, // 发布者ID
+              senderName: editorNickname,
+              receiverId: groupId,
+              type: 'announcement',
+              content: content, // 公告内容
+              timestamp: new Date().toISOString(),
+              groupId: groupId,
+              isOwn: memberId === editorId, // 如果是发布者自己，标记为 isOwn
+              metadata: {
+                editorId: editorId,
+                editorNickname: editorNickname
+              }
+            }
+
+            io.to(userSocketId).emit('new_message', announcementMessage)
+            console.log(`📤 群公告消息已发送给用户 ${memberId}${memberId === editorId ? ' (发布者)' : ''}`)
+          }
+        })
+      } catch (wsError) {
+        console.error('❌ 发送WebSocket消息失败:', wsError)
+      }
+    }
+
+    res.json({ success: true, message: '群公告更新成功' })
+  } catch (error) {
+    console.error('❌ 更新群公告失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 获取群管理设置
+app.get('/api/groups/:groupId/settings', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+
+    const [rows] = await pool.execute(
+      'SELECT invite_confirm_enabled, only_admin_can_rename FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    if (rows.length > 0) {
+      res.json({
+        success: true,
+        data: {
+          invite_confirm_enabled: rows[0].invite_confirm_enabled || false,
+          only_admin_can_rename: rows[0].only_admin_can_rename || false
+        }
+      })
+    } else {
+      res.json({ success: false, message: '群聊不存在' })
+    }
+  } catch (error) {
+    console.error('❌ 获取群管理设置失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 更新群管理设置
+app.put('/api/groups/:groupId/settings', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { invite_confirm_enabled, only_admin_can_rename } = req.body
+
+    const updates = []
+    const values = []
+
+    if (invite_confirm_enabled !== undefined) {
+      updates.push('invite_confirm_enabled = ?')
+      values.push(invite_confirm_enabled ? 1 : 0)
+      // 同时更新 require_approval 字段
+      updates.push('require_approval = ?')
+      values.push(invite_confirm_enabled ? 1 : 0)
+    }
+
+    if (only_admin_can_rename !== undefined) {
+      updates.push('only_admin_can_rename = ?')
+      values.push(only_admin_can_rename ? 1 : 0)
+    }
+
+    if (updates.length > 0) {
+      values.push(groupId)
+      await pool.execute(
+        `UPDATE \`groups\` SET ${updates.join(', ')} WHERE id = ?`,
+        values
+      )
+      console.log('✅ 群管理设置更新成功')
+    }
+
+    res.json({ success: true, message: '设置更新成功' })
+  } catch (error) {
+    console.error('❌ 更新群管理设置失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 邀请成员加入群聊
+app.post('/api/groups/:groupId/invite', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { userIds } = req.body
+    const inviterId = req.user.userId
+
+    console.log('📨 邀请成员加入群聊:', { groupId, userIds, inviterId })
+
+    // 获取邀请人的角色和昵称
+    const [inviterInfo] = await pool.execute(
+      'SELECT gm.role, u.nickname FROM `group_members` gm INNER JOIN `users` u ON gm.user_id = u.id WHERE gm.group_id = ? AND gm.user_id = ?',
+      [groupId, inviterId]
+    )
+
+    if (inviterInfo.length === 0) {
+      return res.status(403).json({ success: false, error: '您不是群成员' })
+    }
+
+    const inviterRole = inviterInfo[0].role
+    const inviterName = inviterInfo[0].nickname
+    const isAdminOrOwner = inviterRole === 'creator' || inviterRole === 'admin'
+
+    // 获取群设置
+    const [groupSettings] = await pool.execute(
+      'SELECT require_approval FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    const requiresApproval = groupSettings[0]?.require_approval || false
+
+    // 如果是群主/管理员邀请，或者群不需要验证，直接加入
+    if (isAdminOrOwner || !requiresApproval) {
+      // 直接添加成员
+      const addedMembers = []
+      for (const userId of userIds) {
+        // 检查是否已经是群成员
+        const [existingMember] = await pool.execute(
+          'SELECT id FROM `group_members` WHERE group_id = ? AND user_id = ?',
+          [groupId, userId]
+        )
+
+        if (existingMember.length === 0) {
+          await pool.execute(
+            'INSERT INTO `group_members` (group_id, user_id, role, joined_at) VALUES (?, ?, ?, NOW())',
+            [groupId, userId, 'member']
+          )
+
+          // 获取被邀请人的昵称
+          const [userInfo] = await pool.execute(
+            'SELECT nickname FROM `users` WHERE id = ?',
+            [userId]
+          )
+          const userName = userInfo.length > 0 ? userInfo[0].nickname : `用户${userId}`
+          addedMembers.push(userName)
+
+          console.log(`✅ 用户 ${userId} 已加入群聊`)
+        }
+      }
+
+      // 为每个加入的成员发送一条系统消息
+      for (const memberName of addedMembers) {
+        const systemMessage = {
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          senderId: 0,
+          receiverId: groupId,
+          type: 'system',
+          content: `${memberName} 加入了群聊`,
+          timestamp: new Date().toISOString(),
+          groupId: groupId
+        }
+
+        // 保存系统消息到数据库
+        await pool.execute(
+          'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+          [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+        )
+
+        // 通过WebSocket发送系统消息给所有群成员
+        const [members] = await pool.execute(
+          'SELECT user_id FROM `group_members` WHERE group_id = ?',
+          [groupId]
+        )
+
+        members.forEach(member => {
+          const memberId = member.user_id
+          const userSocketId = userSockets.get(memberId)
+          if (userSocketId) {
+            io.to(userSocketId).emit('new_message', systemMessage)
+            console.log(`📤 系统消息已发送给用户 ${memberId}: ${memberName} 加入了群聊`)
+          }
+        })
+
+        // 添加小延迟，避免消息ID冲突
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+
+      res.json({ success: true, message: '邀请成功，成员已加入群聊' })
+    } else {
+      // 普通成员邀请，需要创建进群申请
+      for (const userId of userIds) {
+        // 检查是否已经有待处理的申请
+        const [existingRequest] = await pool.execute(
+          'SELECT id FROM `group_join_requests` WHERE group_id = ? AND user_id = ? AND status = ?',
+          [groupId, userId, 'pending']
+        )
+
+        if (existingRequest.length === 0) {
+          await pool.execute(
+            'INSERT INTO `group_join_requests` (group_id, user_id, message, status, created_at) VALUES (?, ?, ?, ?, NOW())',
+            [groupId, userId, '通过好友邀请', 'pending']
+          )
+          console.log(`✅ 已创建用户 ${userId} 的进群申请`)
+        }
+      }
+
+      res.json({ success: true, message: '邀请已发送，等待群主/管理员审核' })
+    }
+  } catch (error) {
+    console.error('❌ 邀请成员失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 生成群聊邀请链接
+app.post('/api/groups/:groupId/invite-link', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const inviterId = req.user.userId
+    const { maxUses, expireHours } = req.body
+
+    console.log('🔗 生成群聊邀请链接:', { groupId, inviterId, maxUses, expireHours })
+
+    // 检查用户是否是群成员
+    const [memberInfo] = await pool.execute(
+      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, inviterId]
+    )
+
+    if (memberInfo.length === 0) {
+      return res.status(403).json({ success: false, error: '您不是群成员' })
+    }
+
+    // 检查群设置是否允许普通成员邀请
+    const [groupInfo] = await pool.execute(
+      'SELECT allow_member_invite FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    const allowMemberInvite = groupInfo.length > 0 ? groupInfo[0].allow_member_invite : true
+    const userRole = memberInfo[0].role
+
+    if (!allowMemberInvite && userRole === 'member') {
+      return res.status(403).json({ success: false, error: '群主已关闭成员邀请功能' })
+    }
+
+    // 生成唯一邀请码
+    const inviteCode = `INV_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    // 计算过期时间
+    let expireAt = null
+    if (expireHours && expireHours > 0) {
+      expireAt = new Date(Date.now() + expireHours * 60 * 60 * 1000)
+    }
+
+    // 保存邀请链接
+    await pool.execute(
+      'INSERT INTO `group_invite_links` (group_id, invite_code, inviter_id, max_uses, expire_at, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+      [groupId, inviteCode, inviterId, maxUses || null, expireAt]
+    )
+
+    console.log('✅ 邀请链接已生成:', inviteCode)
+
+    res.json({
+      success: true,
+      data: {
+        inviteCode,
+        inviteLink: `yeyu://group/join?code=${inviteCode}`,
+        expireAt,
+        maxUses
+      }
+    })
+  } catch (error) {
+    console.error('❌ 生成邀请链接失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 发送群聊邀请消息卡片
+app.post('/api/groups/:groupId/send-invite-card', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { receiverIds, inviteCode } = req.body
+    const senderId = req.user.userId
+
+    console.log('📨 发送群聊邀请消息卡片:', { groupId, receiverIds, inviteCode, senderId })
+
+    // 检查邀请码是否有效
+    const [inviteInfo] = await pool.execute(
+      'SELECT * FROM `group_invite_links` WHERE invite_code = ? AND group_id = ? AND is_active = TRUE',
+      [inviteCode, groupId]
+    )
+
+    if (inviteInfo.length === 0) {
+      return res.status(404).json({ success: false, error: '邀请链接不存在或已失效' })
+    }
+
+    const invite = inviteInfo[0]
+
+    // 检查是否过期
+    if (invite.expire_at && new Date(invite.expire_at) < new Date()) {
+      return res.status(400).json({ success: false, error: '邀请链接已过期' })
+    }
+
+    // 检查使用次数
+    if (invite.max_uses && invite.used_count >= invite.max_uses) {
+      return res.status(400).json({ success: false, error: '邀请链接已达到最大使用次数' })
+    }
+
+    // 获取群信息
+    const [groupInfo] = await pool.execute(
+      'SELECT name, avatar FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    if (groupInfo.length === 0) {
+      return res.status(404).json({ success: false, error: '群聊不存在' })
+    }
+
+    const group = groupInfo[0]
+
+    // 获取群成员数量
+    const [memberCountResult] = await pool.execute(
+      'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
+      [groupId]
+    )
+    const memberCount = memberCountResult[0].count
+
+    // 获取发送者信息
+    const [senderInfo] = await pool.execute(
+      'SELECT nickname, avatar FROM `users` WHERE id = ?',
+      [senderId]
+    )
+
+    const senderName = senderInfo.length > 0 ? senderInfo[0].nickname : `用户${senderId}`
+
+    // 构造邀请消息卡片内容
+    const cardContent = JSON.stringify({
+      type: 'group_invite',
+      groupId,
+      groupName: group.name,
+      groupAvatar: group.avatar,
+      memberCount,
+      inviteCode,
+      inviterName: senderName,
+      inviterId: senderId
+    })
+
+    // 向每个接收者发送消息
+    const sentMessages = []
+    for (const receiverId of receiverIds) {
+      // 检查是否已经是群成员
+      const [existingMember] = await pool.execute(
+        'SELECT id FROM `group_members` WHERE group_id = ? AND user_id = ?',
+        [groupId, receiverId]
+      )
+
+      if (existingMember.length > 0) {
+        console.log(`⚠️ 用户 ${receiverId} 已经是群成员，跳过`)
+        continue
+      }
+
+      // 创建消息
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      await pool.execute(
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [messageId, senderId, receiverId, cardContent, 'group_invite']
+      )
+
+      const message = {
+        id: messageId,
+        senderId,
+        receiverId,
+        content: cardContent,
+        type: 'group_invite',
+        timestamp: new Date().toISOString()
+      }
+
+      sentMessages.push(message)
+
+      // 通过WebSocket发送消息
+      const userSocketId = userSockets.get(receiverId)
+      if (userSocketId) {
+        io.to(userSocketId).emit('new_message', message)
+        console.log(`📤 群邀请消息已发送给用户 ${receiverId}`)
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+
+    res.json({
+      success: true,
+      message: '邀请消息已发送',
+      data: { sentCount: sentMessages.length }
+    })
+  } catch (error) {
+    console.error('❌ 发送邀请消息失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+
+
+// 移除群成员
+app.post('/api/groups/:groupId/remove-members', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { userIds } = req.body
+    const operatorId = req.user.userId
+
+    console.log('🚫 移除群成员:', { groupId, userIds, operatorId })
+
+    // 验证操作者是否是群主或管理员，并获取昵称
+    const [operatorInfo] = await pool.execute(
+      'SELECT gm.role, u.nickname FROM `group_members` gm INNER JOIN `users` u ON gm.user_id = u.id WHERE gm.group_id = ? AND gm.user_id = ?',
+      [groupId, operatorId]
+    )
+
+    if (operatorInfo.length === 0) {
+      return res.status(403).json({ success: false, error: '您不是群成员' })
+    }
+
+    const operatorRole = operatorInfo[0].role
+    const operatorName = operatorInfo[0].nickname
+    const isAdminOrOwner = operatorRole === 'creator' || operatorRole === 'admin'
+
+    if (!isAdminOrOwner) {
+      return res.status(403).json({ success: false, error: '只有群主和管理员可以移除成员' })
+    }
+
+    // 移除成员并收集被移除成员的昵称
+    const removedMembers = []
+    for (const userId of userIds) {
+      // 获取被移除成员的昵称
+      const [userInfo] = await pool.execute(
+        'SELECT nickname FROM `users` WHERE id = ?',
+        [userId]
+      )
+      const userName = userInfo.length > 0 ? userInfo[0].nickname : `用户${userId}`
+      removedMembers.push(userName)
+
+      // 移除成员
+      await pool.execute(
+        'DELETE FROM `group_members` WHERE group_id = ? AND user_id = ?',
+        [groupId, userId]
+      )
+      console.log(`✅ 用户 ${userId} 已被移除`)
+    }
+
+    // 发送系统消息
+    if (removedMembers.length > 0) {
+      const memberNames = removedMembers.join('、')
+      const systemMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        senderId: 0,
+        receiverId: groupId,
+        type: 'system',
+        content: `${operatorName} 将 ${memberNames} 移出了群聊`,
+        timestamp: new Date().toISOString(),
+        groupId: groupId
+      }
+
+      // 保存系统消息到数据库
+      await pool.execute(
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+      )
+
+      // 通过WebSocket发送系统消息给所有群成员（包括被移除的成员，让他们知道）
+      const [members] = await pool.execute(
+        'SELECT user_id FROM `group_members` WHERE group_id = ?',
+        [groupId]
+      )
+
+      // 发送给当前群成员
+      members.forEach(member => {
+        const memberId = member.user_id
+        const userSocketId = userSockets.get(memberId)
+        if (userSocketId) {
+          io.to(userSocketId).emit('new_message', systemMessage)
+          console.log(`📤 移除系统消息已发送给用户 ${memberId}`)
+        }
+      })
+
+      // 也发送给被移除的成员
+      userIds.forEach(userId => {
+        const userSocketId = userSockets.get(userId)
+        if (userSocketId) {
+          io.to(userSocketId).emit('new_message', systemMessage)
+          io.to(userSocketId).emit('removed_from_group', { groupId, operatorName })
+          console.log(`📤 移除通知已发送给被移除用户 ${userId}`)
+        }
+      })
+    }
+
+    res.json({ success: true, message: '成员已移除' })
+  } catch (error) {
+    console.error('❌ 移除成员失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 转让群主
+app.post('/api/groups/:groupId/transfer-ownership', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { currentOwnerId, newOwnerId } = req.body
+
+    console.log('👑 转让群主:', { groupId, currentOwnerId, newOwnerId })
+
+    // 验证当前用户是否是群主
+    const [currentOwnerRole] = await pool.execute(
+      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, currentOwnerId]
+    )
+
+    if (currentOwnerRole.length === 0 || (currentOwnerRole[0].role !== 'owner' && currentOwnerRole[0].role !== 'creator')) {
+      return res.status(403).json({ success: false, error: '只有群主可以转让群主权限' })
+    }
+
+    // 验证新群主是否是群成员
+    const [newOwnerRole] = await pool.execute(
+      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, newOwnerId]
+    )
+
+    if (newOwnerRole.length === 0) {
+      return res.status(400).json({ success: false, error: '新群主不是群成员' })
+    }
+
+    // 开始事务
+    const connection = await pool.getConnection()
+    await connection.beginTransaction()
+
+    try {
+      // 将当前群主改为普通成员
+      await connection.execute(
+        'UPDATE `group_members` SET role = ? WHERE group_id = ? AND user_id = ?',
+        ['member', groupId, currentOwnerId]
+      )
+
+      // 将新成员设为群主（使用 creator 作为群主角色）
+      await connection.execute(
+        'UPDATE `group_members` SET role = ? WHERE group_id = ? AND user_id = ?',
+        ['creator', groupId, newOwnerId]
+      )
+
+      // 提交事务
+      await connection.commit()
+      connection.release()
+
+      console.log('✅ 群主转让成功')
+
+      // 获取新旧群主的昵称
+      const [oldOwnerInfo] = await pool.execute(
+        'SELECT nickname FROM `users` WHERE id = ?',
+        [currentOwnerId]
+      )
+      const [newOwnerInfo] = await pool.execute(
+        'SELECT nickname FROM `users` WHERE id = ?',
+        [newOwnerId]
+      )
+
+      const oldOwnerName = oldOwnerInfo.length > 0 ? oldOwnerInfo[0].nickname : '前群主'
+      const newOwnerName = newOwnerInfo.length > 0 ? newOwnerInfo[0].nickname : '新群主'
+
+      // 发送系统消息到群聊
+      const systemMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        senderId: 0,
+        receiverId: groupId,
+        type: 'system',
+        content: `${oldOwnerName} 将群主转让给 ${newOwnerName}`,
+        timestamp: new Date().toISOString(),
+        groupId: groupId
+      }
+
+      // 保存系统消息到数据库
+      await pool.execute(
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+      )
+
+      // 通过WebSocket发送系统消息给所有群成员
+      const [members] = await pool.execute(
+        'SELECT user_id FROM `group_members` WHERE group_id = ?',
+        [groupId]
+      )
+
+      members.forEach(member => {
+        const memberId = member.user_id
+        const userSocketId = userSockets.get(memberId)
+        if (userSocketId) {
+          io.to(userSocketId).emit('new_message', systemMessage)
+          console.log(`📤 群主转让消息已发送给用户 ${memberId}`)
+        }
+      })
+
+      res.json({ success: true, message: '群主转让成功' })
+    } catch (error) {
+      await connection.rollback()
+      connection.release()
+      throw error
+    }
+  } catch (error) {
+    console.error('❌ 转让群主失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 获取群管理员列表
+app.get('/api/groups/:groupId/admins', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+
+    console.log('📋 获取群管理员列表:', { groupId })
+
+    // 查询所有管理员
+    const [admins] = await pool.execute(
+      `SELECT gm.user_id as id, u.nickname, u.avatar
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = ? AND gm.role = 'admin'
+       ORDER BY gm.joined_at ASC`,
+      [groupId]
+    )
+
+    console.log('✅ 群管理员列表:', admins)
+
+    res.json({
+      success: true,
+      data: admins
+    })
+  } catch (error) {
+    console.error('❌ 获取群管理员列表失败:', error)
+    res.status(500).json({ success: false, error: '获取管理员列表失败' })
+  }
+})
+
+// 添加群管理员
+app.post('/api/groups/:groupId/admins', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { memberIds } = req.body
+
+    console.log('➕ 添加群管理员:', { groupId, memberIds })
+
+    // 验证是否超过最大管理员数量
+    const [currentAdmins] = await pool.execute(
+      'SELECT COUNT(*) as count FROM group_members WHERE group_id = ? AND role = "admin"',
+      [groupId]
+    )
+
+    const currentCount = currentAdmins[0].count
+    if (currentCount + memberIds.length > 3) {
+      return res.status(400).json({ success: false, error: '最多只能设置3个管理员' })
+    }
+
+    // 更新成员角色为管理员
+    for (const memberId of memberIds) {
+      await pool.execute(
+        'UPDATE group_members SET role = "admin" WHERE group_id = ? AND user_id = ?',
+        [groupId, memberId]
+      )
+    }
+
+    console.log('✅ 群管理员添加成功')
+
+    // 获取新管理员的昵称并发送系统消息
+    for (const memberId of memberIds) {
+      const [adminInfo] = await pool.execute(
+        'SELECT nickname FROM `users` WHERE id = ?',
+        [memberId]
+      )
+
+      const adminName = adminInfo.length > 0 ? adminInfo[0].nickname : `用户${memberId}`
+
+      // 发送系统消息到群聊
+      const systemMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        senderId: 0,
+        receiverId: groupId,
+        type: 'system',
+        content: `${adminName} 成为群管理员`,
+        timestamp: new Date().toISOString(),
+        groupId: groupId
+      }
+
+      // 保存系统消息到数据库
+      await pool.execute(
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+      )
+
+      // 通过WebSocket发送系统消息给所有群成员
+      const [members] = await pool.execute(
+        'SELECT user_id FROM `group_members` WHERE group_id = ?',
+        [groupId]
+      )
+
+      members.forEach(member => {
+        const memberId = member.user_id
+        const userSocketId = userSockets.get(memberId)
+        if (userSocketId) {
+          io.to(userSocketId).emit('new_message', systemMessage)
+          console.log(`📤 管理员设置消息已发送给用户 ${memberId}`)
+        }
+      })
+    }
+
+    res.json({
+      success: true,
+      message: '管理员添加成功'
+    })
+  } catch (error) {
+    console.error('❌ 添加群管理员失败:', error)
+    res.status(500).json({ success: false, error: '添加管理员失败' })
+  }
+})
+
+// 移除群管理员
+app.delete('/api/groups/:groupId/admins/:adminId', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId, adminId } = req.params
+
+    console.log('➖ 移除群管理员:', { groupId, adminId })
+
+    // 获取管理员昵称
+    const [adminInfo] = await pool.execute(
+      'SELECT nickname FROM `users` WHERE id = ?',
+      [adminId]
+    )
+
+    const adminName = adminInfo.length > 0 ? adminInfo[0].nickname : `用户${adminId}`
+
+    // 将管理员角色改为普通成员
+    await pool.execute(
+      'UPDATE group_members SET role = "member" WHERE group_id = ? AND user_id = ?',
+      [groupId, adminId]
+    )
+
+    console.log('✅ 群管理员移除成功')
+
+    // 发送系统消息到群聊
+    const systemMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      senderId: 0,
+      receiverId: groupId,
+      type: 'system',
+      content: `${adminName} 被解除群管理员`,
+      timestamp: new Date().toISOString(),
+      groupId: groupId
+    }
+
+    // 保存系统消息到数据库
+    await pool.execute(
+      'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+      [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+    )
+
+    // 通过WebSocket发送系统消息给所有群成员
+    const [members] = await pool.execute(
+      'SELECT user_id FROM `group_members` WHERE group_id = ?',
+      [groupId]
+    )
+
+    members.forEach(member => {
+      const memberId = member.user_id
+      const userSocketId = userSockets.get(memberId)
+      if (userSocketId) {
+        io.to(userSocketId).emit('new_message', systemMessage)
+        console.log(`📤 管理员移除消息已发送给用户 ${memberId}`)
+      }
+    })
+
+    res.json({
+      success: true,
+      message: '管理员已移除'
+    })
+  } catch (error) {
+    console.error('❌ 移除群管理员失败:', error)
+    res.status(500).json({ success: false, error: '移除管理员失败' })
+  }
+})
+
+// 检查群是否已解散
+app.get('/api/groups/:groupId/status', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+
+    console.log('🔍 检查群聊状态:', groupId)
+
+    // 查询群聊信息
+    const [groups] = await pool.execute(
+      'SELECT is_dissolved FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    if (groups.length === 0) {
+      return res.status(404).json({ success: false, error: '群聊不存在' })
+    }
+
+    const isDissolved = groups[0].is_dissolved === 1
+
+    res.json({
+      success: true,
+      data: {
+        isDissolved
+      }
+    })
+  } catch (error) {
+    console.error('❌ 检查群聊状态失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 解散群聊
+app.delete('/api/groups/:groupId/dissolve', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { userId } = req.body
+
+    console.log('🗑️ 解散群聊:', { groupId, userId })
+
+    // 验证用户是否是群主
+    const [memberRole] = await pool.execute(
+      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, userId]
+    )
+
+    if (memberRole.length === 0 || (memberRole[0].role !== 'owner' && memberRole[0].role !== 'creator')) {
+      return res.status(403).json({ success: false, error: '只有群主可以解散群聊' })
+    }
+
+    // 获取所有群成员ID（用于发送通知）
+    const [members] = await pool.execute(
+      'SELECT user_id FROM `group_members` WHERE group_id = ?',
+      [groupId]
+    )
+
+    const memberIds = members.map(m => m.user_id)
+
+    // 标记群聊为已解散
+    await pool.execute(
+      'UPDATE `groups` SET is_dissolved = 1, updated_at = NOW() WHERE id = ?',
+      [groupId]
+    )
+    console.log('✅ 群聊已标记为解散')
+
+    // 删除所有群成员（包括群主）
+    await pool.execute(
+      'DELETE FROM `group_members` WHERE group_id = ?',
+      [groupId]
+    )
+    console.log('✅ 所有群成员已删除')
+
+    // 向群聊发送系统消息
+    const systemMessageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    await pool.execute(
+      'INSERT INTO `messages` (id, sender_id, receiver_id, content, message_type, created_at, status) VALUES (?, ?, ?, ?, ?, NOW(), ?)',
+      [systemMessageId, 0, groupId, '群聊已解散', 'system', 'sent']
+    )
+    console.log('✅ 系统消息已发送')
+
+    // 通过WebSocket通知所有群成员
+    memberIds.forEach(memberId => {
+      const userSocketId = userSockets.get(memberId)
+      if (userSocketId) {
+        io.to(userSocketId).emit('group_dissolved', {
+          groupId: groupId,
+          message: '该群聊已被群主解散',
+          isOwner: memberId === userId // 标记是否是群主
+        })
+        console.log(`📤 群聊解散通知已发送给用户 ${memberId}`)
+      }
+    })
+
+    res.json({ success: true, message: '群聊已解散' })
+  } catch (error) {
+    console.error('❌ 解散群聊失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 更新群聊名称
+app.put('/api/groups/:groupId/name', async (req, res) => {
+  console.log('🔥🔥🔥 收到修改群聊名称请求！')
+  console.log('🔥 请求参数:', req.params)
+  console.log('🔥 请求体:', req.body)
+
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { name, oldName, userId } = req.body
+
+    console.log('📝 更新群聊名称:', { groupId, name, oldName, userId })
+
+    // 验证参数
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ success: false, error: '群聊名称不能为空' })
+    }
+
+    if (name.length > 20) {
+      return res.status(400).json({ success: false, error: '群聊名称最多20个字符' })
+    }
+
+    // 检查群聊设置：是否仅管理员可修改群名
+    const [groupSettings] = await pool.execute(
+      'SELECT only_admin_can_rename FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    if (groupSettings.length > 0 && groupSettings[0].only_admin_can_rename) {
+      // 检查用户是否是群主或管理员
+      const [memberRole] = await pool.execute(
+        'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+        [groupId, userId]
+      )
+
+      if (memberRole.length === 0 || (memberRole[0].role !== 'owner' && memberRole[0].role !== 'creator' && memberRole[0].role !== 'admin')) {
+        return res.status(403).json({ success: false, error: '只有群主或管理员可以修改群名' })
+      }
+    }
+
+    // 更新群聊名称
+    await pool.execute(
+      'UPDATE `groups` SET name = ?, updated_at = NOW() WHERE id = ?',
+      [name.trim(), groupId]
+    )
+
+    console.log('✅ 群聊名称更新成功')
+
+    // 获取修改者的昵称
+    let operatorName = '群成员'
+    if (userId) {
+      const [users] = await pool.execute(
+        'SELECT nickname FROM `users` WHERE id = ?',
+        [userId]
+      )
+      if (users.length > 0) {
+        operatorName = users[0].nickname || '群成员'
+      }
+    }
+
+    // 发送系统消息到群聊
+    const systemMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      senderId: userId || 0, // 发送者ID（操作者）
+      receiverId: groupId, // 接收者ID（群聊ID）
+      type: 'system',
+      content: `${operatorName} 修改群名为"${name.trim()}"`,
+      timestamp: new Date().toISOString(),
+      groupId: groupId,
+      operatorId: userId, // 添加操作者ID
+      operatorName: operatorName, // 添加操作者昵称
+      newGroupName: name.trim() // 添加新群名
+    }
+
+    // 保存系统消息到数据库（保存完整内容）
+    try {
+      await pool.execute(
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [systemMessage.id, userId || 0, groupId, systemMessage.content, 'system']
+      )
+      console.log('✅ 系统消息已保存到数据库')
+    } catch (msgError) {
+      console.error('❌ 保存系统消息失败:', msgError)
+    }
+
+    // 通过WebSocket发送系统消息给所有群成员
+    try {
+      console.log('🔥 开始发送WebSocket系统消息...')
+
+      // 获取所有群成员
+      const [members] = await pool.execute(
+        'SELECT user_id FROM `group_members` WHERE group_id = ?',
+        [groupId]
+      )
+
+      console.log(`🔥 找到 ${members.length} 个群成员:`, members.map(m => m.user_id))
+      console.log('🔥 当前在线用户 userSockets:', Array.from(userSockets.entries()))
+
+      // 向每个群成员发送消息
+      members.forEach(member => {
+        const memberId = member.user_id
+        const userSocketId = userSockets.get(memberId)
+        console.log(`🔥 用户 ${memberId} 的 Socket ID:`, userSocketId)
+
+        if (userSocketId) {
+          // 发送包含操作者信息的完整消息
+          io.to(userSocketId).emit('new_message', systemMessage)
+          console.log(`📤 系统消息已发送给用户 ${memberId}，Socket ID: ${userSocketId}`)
+        } else {
+          console.log(`⚠️ 用户 ${memberId} 不在线，无法发送消息`)
+        }
+      })
+
+      console.log('✅ 系统消息已通过WebSocket发送给所有群成员')
+    } catch (wsError) {
+      console.error('❌ 发送WebSocket消息失败:', wsError)
+    }
+
+    res.json({ success: true, data: { id: groupId, name: name.trim() } })
+  } catch (error) {
+    console.error('❌ 更新群聊名称失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 生成/获取群二维码
+app.post('/api/groups/:groupId/qrcode', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+
+    console.log('🔍 生成/获取群二维码:', groupId)
+
+    // 检查是否有有效的二维码（7天内）
+    const [existingQRCode] = await pool.execute(
+      'SELECT * FROM `group_qrcodes` WHERE group_id = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1',
+      [groupId]
+    )
+
+    if (existingQRCode.length > 0) {
+      // 返回现有的二维码
+      console.log('✅ 返回现有的群二维码')
+      return res.json({
+        success: true,
+        data: {
+          qrcode_data: existingQRCode[0].qrcode_data,
+          expires_at: existingQRCode[0].expires_at
+        }
+      })
+    }
+
+    // 生成新的二维码
+    const qrcodeId = `qr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const qrcodeData = JSON.stringify({
+      type: 'group_join',
+      groupId: groupId,
+      qrcodeId: qrcodeId
+    })
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7天后过期
+
+    // 保存到数据库
+    await pool.execute(
+      'INSERT INTO `group_qrcodes` (id, group_id, qrcode_data, expires_at, created_at) VALUES (?, ?, ?, ?, NOW())',
+      [qrcodeId, groupId, qrcodeData, expiresAt]
+    )
+
+    console.log('✅ 群二维码生成成功')
+
+    res.json({
+      success: true,
+      data: {
+        qrcode_data: qrcodeData,
+        expires_at: expiresAt
+      }
+    })
+  } catch (error) {
+    console.error('❌ 生成群二维码失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 获取待处理的进群申请数量
+app.get('/api/groups/:groupId/join-requests/pending-count', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+
+    console.log('🔍 获取待处理进群申请数量:', groupId)
+
+    const [result] = await pool.execute(
+      'SELECT COUNT(*) as count FROM `group_join_requests` WHERE group_id = ? AND status = "pending"',
+      [groupId]
+    )
+
+    const count = result[0].count || 0
+    console.log('✅ 待处理进群申请数量:', count)
+
+    res.json({
+      success: true,
+      data: { count }
+    })
+  } catch (error) {
+    console.error('❌ 获取待处理进群申请数量失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 获取进群申请列表
+app.get('/api/groups/:groupId/join-requests', async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+
+    console.log('🔍 获取进群申请列表:', groupId)
+
+    const [requests] = await pool.execute(
+      `SELECT gjr.id, gjr.user_id, gjr.message, gjr.status, gjr.created_at,
+              u.nickname, u.avatar
+       FROM \`group_join_requests\` gjr
+       JOIN \`users\` u ON gjr.user_id = u.id
+       WHERE gjr.group_id = ? AND gjr.status = 'pending'
+       ORDER BY gjr.created_at DESC`,
+      [groupId]
+    )
+
+    console.log('✅ 获取进群申请列表成功，数量:', requests.length)
+
+    res.json({
+      success: true,
+      data: requests
+    })
+  } catch (error) {
+    console.error('❌ 获取进群申请列表失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// 处理进群申请
+app.put('/api/groups/:groupId/join-requests/:requestId', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId, requestId } = req.params
+    const { action } = req.body // 'approve' 或 'reject'
+
+    console.log('🔍 处理进群申请:', { groupId, requestId, action })
+
+    // 获取申请信息
+    const [request] = await pool.execute(
+      'SELECT * FROM `group_join_requests` WHERE id = ? AND group_id = ?',
+      [requestId, groupId]
+    )
+
+    if (request.length === 0) {
+      return res.status(404).json({ success: false, error: '申请不存在' })
+    }
+
+    const userId = request[0].user_id
+
+    if (action === 'approve') {
+      // 同意申请，添加用户到群聊
+      await pool.execute(
+        'INSERT INTO `group_members` (group_id, user_id, role, joined_at) VALUES (?, ?, "member", NOW())',
+        [groupId, userId]
+      )
+
+      // 更新申请状态
+      await pool.execute(
+        'UPDATE `group_join_requests` SET status = "approved", updated_at = NOW() WHERE id = ?',
+        [requestId]
+      )
+
+      console.log('✅ 进群申请已同意')
+
+      // 通过 WebSocket 通知被邀请人审核通过
+      const userSocketId = userSockets.get(userId)
+      if (userSocketId) {
+        io.to(userSocketId).emit('group_join_approved', {
+          groupId,
+          requestId,
+          status: 'approved'
+        })
+        console.log(`📤 已通知用户 ${userId} 审核通过`)
+      }
+    } else if (action === 'reject') {
+      // 拒绝申请
+      await pool.execute(
+        'UPDATE `group_join_requests` SET status = "rejected", updated_at = NOW() WHERE id = ?',
+        [requestId]
+      )
+
+      console.log('✅ 进群申请已拒绝')
+
+      // 通过 WebSocket 通知被邀请人审核被拒
+      const userSocketId = userSockets.get(userId)
+      if (userSocketId) {
+        io.to(userSocketId).emit('group_join_rejected', {
+          groupId,
+          requestId,
+          status: 'rejected'
+        })
+        console.log(`📤 已通知用户 ${userId} 审核被拒`)
+      }
+    }
+
+    res.json({
+      success: true,
+      message: action === 'approve' ? '已同意' : '已拒绝'
+    })
+  } catch (error) {
+    console.error('❌ 处理进群申请失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+/**
+ * 邀请好友加入群聊
+ * 逻辑：
+ * 1. 生成邀请码
+ * 2. 发送邀请卡片消息给被邀请人
+ * 3. 被邀请人点击卡片后弹出确认对话框
+ * 4. 确认后调用加入群聊接口
+ */
+app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const { inviteeIds } = req.body
+    const inviterId = req.user.userId
+
+    // 参数验证
+    if (!inviteeIds || !Array.isArray(inviteeIds) || inviteeIds.length === 0) {
+      return res.status(400).json({ success: false, error: '请选择要邀请的好友' })
+    }
+
+    // 检查邀请人是否是群成员
+    const [memberCheck] = await pool.execute(
+      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, inviterId]
+    )
+
+    if (memberCheck.length === 0) {
+      return res.status(403).json({ success: false, error: '您不是群成员，无法邀请好友' })
+    }
+
+    // 获取群信息
+    const [groupInfo] = await pool.execute(
+      'SELECT name, avatar, require_approval FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    if (groupInfo.length === 0) {
+      return res.status(404).json({ success: false, error: '群聊不存在' })
+    }
+
+    const group = groupInfo[0]
+
+    // 获取群成员数量
+    const [memberCountResult] = await pool.execute(
+      'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
+      [groupId]
+    )
+    const memberCount = memberCountResult[0].count
+
+    // 获取邀请人信息
+    const [inviterInfo] = await pool.execute(
+      'SELECT nickname, username FROM `users` WHERE id = ?',
+      [inviterId]
+    )
+    const inviterName = inviterInfo[0].nickname || inviterInfo[0].username
+
+    // 生成邀请码（每次邀请生成一个新的邀请码）
+    const inviteCode = `INV_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    // 保存邀请链接到数据库
+    await pool.execute(
+      'INSERT INTO `group_invite_links` (group_id, invite_code, inviter_id, created_at) VALUES (?, ?, ?, NOW())',
+      [groupId, inviteCode, inviterId]
+    )
+
+    // 构建邀请卡片内容
+    const inviteCard = {
+      type: 'group_invite',
+      groupId,
+      groupName: group.name,
+      groupAvatar: group.avatar,
+      memberCount,
+      inviteCode,
+      inviterName,
+      inviterId,
+      requireApproval: group.require_approval === 1 // 是否需要审核
+    }
+
+    // 发送邀请卡片给每个被邀请人
+    for (const inviteeId of inviteeIds) {
+      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // 获取被邀请人信息
+      const [inviteeInfo] = await pool.execute(
+        'SELECT nickname, username FROM `users` WHERE id = ?',
+        [inviteeId]
+      )
+      const inviteeName = inviteeInfo[0]?.nickname || inviteeInfo[0]?.username || '好友'
+
+      // 构建邀请卡片内容（包含被邀请人信息）
+      const inviteCardWithInvitee = {
+        ...inviteCard,
+        inviteeName,
+        inviteeId
+      }
+
+      const messageContent = JSON.stringify(inviteCardWithInvitee)
+
+      // 保存消息到数据库
+      await pool.execute(
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [messageId, inviterId, inviteeId, messageContent, 'group_invite']
+      )
+
+      // 通过WebSocket发送给被邀请人
+      const inviteeSocketId = userSockets.get(inviteeId)
+      if (inviteeSocketId) {
+        io.to(inviteeSocketId).emit('new_message', {
+          id: messageId,
+          senderId: inviterId,
+          receiverId: inviteeId,
+          content: messageContent,
+          type: 'group_invite',
+          timestamp: new Date().toISOString()
+        })
+      }
+
+      // 同时发送给邀请人自己（让邀请人也能看到发送的邀请卡片）
+      const inviterSocketId = userSockets.get(inviterId)
+      if (inviterSocketId) {
+        io.to(inviterSocketId).emit('new_message', {
+          id: messageId,
+          senderId: inviterId,
+          receiverId: inviteeId,
+          content: messageContent,
+          type: 'group_invite',
+          timestamp: new Date().toISOString(),
+          isOwn: true // 标记为自己发送的消息
+        })
+      }
+    }
+
+    res.json({
+      success: true,
+      message: '邀请已发送',
+      data: {
+        inviteCode,
+        groupName: group.name,
+        groupAvatar: group.avatar,
+        memberCount
+      }
+    })
+  } catch (error) {
+    console.error('❌ 发送群邀请失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+/**
+ * 通过邀请码加入群聊
+ * 被邀请人点击邀请卡片后调用此接口
+ */
+app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { inviteCode } = req.body
+    const userId = req.user.userId
+
+    console.log('🔑 通过邀请码加入群聊:', { inviteCode, userId })
+
+    if (!inviteCode) {
+      return res.status(400).json({ success: false, error: '邀请码不能为空' })
+    }
+
+    // 查询邀请链接信息
+    const [inviteLinks] = await pool.execute(
+      'SELECT group_id, inviter_id, is_active FROM `group_invite_links` WHERE invite_code = ?',
+      [inviteCode]
+    )
+
+    if (inviteLinks.length === 0) {
+      return res.status(404).json({ success: false, error: '邀请链接不存在或已失效' })
+    }
+
+    const { group_id: groupId, inviter_id: inviterId, is_active: isActive } = inviteLinks[0]
+
+    if (!isActive) {
+      return res.status(400).json({ success: false, error: '邀请链接已失效' })
+    }
+
+    // 检查用户是否已经是群成员
+    const [existingMember] = await pool.execute(
+      'SELECT id FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, userId]
+    )
+
+    if (existingMember.length > 0) {
+      return res.status(400).json({ success: false, error: '您已经是群成员了' })
+    }
+
+    // 检查是否已有待处理的申请
+    const [existingRequest] = await pool.execute(
+      'SELECT id FROM `group_join_requests` WHERE group_id = ? AND user_id = ? AND status = ?',
+      [groupId, userId, 'pending']
+    )
+
+    if (existingRequest.length > 0) {
+      return res.status(400).json({ success: false, error: '您已经提交过申请，请等待审核' })
+    }
+
+    // 获取群设置
+    const [groupInfo] = await pool.execute(
+      'SELECT name, avatar, require_approval FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    if (groupInfo.length === 0) {
+      return res.status(404).json({ success: false, error: '群聊不存在' })
+    }
+
+    const group = groupInfo[0]
+    const requireApproval = group.require_approval === 1
+
+    // 检查邀请人的角色
+    const [inviterRole] = await pool.execute(
+      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, inviterId]
+    )
+
+    const isInviterAdmin = inviterRole.length > 0 && (inviterRole[0].role === 'owner' || inviterRole[0].role === 'creator' || inviterRole[0].role === 'admin')
+
+    // 判断是否需要审核：
+    // 1. 邀请人是群主/管理员 → 直接加入（无论群设置如何）
+    // 2. 邀请人是普通成员 + 群不需要审核 → 直接加入
+    // 3. 邀请人是普通成员 + 群需要审核 → 需要审核
+    const needApproval = !isInviterAdmin && requireApproval
+
+    console.log('🔍 加入群聊判断:', {
+      isInviterAdmin,
+      requireApproval,
+      needApproval
+    })
+
+    if (!needApproval) {
+      // 直接加入
+      await pool.execute(
+        'INSERT INTO `group_members` (group_id, user_id, role, joined_at) VALUES (?, ?, ?, NOW())',
+        [groupId, userId, 'member']
+      )
+
+      // 更新邀请链接使用次数
+      await pool.execute(
+        'UPDATE `group_invite_links` SET used_count = used_count + 1 WHERE invite_code = ?',
+        [inviteCode]
+      )
+
+      // 获取用户信息
+      const [userInfo] = await pool.execute(
+        'SELECT nickname FROM `users` WHERE id = ?',
+        [userId]
+      )
+      const userName = userInfo.length > 0 ? userInfo[0].nickname : `用户${userId}`
+
+      // 发送系统消息
+      const systemMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        senderId: 0,
+        receiverId: groupId,
+        type: 'system',
+        content: `${userName} 通过邀请链接加入了群聊`,
+        timestamp: new Date().toISOString(),
+        groupId: groupId
+      }
+
+      await pool.execute(
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+      )
+
+      // 通过WebSocket发送给所有群成员
+      const [members] = await pool.execute(
+        'SELECT user_id FROM `group_members` WHERE group_id = ?',
+        [groupId]
+      )
+
+      members.forEach(member => {
+        const memberId = member.user_id
+        const userSocketId = userSockets.get(memberId)
+        if (userSocketId) {
+          io.to(userSocketId).emit('new_message', systemMessage)
+        }
+      })
+
+      console.log('✅ 用户已直接加入群聊')
+      res.json({
+        success: true,
+        message: '已成功加入群聊',
+        requireApproval: false,
+        data: {
+          groupId,
+          groupName: group.name,
+          groupAvatar: group.avatar
+        }
+      })
+    } else {
+      // 需要审核，创建进群申请
+      await pool.execute(
+        'INSERT INTO `group_join_requests` (group_id, user_id, message, status, inviter_id, invite_code, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+        [groupId, userId, '通过邀请链接申请加入', 'pending', inviterId, inviteCode]
+      )
+
+      console.log('✅ 进群申请已创建')
+      res.json({
+        success: true,
+        message: '申请已提交，等待群主/管理员审核',
+        requireApproval: true,
+        data: {
+          groupId,
+          groupName: group.name,
+          groupAvatar: group.avatar
+        }
+      })
+    }
+  } catch (error) {
+    console.error('❌ 加入群聊失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+/**
+ * 获取用户在某个群的申请状态
+ */
+app.get('/api/groups/:groupId/join-requests/my-status', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const userId = req.user.userId
+
+    // 查询最新的申请记录
+    const [requests] = await pool.execute(
+      'SELECT status, created_at, updated_at FROM `group_join_requests` WHERE group_id = ? AND user_id = ? ORDER BY created_at DESC LIMIT 1',
+      [groupId, userId]
+    )
+
+    if (requests.length === 0) {
+      return res.json({ success: true, data: null })
+    }
+
+    res.json({ success: true, data: requests[0] })
+  } catch (error) {
+    console.error('获取申请状态失败:', error)
+    res.status(500).json({ success: false, error: '获取申请状态失败' })
+  }
+})
+
+// 导出 server 而不是 app，因为 Socket.IO 绑定在 server 上
+module.exports = server

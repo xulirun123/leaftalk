@@ -1,963 +1,1141 @@
 <template>
   <div class="group-info">
-    <!-- 顶部导航 -->
-    <MobileTopBar
-      :title="`群聊信息(${groupInfo.memberCount})`"
-      :show-back="true"
-      :right-buttons="topBarButtons"
-      @button-click="handleTopBarClick"
-    />
-
-    <!-- 群成员区域 -->
-    <div class="members-section">
-      <div class="members-grid">
-        <!-- 显示的群成员 -->
-        <div
-          v-for="member in displayMembers"
-          :key="member.id"
-          class="member-item"
-          @click="viewMemberProfile(member)"
-        >
-          <div class="member-avatar">
-            <div class="avatar-placeholder">{{ member.name.charAt(0) }}</div>
-          </div>
-          <div v-if="showNicknames" class="member-name">{{ member.name }}</div>
-        </div>
-
-        <!-- 邀请好友按钮 -->
-        <div class="member-item action-item" @click="inviteMembers">
-          <div class="member-avatar action-avatar">
-            <iconify-icon icon="heroicons:plus" width="24" style="color: #666;"></iconify-icon>
-          </div>
-          <div v-if="showNicknames" class="member-name">邀请</div>
-        </div>
-
-        <!-- 踢出群员按钮（仅管理员和群主显示） -->
-        <div v-if="canManageMembers" class="member-item action-item" @click="removeMembers">
-          <div class="member-avatar action-avatar">
-            <iconify-icon icon="heroicons:minus" width="24" style="color: #666;"></iconify-icon>
-          </div>
-          <div v-if="showNicknames" class="member-name">移除</div>
-        </div>
-      </div>
-
-      <!-- 更多群聊人员按钮 -->
-      <div v-if="groupInfo.memberCount > 18" class="more-members-btn" @click="toggleShowAllMembers">
-        <span>更多群聊人员</span>
-        <iconify-icon
-          :icon="showAllMembers ? 'heroicons:chevron-up' : 'heroicons:chevron-down'"
-          width="16"
-          style="color: #666;"
-        ></iconify-icon>
-      </div>
-    </div>
-
-    <!-- 群功能区域 -->
-    <div class="group-functions">
-      <div class="function-row">
-        <div class="function-item" @click="startGroupCall('voice')">
-          <iconify-icon icon="heroicons:phone" width="24" color="#07C160"></iconify-icon>
-          <span>语音通话</span>
-        </div>
-        <div class="function-item" @click="startGroupCall('video')">
-          <iconify-icon icon="heroicons:video-camera" width="24" color="#1976d2"></iconify-icon>
-          <span>视频通话</span>
-        </div>
-        <div class="function-item" @click="sendGroupRedPacket">
-          <iconify-icon icon="heroicons:gift" width="24" color="#ff4757"></iconify-icon>
-          <span>群红包</span>
-        </div>
-        <div class="function-item" @click="groupTransfer">
-          <iconify-icon icon="heroicons:banknotes" width="24" color="#ff9500"></iconify-icon>
-          <span>群收款</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 群成员详情 -->
-    <div class="group-members-section">
-      <div class="section-header">
-        <div class="section-title">群成员 ({{ groupInfo.memberCount }})</div>
-        <button @click="showAllMembers" class="view-all-btn">查看全部</button>
-      </div>
-
-      <div class="members-list">
-        <div
-          v-for="member in displayedMembers"
-          :key="member.id"
-          class="member-row"
-          @click="viewMemberProfile(member)"
-        >
-          <div class="member-avatar">
-            <img :src="member.avatar" :alt="member.name" />
-            <div v-if="member.role === 'owner'" class="role-badge owner">群主</div>
-            <div v-else-if="member.role === 'admin'" class="role-badge admin">管理员</div>
-          </div>
-          <div class="member-info">
-            <div class="member-name">
-              {{ member.name }}
-              <iconify-icon
-                v-if="member.role === 'owner'"
-                icon="heroicons:crown"
-                width="14"
-                color="#ffd700"
-              ></iconify-icon>
-              <iconify-icon
-                v-else-if="member.role === 'admin'"
-                icon="heroicons:shield-check"
-                width="14"
-                color="#07C160"
-              ></iconify-icon>
+    <!-- 内容区域 -->
+    <div class="group-info-content">
+      <!-- 群成员头像区域 - 最多4排，每排5个 - 仅群成员可见 -->
+      <div v-if="isGroupMember" class="members-section">
+        <div class="members-grid">
+          <!-- 显示的群成员头像 -->
+          <div
+            v-for="member in displayedAvatars"
+            :key="member.id"
+            class="member-avatar-item"
+            @click="viewMemberProfile(member)"
+          >
+            <div class="avatar-wrapper">
+              <img
+                :src="member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.id}`"
+                :alt="member.name"
+                class="member-avatar"
+              />
             </div>
-            <div class="member-status">
-              <span :class="['online-status', { online: member.isOnline }]">
-                {{ member.isOnline ? '在线' : formatLastSeen(member.lastSeen) }}
-              </span>
+            <div class="member-nickname">{{ getDisplayName(member.id, groupInfo.id, member.name, true) }}</div>
+          </div>
+
+          <!-- 添加成员按钮 - 始终显示 -->
+          <div class="member-avatar-item add-member-btn" @click="inviteMembers">
+            <div class="avatar-wrapper">
+              <div class="add-icon">
+                <iconify-icon icon="heroicons-outline:plus" width="24" style="color: #666;"></iconify-icon>
+              </div>
             </div>
+            <div class="member-nickname">邀请</div>
           </div>
-          <div class="member-actions" v-if="canManageMembers && member.id !== currentUserId">
-            <button
-              v-if="member.role === 'member' && currentUserRole === 'owner'"
-              @click.stop="setAsAdmin(member)"
-              class="action-btn promote"
-            >
-              设为管理员
-            </button>
-            <button
-              v-else-if="member.role === 'admin' && currentUserRole === 'owner'"
-              @click.stop="removeAdmin(member)"
-              class="action-btn demote"
-            >
-              取消管理员
-            </button>
-            <button
-              v-if="canRemoveMember(member)"
-              @click.stop="removeMember(member)"
-              class="action-btn remove"
-            >
-              移出群聊
-            </button>
+
+          <!-- 移除群人员按钮 - 仅群主和管理员可见 -->
+          <div v-if="canManageMembers" class="member-avatar-item remove-member-btn" @click="removeMemberMode">
+            <div class="avatar-wrapper">
+              <div class="remove-icon">
+                <iconify-icon icon="heroicons-outline:minus" width="24" style="color: #666;"></iconify-icon>
+              </div>
+            </div>
+            <div class="member-nickname remove-text">移除</div>
           </div>
         </div>
 
-        <!-- 添加成员按钮 -->
-        <div v-if="canInviteMembers" class="member-row add-member-row" @click="inviteMembers">
-          <div class="add-member-icon">
-            <iconify-icon icon="heroicons:plus" width="24" color="#07C160"></iconify-icon>
+        <!-- 查看更多按钮 - 当成员数超过限制时显示 -->
+        <div v-if="showViewMoreButton" class="view-more-btn" @click="viewAllMembers">
+          <span>查看更多群人员</span>
+          <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+        </div>
+      </div>
+
+      <!-- 功能列表 -->
+      <div v-if="isGroupMember" class="settings-section">
+        <!-- 群聊名称 -->
+        <div class="setting-item" @click="editGroupName">
+          <span class="setting-label">群聊名称</span>
+          <div class="setting-right">
+            <span class="setting-value">{{ groupInfo.name }}</span>
+            <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
           </div>
-          <div class="member-info">
-            <div class="member-name">邀请好友</div>
+        </div>
+      </div>
+
+      <div v-if="isGroupMember" class="settings-section">
+        <!-- 群公告 - 只有群主可以点击 -->
+        <div
+          class="setting-item announcement-item"
+          :class="{ 'disabled-item': !isGroupOwner, 'has-content': announcement?.content }"
+          @click="isGroupOwner ? viewGroupAnnouncement() : null"
+        >
+          <span class="setting-label">群公告</span>
+          <div class="setting-right">
+            <span v-if="!announcement?.content" class="announcement-empty">未设置</span>
+            <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+          </div>
+        </div>
+
+        <!-- 群公告内容（有内容时显示在下方） -->
+        <div v-if="announcement?.content" class="announcement-content-row">
+          <div class="announcement-content">{{ announcement.content }}</div>
+        </div>
+
+        <!-- 群管理 - 仅群主可见 -->
+        <div v-if="isGroupOwner" class="setting-item" @click="manageGroup">
+          <span class="setting-label">群管理</span>
+          <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+        </div>
+
+        <!-- 邀请申请 - 仅群主和管理员可见 -->
+        <div v-if="isGroupOwner || currentUserRole === 'admin'" class="setting-item" @click="viewInviteRequests">
+          <span class="setting-label">邀请申请</span>
+          <div class="setting-right">
+            <span v-if="pendingInviteCount > 0" class="badge">{{ pendingInviteCount }}</span>
+            <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+          </div>
+        </div>
+
+        <!-- 群二维码 -->
+        <div class="setting-item qrcode-item" @click="showGroupQRCode">
+          <span class="setting-label">群二维码</span>
+          <div class="qrcode-right">
+            <iconify-icon icon="heroicons-outline:qr-code" width="20" style="color: #666; margin-right: 8px;"></iconify-icon>
+            <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+          </div>
+        </div>
+
+        <!-- 备注 -->
+        <div class="setting-item" @click="editGroupRemark">
+          <span class="setting-label">备注</span>
+          <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <!-- 查找聊天内容 -->
+        <div class="setting-item" @click="searchChatContent">
+          <span class="setting-label">查找聊天内容</span>
+          <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <!-- 消息免打扰 -->
+        <div class="setting-item">
+          <span class="setting-label">消息免打扰</span>
+          <div class="setting-toggle" :class="{ active: isMuted }" @click="toggleMute">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+
+        <!-- 置顶聊天 -->
+        <div class="setting-item">
+          <span class="setting-label">置顶聊天</span>
+          <div class="setting-toggle" :class="{ active: isPinned }" @click="togglePin">
+            <div class="toggle-thumb"></div>
+          </div>
+        </div>
+
+        <!-- 保存到通讯录 -->
+        <div class="setting-item">
+          <span class="setting-label">保存到通讯录</span>
+          <div class="setting-toggle" :class="{ active: isSavedToContacts }" @click="toggleSaveToContacts">
+            <div class="toggle-thumb"></div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 群设置 -->
-    <div class="group-settings">
-      <!-- 基础设置 -->
-      <div class="setting-section">
-        <div class="setting-item" @click="editGroupName" v-if="canEditGroupInfo">
-          <iconify-icon icon="heroicons:pencil" width="20" color="#666"></iconify-icon>
-          <span>修改群名称</span>
-          <iconify-icon icon="heroicons:chevron-right" width="16" class="arrow"></iconify-icon>
-        </div>
-
-        <div class="setting-item" @click="editGroupAvatar" v-if="canEditGroupInfo">
-          <iconify-icon icon="heroicons:photo" width="20" color="#666"></iconify-icon>
-          <span>修改群头像</span>
-          <iconify-icon icon="heroicons:chevron-right" width="16" class="arrow"></iconify-icon>
-        </div>
-
-        <div class="setting-item" @click="editGroupAnnouncement" v-if="canEditGroupInfo">
-          <iconify-icon icon="heroicons:megaphone" width="20" color="#666"></iconify-icon>
-          <span>群公告</span>
-          <iconify-icon icon="heroicons:chevron-right" width="16" class="arrow"></iconify-icon>
+      <div class="settings-section">
+        <!-- 我在本群的昵称 -->
+        <div class="setting-item" @click="editMyNickname">
+          <span class="setting-label">我在本群的昵称</span>
+          <div class="setting-right">
+            <span class="setting-value">{{ myNickname || '未设置' }}</span>
+            <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+          </div>
         </div>
       </div>
 
-      <!-- 权限设置 -->
-      <div class="setting-section" v-if="canManagePermissions">
-        <div class="section-title">群权限管理</div>
-
-        <div class="setting-item toggle-item">
-          <iconify-icon icon="heroicons:user-plus" width="20" color="#666"></iconify-icon>
-          <span>允许群成员邀请好友</span>
-          <input
-            v-model="groupSettings.allowMemberInvite"
-            type="checkbox"
-            class="toggle-switch"
-            @change="updateGroupSettings"
-          />
-        </div>
-
-        <div class="setting-item toggle-item">
-          <iconify-icon icon="heroicons:chat-bubble-left" width="20" color="#666"></iconify-icon>
-          <span>全员禁言</span>
-          <input
-            v-model="groupSettings.muteAll"
-            type="checkbox"
-            class="toggle-switch"
-            @change="updateGroupSettings"
-          />
-        </div>
-
-        <div class="setting-item toggle-item">
-          <iconify-icon icon="heroicons:eye-slash" width="20" color="#666"></iconify-icon>
-          <span>群聊内容保密</span>
-          <input
-            v-model="groupSettings.isPrivate"
-            type="checkbox"
-            class="toggle-switch"
-            @change="updateGroupSettings"
-          />
-        </div>
-
-        <div class="setting-item" @click="manageGroupPermissions">
-          <iconify-icon icon="heroicons:cog-6-tooth" width="20" color="#666"></iconify-icon>
-          <span>群权限设置</span>
-          <iconify-icon icon="heroicons:chevron-right" width="16" class="arrow"></iconify-icon>
+      <div class="settings-section">
+        <!-- 设置当前聊天背景 -->
+        <div class="setting-item" @click="setChatBackground">
+          <span class="setting-label">设置当前聊天背景</span>
+          <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
         </div>
       </div>
 
-      <!-- 群管理 -->
-      <div class="setting-section" v-if="currentUserRole === 'owner'">
-        <div class="section-title">群管理</div>
-
-        <div class="setting-item" @click="transferOwnership">
-          <iconify-icon icon="heroicons:arrow-path" width="20" color="#ff9500"></iconify-icon>
-          <span>转让群主</span>
-          <iconify-icon icon="heroicons:chevron-right" width="16" class="arrow"></iconify-icon>
-        </div>
-
-        <div class="setting-item danger" @click="dissolveGroup">
-          <iconify-icon icon="heroicons:trash" width="20" color="#ff4444"></iconify-icon>
-          <span>解散群聊</span>
-        </div>
-      </div>
-
-      <!-- 个人设置 -->
-      <div class="setting-section">
-        <div class="setting-item toggle-item">
-          <iconify-icon icon="heroicons:bell-slash" width="20" color="#666"></iconify-icon>
-          <span>消息免打扰</span>
-          <input
-            v-model="personalSettings.muteNotifications"
-            type="checkbox"
-            class="toggle-switch"
-            @change="updatePersonalSettings"
-          />
-        </div>
-
-        <div class="setting-item toggle-item">
-          <iconify-icon icon="heroicons:star" width="20" color="#666"></iconify-icon>
-          <span>置顶聊天</span>
-          <input
-            v-model="personalSettings.isPinned"
-            type="checkbox"
-            class="toggle-switch"
-            @change="updatePersonalSettings"
-          />
-        </div>
-
-        <div class="setting-item" @click="setGroupNickname">
-          <iconify-icon icon="heroicons:identification" width="20" color="#666"></iconify-icon>
-          <span>我在本群的昵称</span>
-          <span class="setting-value">{{ personalSettings.groupNickname || '未设置' }}</span>
-          <iconify-icon icon="heroicons:chevron-right" width="16" class="arrow"></iconify-icon>
+      <div class="settings-section">
+        <!-- 删除聊天记录 -->
+        <div class="setting-item" @click="deleteChatHistory">
+          <span class="setting-label">删除聊天记录</span>
+          <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
         </div>
       </div>
 
       <!-- 退出群聊 -->
-      <div class="setting-section">
-        <div class="setting-item danger" @click="leaveGroup">
-          <iconify-icon icon="heroicons:arrow-right-on-rectangle" width="20" color="#ff4444"></iconify-icon>
-          <span>{{ currentUserRole === 'owner' ? '转让群主后退出' : '退出群聊' }}</span>
+      <div class="settings-section">
+        <div class="setting-item danger-item" @click="showLeaveGroupDialog">
+          <span class="setting-label danger-text">退出群聊</span>
         </div>
       </div>
     </div>
+
+    <!-- 删除聊天记录确认对话框 -->
+    <ConfirmDialog
+      ref="deleteChatDialogRef"
+      message="确定要删除聊天记录吗？删除后无法恢复。"
+      confirm-text="删除"
+      @confirm="handleDeleteChatConfirm"
+      @cancel="() => {}"
+    />
+
+    <!-- 退出群聊确认对话框 -->
+    <ConfirmDialog
+      ref="leaveGroupDialogRef"
+      message="退出后不会再接收此群聊消息，确定要退出群聊吗？"
+      confirm-text="退出"
+      @confirm="handleLeaveGroupConfirm"
+      @cancel="() => {}"
+    />
+
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
+import { useAppStore } from '@/shared/stores/appStore'
+import { useAuthStore } from '@/stores/auth'
+import { useChatStore } from '../stores/chatStore'
+import { getDisplayName } from '@/modules/chat/utils/groupNicknameManager'
+import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
+const appStore = useAppStore()
+const authStore = useAuthStore()
+const chatStore = useChatStore()
 
-// 当前用户信息
-const currentUserId = ref('user1')
-const currentUserRole = ref('owner') // owner, admin, member
+// 当前用户角色（从后端获取）
+const currentUserRole = ref<'owner' | 'admin' | 'member'>('member')
 
 // 群组信息
 const groupInfo = ref({
-  id: 'group123',
-  name: '家族群聊',
-  avatar: '/group-avatar.jpg',
-  memberCount: 9,
-  announcement: '欢迎大家加入家族群聊！请大家遵守群规，文明聊天。',
-  createdAt: new Date('2024-01-01'),
-  members: [
-    {
-      id: 'user1',
-      name: '张三',
-      avatar: '/avatar1.jpg',
-      role: 'owner',
-      isOnline: true,
-      lastSeen: new Date(),
-      joinTime: Date.now() - 86400000 * 30
-    },
-    {
-      id: 'user2',
-      name: '李四',
-      avatar: '/avatar2.jpg',
-      role: 'admin',
-      isOnline: false,
-      lastSeen: new Date(Date.now() - 3600000),
-      joinTime: Date.now() - 86400000 * 25
-    },
-    {
-      id: 'user3',
-      name: '王五',
-      avatar: '/avatar3.jpg',
-      role: 'member',
-      isOnline: true,
-      lastSeen: new Date(),
-      joinTime: Date.now() - 86400000 * 20
-    },
-    {
-      id: 'user4',
-      name: '赵六',
-      avatar: '/avatar4.jpg',
-      role: 'member',
-      isOnline: false,
-      lastSeen: new Date(Date.now() - 86400000),
-      joinTime: Date.now() - 86400000 * 15
-    },
-    {
-      id: 'user5',
-      name: '钱七',
-      avatar: '/avatar5.jpg',
-      role: 'member',
-      isOnline: true,
-      lastSeen: new Date(),
-      joinTime: Date.now() - 86400000 * 10
-    }
-  ]
+  id: '',
+  name: '',
+  memberCount: 0,
+  members: [] as any[]
 })
 
-// 群设置
+// 群组设置
 const groupSettings = ref({
-  allowMemberInvite: true,
-  muteAll: false,
-  isPrivate: false,
-  allowMemberModifyInfo: false,
-  requireApprovalForJoin: true
+  onlyAdminCanRename: false,
+  requireApproval: false
 })
+
+// 待审核的邀请申请数量
+const pendingInviteCount = ref(0)
 
 // 个人设置
-const personalSettings = ref({
-  muteNotifications: false,
-  isPinned: false,
-  groupNickname: ''
-})
+const isMuted = ref(false)
+const isPinned = ref(false)
+const isSavedToContacts = ref(false) // 默认不保存到通讯录
+const myNickname = ref('')
 
-// 用于群头像显示的成员（最多9个，按加入时间排序）
-const displayMembers = computed(() => {
-  return groupInfo.value.members
-    .sort((a, b) => a.joinTime - b.joinTime)
-    .slice(0, 9)
-})
+// 群公告
+const announcement = ref<any>(null)
 
-// 显示的成员列表（前5个）
-const displayedMembers = computed(() => {
-  return groupInfo.value.members.slice(0, 5)
-})
+// 群二维码
+const groupQRCode = ref<string>('')
 
-// 权限相关计算属性
-const canManageMembers = computed(() => {
-  return currentUserRole.value === 'owner' || currentUserRole.value === 'admin'
-})
+// 对话框引用
+const deleteChatDialogRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
+const leaveGroupDialogRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
-const canInviteMembers = computed(() => {
-  if (currentUserRole.value === 'owner' || currentUserRole.value === 'admin') {
-    return true
+// 用户是否是群成员
+const isGroupMember = ref(true)
+
+// 加载群组信息
+const loadGroupInfo = async () => {
+  try {
+    const groupId = route.params.id as string
+    if (!groupId) {
+      console.error('❌ 无法获取群组ID')
+      return
+    }
+
+    console.log('🔍 加载群组信息，群组ID:', groupId)
+
+    // 获取群聊详情
+    const groupResponse = await fetch(`http://localhost:8893/api/groups/${groupId}`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (!groupResponse.ok) {
+      throw new Error('获取群聊详情失败')
+    }
+
+    const groupResult = await groupResponse.json()
+    console.log('✅ 获取群聊详情成功:', groupResult)
+
+    // 获取群成员列表
+    const membersResponse = await fetch(`http://localhost:8893/api/groups/${groupId}/members`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (!membersResponse.ok) {
+      throw new Error('获取群成员失败')
+    }
+
+    const membersResult = await membersResponse.json()
+    console.log('✅ 获取群成员成功:', membersResult)
+
+    if (groupResult.success && membersResult.success && membersResult.data) {
+      const members = membersResult.data.map((member: any) => ({
+        id: member.id,
+        name: member.nickname || '未知用户',
+        groupNickname: member.group_nickname || '',
+        avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.id}`,
+        role: member.role
+      }))
+
+      // 按角色排序：群主 > 管理员 > 普通成员
+      const sortedMembers = members.sort((a: any, b: any) => {
+        const roleOrder: any = {
+          'creator': 1,
+          'owner': 1,
+          'admin': 2,
+          'member': 3
+        }
+        return (roleOrder[a.role] || 3) - (roleOrder[b.role] || 3)
+      })
+
+      groupInfo.value = {
+        id: groupId,
+        name: groupResult.data.name || '群聊',
+        memberCount: sortedMembers.length,
+        members: sortedMembers
+      }
+
+      // 获取群二维码
+      if (groupResult.data.qr_code_url) {
+        groupQRCode.value = groupResult.data.qr_code_url
+        console.log('✅ 群二维码加载成功')
+      }
+
+      // 获取当前用户的角色
+      const currentUserId = authStore.user?.id
+      const currentMember = sortedMembers.find((m: any) => String(m.id) === String(currentUserId))
+      if (currentMember) {
+        currentUserRole.value = currentMember.role || 'member'
+        isGroupMember.value = true
+      } else {
+        // 用户不在群成员列表中
+        isGroupMember.value = false
+        console.log('⚠️ 当前用户不是群成员')
+      }
+
+      console.log('✅ 群组信息加载完成:', groupInfo.value)
+      console.log('👤 当前用户角色:', currentUserRole.value)
+      console.log('👤 是否是群成员:', isGroupMember.value)
+
+      // 加载群组设置
+      await loadGroupSettings()
+    }
+  } catch (error) {
+    console.error('❌ 加载群组信息失败:', error)
+    appStore.showToast('加载群组信息失败', 'error')
   }
-  return groupSettings.value.allowMemberInvite
-})
-
-const canEditGroupInfo = computed(() => {
-  return currentUserRole.value === 'owner' || currentUserRole.value === 'admin'
-})
-
-const canManagePermissions = computed(() => {
-  return currentUserRole.value === 'owner'
-})
-
-const canRemoveMember = (member: any) => {
-  if (currentUserRole.value === 'owner') {
-    return member.role !== 'owner'
-  }
-  if (currentUserRole.value === 'admin') {
-    return member.role === 'member'
-  }
-  return false
 }
+
+// 加载群组设置
+const loadGroupSettings = async () => {
+  try {
+    const groupId = route.params.id as string
+    const response = await fetch(`http://localhost:8893/api/groups/${groupId}/settings`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      if (result.success && result.data) {
+        groupSettings.value.onlyAdminCanRename = result.data.only_admin_can_rename || false
+        console.log('✅ 群组设置加载成功:', groupSettings.value)
+      }
+    }
+
+    // 加载免打扰状态（从localStorage）
+    try {
+      const savedMuteStatus = localStorage.getItem(`group_mute_${groupId}`)
+      if (savedMuteStatus !== null) {
+        isMuted.value = JSON.parse(savedMuteStatus)
+        console.log('✅ 群聊免打扰状态已加载:', isMuted.value)
+      }
+
+      // 同步到unreadStore
+      const { useUnreadStore } = await import('@/modules/chat/stores/unread')
+      const unreadStore = useUnreadStore()
+      unreadStore.setMuteStatus(groupId, isMuted.value)
+    } catch (error) {
+      console.warn('⚠️ 加载免打扰状态失败:', error)
+    }
+
+    // 加载置顶状态（从localStorage）
+    try {
+      const pinnedChats = JSON.parse(localStorage.getItem('pinned_chats') || '[]')
+      isPinned.value = pinnedChats.includes(groupId)
+      console.log('✅ 群聊置顶状态已加载:', isPinned.value)
+
+      // 同步到chatStore
+      const { useChatStore } = await import('@/modules/chat/stores/chatStore')
+      const chatStore = useChatStore()
+      const session = chatStore.sessions.find(s => s.id === groupId)
+      if (session) {
+        session.isPinned = isPinned.value
+      }
+    } catch (error) {
+      console.warn('⚠️ 加载置顶状态失败:', error)
+    }
+
+    // 加载保存到通讯录状态（从localStorage）
+    try {
+      const savedGroups = JSON.parse(localStorage.getItem('saved_to_contacts_groups') || '[]')
+      isSavedToContacts.value = savedGroups.includes(groupId)
+      console.log('✅ 保存到通讯录状态已加载:', isSavedToContacts.value)
+    } catch (error) {
+      console.warn('⚠️ 加载保存到通讯录状态失败:', error)
+    }
+
+    // 加载我在本群的昵称（从localStorage）
+    try {
+      const savedNickname = localStorage.getItem(`group_nickname_${groupId}`)
+      if (savedNickname) {
+        myNickname.value = savedNickname
+        console.log('✅ 群昵称已加载:', myNickname.value)
+      }
+    } catch (error) {
+      console.warn('⚠️ 加载群昵称失败:', error)
+    }
+  } catch (error) {
+    console.error('❌ 加载群组设置失败:', error)
+  }
+}
+
+// 计算属性
+// 是否是群主
+const isGroupOwner = computed(() => currentUserRole.value === 'owner' || currentUserRole.value === 'creator')
+
+// 是否可以管理成员（群主或管理员）
+const canManageMembers = computed(() => {
+  return currentUserRole.value === 'owner' || currentUserRole.value === 'creator' || currentUserRole.value === 'admin'
+})
+
+// 显示的头像（根据角色显示不同数量）
+// 群主/管理员：最多18个成员 + 添加按钮 + 踢出按钮 = 20个位置
+// 普通成员：最多19个成员 + 添加按钮 = 20个位置
+const displayedAvatars = computed(() => {
+  const maxAvatars = canManageMembers.value ? 18 : 19
+  return groupInfo.value.members.slice(0, maxAvatars)
+})
+
+// 是否显示"查看更多"按钮
+const showViewMoreButton = computed(() => {
+  const maxAvatars = canManageMembers.value ? 18 : 19
+  return groupInfo.value.memberCount > maxAvatars
+})
 
 // 方法
-const getAvatarText = (name: string) => {
-  if (name.length === 0) return '?'
-  if (name.length === 1) return name
-  if (name.length === 2) return name
-  return name.slice(-2)
-}
-
-// 群功能方法
-const startGroupCall = (type: 'voice' | 'video') => {
-  console.log(`发起群${type === 'voice' ? '语音' : '视频'}通话`)
-  // 直接启动通话功能，不再显示"开发中"
-  router.push(`/group-call/${groupInfo.value.id}?type=${type}`)
-}
-
-const sendGroupRedPacket = () => {
-  console.log('发群红包')
-  // 直接跳转到红包页面
-  router.push(`/red-packet/send?groupId=${groupInfo.value.id}`)
-}
-
-const groupTransfer = () => {
-  console.log('群收款')
-  // 直接跳转到群收款页面
-  router.push(`/group-transfer/${groupInfo.value.id}`)
-}
-
-// 成员管理方法
-const showAllMembers = () => {
-  router.push(`/group-members/${groupInfo.value.id}`)
-}
-
 const viewMemberProfile = (member: any) => {
-  router.push(`/user-profile/${member.id}`)
+  console.log('查看成员资料:', member)
+  // 跳转到用户详细资料页面
+  router.push(`/friend-profile/${member.id}`)
 }
 
 const inviteMembers = () => {
-  router.push(`/invite-to-group/${groupInfo.value.id}`)
-}
+  console.log('邀请成员')
 
-const setAsAdmin = (member: any) => {
-  member.role = 'admin'
-  appStore.showToast(`已设置 ${member.name} 为管理员`, 'success')
-}
+  // 检查用户角色和群设置
+  const isAdminOrOwner = currentUserRole.value === 'owner' || currentUserRole.value === 'admin'
+  const requireApproval = groupSettings.value.requireApproval
 
-const removeAdmin = (member: any) => {
-  member.role = 'member'
-  appStore.showToast(`已取消 ${member.name} 的管理员权限`, 'success')
-}
-
-const removeMember = (member: any) => {
-  const index = groupInfo.value.members.findIndex(m => m.id === member.id)
-  if (index > -1) {
-    groupInfo.value.members.splice(index, 1)
-    groupInfo.value.memberCount--
-    appStore.showToast(`已移出群成员: ${member.name}`, 'success')
-  }
-}
-
-// 群设置方法
-const editGroupAvatar = () => {
-  appStore.showToast('修改群头像功能开发中', 'info')
-}
-
-const editGroupAnnouncement = () => {
-  router.push(`/group-announcement/${groupInfo.value.id}`)
-}
-
-const updateGroupSettings = () => {
-  console.log('更新群设置:', groupSettings.value)
-  appStore.showToast('群设置已更新', 'success')
-}
-
-const updatePersonalSettings = () => {
-  console.log('更新个人设置:', personalSettings.value)
-  appStore.showToast('设置已更新', 'success')
-}
-
-const manageGroupPermissions = () => {
-  router.push(`/group-permissions/${groupInfo.value.id}`)
-}
-
-const transferOwnership = () => {
-  router.push(`/transfer-group-owner/${groupInfo.value.id}`)
-}
-
-const dissolveGroup = () => {
-  // 显示确认对话框
-  if (confirm('确定要解散这个群聊吗？此操作不可撤销。')) {
-    // 执行解散群聊逻辑
-    router.push(`/group-dissolve/${groupInfo.value.id}`)
-  }
-}
-
-const setGroupNickname = () => {
-  // 跳转到设置群昵称页面
-  router.push(`/group-nickname/${groupInfo.value.id}`)
-}
-
-const formatLastSeen = (lastSeen: Date) => {
-  const now = new Date()
-  const diff = now.getTime() - lastSeen.getTime()
-
-  if (diff < 60000) return '刚刚在线'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前在线`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前在线`
-  return `${Math.floor(diff / 86400000)}天前在线`
-}
-
-const addMember = () => {
-  inviteMembers()
-}
-
-const editGroupName = () => {
-  const newName = prompt('请输入新的群名称', groupInfo.value.name)
-  if (newName && newName.trim()) {
-    groupInfo.value.name = newName.trim()
-  }
-}
-
-const leaveGroup = () => {
-  if (currentUserRole.value === 'owner') {
-    appStore.showToast('群主需要先转让群主权限才能退出群聊', 'warning')
-    transferOwnership()
+  // 如果群不需要审核，所有人都直接跳转到邀请好友页面
+  if (!requireApproval) {
+    router.push(`/invite-to-group/${groupInfo.value.id}`)
   } else {
-    if (confirm('确定要退出群聊吗？')) {
-      appStore.showToast('已退出群聊', 'success')
-      router.push('/')
+    // 群需要审核时：
+    // - 群主/管理员：直接跳转到邀请好友页面
+    // - 普通成员：跳转到输入邀请理由页面
+    if (isAdminOrOwner) {
+      router.push(`/invite-to-group/${groupInfo.value.id}`)
+    } else {
+      router.push(`/invite-with-reason/${groupInfo.value.id}`)
     }
   }
 }
 
-onMounted(() => {
-  const groupId = route.params.id as string
-  groupInfo.value.id = groupId
+const editGroupName = () => {
+  console.log('修改群聊名称')
+
+  // 检查是否只允许管理员修改群名称
+  if (groupSettings.value.onlyAdminCanRename) {
+    // 检查当前用户角色
+    if (currentUserRole.value === 'member') {
+      appStore.showToast('您不能修改群名称', 'error')
+      return
+    }
+  }
+
+  // 跳转到编辑群聊名称页面
+  router.push(`/edit-group-name/${groupInfo.value.id}`)
+}
+
+const viewGroupAnnouncement = () => {
+  console.log('查看群公告')
+
+  // 验证是否是群主
+  if (!isGroupOwner.value) {
+    appStore.showToast('只有群主可以查看和编辑群公告', 'error')
+    return
+  }
+
+  router.push(`/group-announcement/${groupInfo.value.id}`)
+}
+
+// 加载群公告
+const loadAnnouncement = async () => {
+  try {
+    const groupId = route.params.id as string
+    console.log('🔍 开始加载群公告，群ID:', groupId)
+
+    const response = await fetch(`http://localhost:8893/api/groups/${groupId}/announcement`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      console.log('🔍 群公告API响应:', result)
+
+      if (result.success) {
+        announcement.value = result.data
+        console.log('✅ 群公告加载成功:', announcement.value)
+        console.log('✅ 群公告内容:', announcement.value?.content)
+      } else {
+        console.log('⚠️ 群公告API返回失败')
+      }
+    } else {
+      console.log('⚠️ 群公告API请求失败，状态码:', response.status)
+    }
+  } catch (error) {
+    console.error('❌ 加载群公告失败:', error)
+  }
+}
+
+const manageGroup = () => {
+  console.log('群管理')
+
+  // 验证是否是群主
+  if (!isGroupOwner.value) {
+    appStore.showToast('只有群主可以管理群聊', 'error')
+    return
+  }
+
+  // 跳转到群管理页面
+  router.push(`/group-management/${groupInfo.value.id}`)
+}
+
+const viewInviteRequests = () => {
+  console.log('查看邀请申请')
+  router.push(`/group-invite-requests/${groupInfo.value.id}`)
+}
+
+const showGroupQRCode = () => {
+  console.log('显示群二维码')
+  router.push(`/group-qrcode/${groupInfo.value.id}`)
+}
+
+const removeMemberMode = () => {
+  console.log('踢出成员模式')
+  // 跳转到移除群成员页面
+  router.push(`/remove-group-members/${groupInfo.value.id}`)
+}
+
+const viewAllMembers = () => {
+  console.log('查看所有群成员')
+  router.push(`/group-members/${groupInfo.value.id}`)
+}
+
+const editGroupRemark = () => {
+  console.log('编辑群聊备注')
+  // 跳转到备注群聊名称页面
+  router.push(`/edit-group-remark/${groupInfo.value.id}`)
+}
+
+const searchChatContent = () => {
+  console.log('🔍 跳转到搜索聊天记录页面（群聊）')
+  const groupId = groupInfo.value.id
+
+  console.log('🔍 跳转到搜索页面，groupId:', groupId)
+  router.push(`/chat-search/${groupId}`)
+}
+
+const toggleMute = async () => {
+  try {
+    const groupId = groupInfo.value.id
+    if (!groupId) return
+
+    // 切换免打扰状态
+    isMuted.value = !isMuted.value
+
+    // 保存到unreadStore
+    const { useUnreadStore } = await import('@/modules/chat/stores/unread')
+    const unreadStore = useUnreadStore()
+    unreadStore.setMuteStatus(groupId, isMuted.value)
+
+    // 保存到localStorage（持久化）
+    localStorage.setItem(`group_mute_${groupId}`, JSON.stringify(isMuted.value))
+
+    console.log('🔕 群聊消息免打扰:', isMuted.value, 'groupId:', groupId)
+    appStore.showToast(isMuted.value ? '已开启消息免打扰' : '已关闭消息免打扰', 'success')
+  } catch (error) {
+    console.error('❌ 设置免打扰失败:', error)
+    // 回滚状态
+    isMuted.value = !isMuted.value
+  }
+}
+
+const togglePin = async () => {
+  try {
+    const groupId = route.params.id as string
+    if (!groupId) return
+
+    // 切换置顶状态
+    isPinned.value = !isPinned.value
+
+    // 更新chatStore中的会话状态
+    const { useChatStore } = await import('@/modules/chat/stores/chatStore')
+    const chatStore = useChatStore()
+    chatStore.togglePinSession(groupId)
+
+    // 保存到localStorage
+    try {
+      const pinnedChats = JSON.parse(localStorage.getItem('pinned_chats') || '[]')
+      if (isPinned.value) {
+        // 添加到置顶列表
+        if (!pinnedChats.includes(groupId)) {
+          pinnedChats.push(groupId)
+        }
+      } else {
+        // 从置顶列表移除
+        const index = pinnedChats.indexOf(groupId)
+        if (index > -1) {
+          pinnedChats.splice(index, 1)
+        }
+      }
+      localStorage.setItem('pinned_chats', JSON.stringify(pinnedChats))
+      console.log('📌 置顶状态已保存:', groupId, isPinned.value)
+    } catch (error) {
+      console.error('❌ 保存置顶状态失败:', error)
+    }
+
+    appStore.showToast(isPinned.value ? '已置顶聊天' : '已取消置顶', 'success')
+  } catch (error) {
+    console.error('❌ 设置置顶失败:', error)
+    // 回滚状态
+    isPinned.value = !isPinned.value
+  }
+}
+
+const toggleSaveToContacts = async () => {
+  try {
+    const groupId = route.params.id as string
+    if (!groupId) return
+
+    // 切换保存状态
+    isSavedToContacts.value = !isSavedToContacts.value
+
+    // 保存到localStorage
+    try {
+      const savedGroups = JSON.parse(localStorage.getItem('saved_to_contacts_groups') || '[]')
+      if (isSavedToContacts.value) {
+        // 添加到保存列表
+        if (!savedGroups.includes(groupId)) {
+          savedGroups.push(groupId)
+        }
+      } else {
+        // 从保存列表移除
+        const index = savedGroups.indexOf(groupId)
+        if (index > -1) {
+          savedGroups.splice(index, 1)
+        }
+      }
+      localStorage.setItem('saved_to_contacts_groups', JSON.stringify(savedGroups))
+      console.log('📇 保存到通讯录状态已保存:', groupId, isSavedToContacts.value)
+    } catch (error) {
+      console.error('❌ 保存到通讯录状态失败:', error)
+    }
+
+    appStore.showToast(isSavedToContacts.value ? '已保存到通讯录' : '已从通讯录移除', 'success')
+  } catch (error) {
+    console.error('❌ 设置保存到通讯录失败:', error)
+    // 回滚状态
+    isSavedToContacts.value = !isSavedToContacts.value
+  }
+}
+
+const editMyNickname = () => {
+  console.log('编辑我在本群的昵称')
+  // 跳转到编辑群昵称页面
+  router.push(`/edit-group-nickname/${groupInfo.value.id}`)
+}
+
+const setChatBackground = () => {
+  console.log('设置聊天背景')
+  // 保存当前聊天ID到localStorage（用于背景设置页面获取）
+  localStorage.setItem('yeyu_last_chat_id', groupInfo.value.id)
+  // 跳转到聊天背景设置页面
+  router.push('/settings/chat-background')
+}
+
+// 显示删除聊天记录对话框
+const deleteChatHistory = () => {
+  console.log('显示删除聊天记录对话框')
+  deleteChatDialogRef.value?.show()
+}
+
+// 处理删除聊天记录确认
+const handleDeleteChatConfirm = async () => {
+  try {
+    const groupId = route.params.id as string
+    console.log('🗑️ 删除群聊记录:', groupId)
+
+    // 使用chatStore的clearChatHistory方法清除聊天记录
+    await chatStore.clearChatHistory(groupId)
+
+    console.log('✅ 群聊记录已删除')
+    appStore.showToast('聊天记录已删除', 'success')
+  } catch (error) {
+    console.error('❌ 删除聊天记录失败:', error)
+    appStore.showToast('删除失败', 'error')
+  }
+}
+
+// 显示退出群聊对话框
+const showLeaveGroupDialog = () => {
+  console.log('显示退出群聊对话框')
+  leaveGroupDialogRef.value?.show()
+}
+
+// 处理退出群聊确认
+const handleLeaveGroupConfirm = async () => {
+  try {
+    const groupId = route.params.id as string
+    const userId = authStore.user?.id
+
+    console.log('🚪 退出群聊:', { groupId, userId })
+
+    // 调用后端API退出群聊
+    const response = await fetch(`http://localhost:8893/api/groups/${groupId}/leave`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({ userId })
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      if (result.success) {
+        console.log('✅ 退出群聊成功')
+
+        // 使用chatStore的deleteChatItem方法删除会话和消息
+        await chatStore.deleteChatItem(groupId)
+
+        appStore.showToast('已退出群聊', 'success')
+
+        // 跳转到聊天列表
+        router.push('/chat')
+      } else {
+        console.error('❌ 退出群聊失败:', result.message)
+        appStore.showToast(result.message || '退出失败', 'error')
+      }
+    } else {
+      console.error('❌ 退出群聊请求失败')
+      appStore.showToast('退出失败', 'error')
+    }
+  } catch (error) {
+    console.error('❌ 退出群聊失败:', error)
+    appStore.showToast('退出失败', 'error')
+  }
+}
+
+// 处理群公告更新事件
+const handleAnnouncementUpdated = async (event: any) => {
+  const { groupId: updatedGroupId } = event.detail || {}
+  const currentGroupId = route.params.id as string
+
+  if (updatedGroupId === currentGroupId) {
+    console.log('🔔 检测到群公告更新，重新加载')
+    await loadAnnouncement()
+  }
+}
+
+// 处理群昵称更新事件
+const handleNicknameChanged = (event: any) => {
+  const { groupId: updatedGroupId, nickname } = event.detail || {}
+  const currentGroupId = route.params.id as string
+
+  if (updatedGroupId === currentGroupId) {
+    console.log('📝 检测到群昵称更新:', nickname)
+    myNickname.value = nickname
+  }
+}
+
+// 加载待审核的邀请申请数量
+const loadPendingInviteCount = async () => {
+  try {
+    // 只有群主和管理员才需要加载
+    if (currentUserRole.value !== 'owner' && currentUserRole.value !== 'admin') {
+      return
+    }
+
+    const response = await fetch(`http://localhost:8893/api/groups/${groupInfo.value.id}/invite-requests`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    const result = await response.json()
+    if (result.success) {
+      pendingInviteCount.value = result.data.requests.length
+    }
+  } catch (error) {
+    console.error('加载邀请申请数量失败:', error)
+  }
+}
+
+onMounted(async () => {
+  await loadGroupInfo()
+  await loadAnnouncement()
+  await loadPendingInviteCount()
+
+  // 监听群公告更新事件
+  window.addEventListener('group-announcement-updated', handleAnnouncementUpdated)
+
+  // 监听群昵称更新事件
+  window.addEventListener('group-nickname-changed', handleNicknameChanged)
+})
+
+// 监听路由变化，当从编辑页面返回时重新加载
+onActivated(async () => {
+  await loadGroupInfo()
+  await loadAnnouncement()
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('group-announcement-updated', handleAnnouncementUpdated)
+  window.removeEventListener('group-nickname-changed', handleNicknameChanged)
 })
 </script>
 
 <style scoped>
 .group-info {
   height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f5f5f5;
-  padding-top: 81px;
-}
-
-.group-content {
-  flex: 1;
+  background-color: #EDEDED;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.group-header {
+/* 隐藏滚动条 */
+.group-info::-webkit-scrollbar {
+  display: none;
+}
+
+.group-info {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.group-info-content {
+  padding-bottom: 80px;
+}
+
+/* 群成员头像区域 */
+.members-section {
   background: white;
-  padding: 20px;
-  display: flex;
-  align-items: center;
+  padding: 16px;
   margin-bottom: 8px;
-}
-
-.group-avatar-container {
-  margin-right: 16px;
-}
-
-.group-avatar-grid {
-  width: 80px;
-  height: 80px;
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #f0f0f0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: 1px;
-}
-
-.member-avatar-slot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-}
-
-.member-avatar-text {
-  font-size: 8px;
-  color: white;
-  background: #07C160;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 500;
-}
-
-.group-info-text {
-  flex: 1;
-}
-
-.group-name {
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 8px 0;
-}
-
-.group-member-count {
-  font-size: 14px;
-  color: #666;
-  margin: 0;
-}
-
-.group-members-section {
-  background: white;
-  margin-bottom: 8px;
-}
-
-.section-title {
-  padding: 16px 20px 12px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-  border-bottom: 1px solid #f0f0f0;
+  margin-top: 0; /* 与顶部导航栏间距为0 */
+  /* 不需要padding-top，因为MobileTopBar使用正常文档流，已经占据了空间 */
 }
 
 .members-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
-  padding: 16px 20px;
+  gap: 12px 8px; /* 行间距12px，列间距8px */
 }
 
-.member-item {
+.member-avatar-item {
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: pointer;
+  justify-content: flex-start;
 }
 
-.member-avatar, .add-member-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 6px;
-  margin-bottom: 8px;
+.avatar-wrapper {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin-bottom: 4px;
 }
 
-.avatar-text {
-  width: 100%;
-  height: 100%;
-  background: #07C160;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 6px;
+.member-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
 }
 
-.add-member-icon {
-  background: #f0f0f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px dashed #ccc;
-}
-
-.member-name {
-  font-size: 12px;
-  color: #333;
+.member-nickname {
+  font-size: 9px;
+  color: #666666;
   text-align: center;
   max-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 14px;
 }
 
-.group-settings {
+/* 查看更多按钮 */
+.view-more-btn {
+  display: flex;
+  align-items: center; /* 垂直居中 */
+  justify-content: center; /* 水平居中 */
+  height: 25px; /* 固定高度25px */
+  margin-top: 0; /* 与头像项间距为0 */
+  cursor: pointer;
+  transition: background-color 0.2s;
+  gap: 4px;
+  line-height: 25px; /* 行高等于容器高度，确保文本垂直居中 */
+}
+
+.view-more-btn:active {
+  background: #F7F7F7;
+}
+
+.view-more-btn span {
+  font-size: 12px; /* 字体12px */
+  color: #576B95;
+  line-height: 1; /* 重置行高，避免继承父元素的行高 */
+  display: flex;
+  align-items: center; /* 确保文本内容垂直居中 */
+}
+
+.add-icon,
+.remove-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #CCCCCC;
+  border-radius: 8px;
+  background: #F7F7F7;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-member-btn:active .add-icon,
+.remove-member-btn:active .remove-icon {
+  background: #E5E5E5;
+}
+
+/* 功能列表区域 */
+.settings-section {
   background: white;
+  margin-bottom: 8px;
 }
 
 .setting-item {
   display: flex;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f0f0f0;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 0.5px solid #E5E5E5;
   cursor: pointer;
   transition: background-color 0.2s;
+  height: 48px; /* 固定高度48px */
 }
 
 .setting-item:last-child {
   border-bottom: none;
 }
 
-.setting-item:hover {
-  background: #f8f8f8;
+.setting-item:active {
+  background: #F7F7F7;
 }
 
-.setting-item span {
-  flex: 1;
-  margin-left: 12px;
-  font-size: 16px;
-  color: #333;
-}
-
-.setting-item.danger span {
-  color: #ff4444;
-}
-
-.arrow {
-  color: #999;
-}
-
-/* 群功能区域样式 */
-.group-functions {
-  background: white;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  padding: 16px;
-}
-
-.function-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.function-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.function-item:hover {
-  background: #f5f5f5;
-}
-
-.function-item span {
-  font-size: 12px;
-  color: #333;
-  text-align: center;
-}
-
-/* 成员列表样式 */
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 16px 8px 16px;
-}
-
-.view-all-btn {
-  background: none;
-  border: none;
-  color: #07C160;
+.setting-label {
   font-size: 14px;
-  cursor: pointer;
-}
-
-.members-list {
-  padding: 0 16px 16px 16px;
-}
-
-.member-row {
-  display: flex;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.member-row:last-child {
-  border-bottom: none;
-}
-
-.member-row:hover {
-  background: #f8f8f8;
-}
-
-.member-row .member-avatar {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  margin-right: 12px;
-  overflow: hidden;
-}
-
-.member-row .member-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.role-badge {
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  font-size: 8px;
-  padding: 2px 4px;
-  border-radius: 6px;
-  color: white;
-  font-weight: bold;
-}
-
-.role-badge.owner {
-  background: #ffd700;
+  font-weight: normal;
   color: #333;
-}
-
-.role-badge.admin {
-  background: #07C160;
-}
-
-.member-info {
   flex: 1;
 }
 
-.member-name {
+.setting-right {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 2px;
-}
-
-.member-status {
-  font-size: 12px;
-}
-
-.online-status {
-  color: #999;
-}
-
-.online-status.online {
-  color: #07C160;
-}
-
-.member-actions {
-  display: flex;
   gap: 8px;
 }
 
-.action-btn {
-  padding: 4px 8px;
-  border: none;
-  border-radius: 12px;
+.badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #FA5151;
+  color: white;
   font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn.promote {
-  background: #e8f5e8;
-  color: #07C160;
-}
-
-.action-btn.demote {
-  background: #fff3e0;
-  color: #ff9500;
-}
-
-.action-btn.remove {
-  background: #ffebee;
-  color: #ff4757;
-}
-
-.action-btn:hover {
-  opacity: 0.8;
-}
-
-.add-member-row {
-  cursor: pointer;
-}
-
-.add-member-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: #f5f5f5;
+  font-weight: 500;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 12px;
-}
-
-/* 设置区域样式 */
-.setting-section {
-  margin-bottom: 16px;
-}
-
-.setting-section:last-child {
-  margin-bottom: 0;
-}
-
-.setting-section .section-title {
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: bold;
-  color: #666;
-  background: #f8f8f8;
-  margin: 0;
-}
-
-.toggle-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.toggle-switch {
-  width: 44px;
-  height: 24px;
-  appearance: none;
-  background: #e0e0e0;
-  border-radius: 12px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.toggle-switch:checked {
-  background: #07C160;
-}
-
-.toggle-switch::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  background: white;
-  border-radius: 50%;
-  transition: transform 0.2s;
-}
-
-.toggle-switch:checked::before {
-  transform: translateX(20px);
 }
 
 .setting-value {
   font-size: 14px;
-  color: #999;
-  margin-right: 8px;
+  color: #999999;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+/* 群公告样式 */
+.announcement-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  min-height: 48px;
+  height: 48px;
+}
+
+.announcement-item.has-content {
+  border-bottom: none;
+}
+
+.announcement-item.disabled-item {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.announcement-item.disabled-item:active {
+  background: #FFFFFF;
+}
+
+.announcement-content-row {
+  background: #FFFFFF;
+  padding: 0 16px 12px 16px;
+  border-bottom: 0.5px solid #E5E5E5;
+}
+
+.announcement-content {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: calc(1.6em * 3);
+}
+
+.announcement-empty {
+  font-size: 14px;
+  color: #999999;
+  margin-right: 4px;
+}
+
+/* 群二维码样式 */
+.qrcode-item {
+  align-items: center;
+}
+
+.qrcode-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qrcode-preview {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid #E5E5E5;
+}
+
+/* 开关按钮 */
+.setting-toggle {
+  width: 51px;
+  height: 31px;
+  background: #E5E5E5;
+  border-radius: 31px;
+  position: relative;
+  transition: background-color 0.3s;
+  cursor: pointer;
+}
+
+.setting-toggle.active {
+  background: #07C160;
+}
+
+.toggle-thumb {
+  width: 27px;
+  height: 27px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.setting-toggle.active .toggle-thumb {
+  transform: translateX(20px);
+}
+
+/* 退出群聊按钮 */
+.danger-item {
+  justify-content: center;
+}
+
+.danger-text {
+  color: #FA5151;
+  text-align: center;
+  flex: none;
+}
+
+
+
 </style>

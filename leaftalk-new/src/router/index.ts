@@ -35,7 +35,7 @@ const routes = [
     name: 'ChatHome',
     component: () => import('../modules/chat/pages/ChatHomeEnterprise.vue'),
     meta: {
-      title: '微信',
+      title: '叶语',
       requiresAuth: true,
       keepAlive: true
     }
@@ -822,6 +822,17 @@ const routes = [
     }
   },
   {
+    path: '/send-red-packet',
+    name: 'SendRedPacket',
+    component: () => import('../modules/payment/pages/SendRedPacket.vue'),
+    meta: {
+      title: '发红包',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
     path: '/bills',
     name: 'Bills',
     component: () => import('../modules/payment/pages/Bills.vue'),
@@ -967,6 +978,199 @@ const routes = [
       title: '商品详情',
       requiresAuth: true,
       keepAlive: false
+    }
+  },
+  {
+    path: '/chat-info/group/:id',
+    name: 'GroupInfoPage',
+    component: () => import('../modules/chat/pages/GroupInfo.vue'),
+    meta: {
+      title: '群聊信息',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/group-members/:id',
+    name: 'GroupMembersPage',
+    component: () => import('../modules/chat/pages/GroupMembers.vue'),
+    meta: {
+      title: '群人员', // 标题会在组件中动态更新为"群人员(人数)"
+      requiresAuth: true,
+      keepAlive: false,
+      showBack: true
+    }
+  },
+  {
+    path: '/edit-group-name/:id',
+    name: 'EditGroupName',
+    component: () => import('../modules/chat/pages/EditGroupName.vue'),
+    meta: {
+      title: '群聊名称',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/edit-group-remark/:groupId',
+    name: 'EditGroupRemark',
+    component: () => import('../modules/chat/pages/EditGroupRemark.vue'),
+    meta: {
+      title: '',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTopBar: true,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/edit-group-nickname/:groupId',
+    name: 'EditGroupNickname',
+    component: () => import('../modules/chat/pages/EditGroupNickname.vue'),
+    meta: {
+      title: '设置我在本群的昵称',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTopBar: true,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/group-announcement/:groupId',
+    name: 'GroupAnnouncement',
+    component: () => import('../modules/chat/pages/GroupAnnouncement.vue'),
+    meta: {
+      title: '群公告',
+      requiresAuth: true,
+      keepAlive: false,
+      showBack: false,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/group-management/:groupId',
+    name: 'GroupManagement',
+    component: () => import('../modules/chat/pages/GroupManagement.vue'),
+    meta: {
+      title: '群管理',
+      requiresAuth: true,
+      keepAlive: false,
+      showBack: false,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/group-admins/:groupId',
+    name: 'GroupAdmins',
+    component: () => import('../modules/chat/pages/GroupAdmins.vue'),
+    meta: {
+      title: '群管理员',
+      requiresAuth: true,
+      keepAlive: false,
+      showBack: false,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/add-group-admin/:groupId',
+    name: 'AddGroupAdmin',
+    component: () => import('../modules/chat/pages/AddGroupAdmin.vue'),
+    meta: {
+      title: '添加管理员',
+      requiresAuth: true,
+      keepAlive: false,
+      showBack: false,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/group-qrcode/:groupId',
+    name: 'GroupQRCode',
+    component: () => import('../modules/chat/pages/GroupQRCode.vue'),
+    meta: {
+      title: '群二维码',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/group-join-requests/:groupId',
+    name: 'GroupJoinRequests',
+    component: () => import('../modules/chat/pages/GroupJoinRequests.vue'),
+    meta: {
+      title: '邀请进群申请',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/invite-to-group/:groupId',
+    name: 'InviteToGroup',
+    component: () => import('../modules/chat/pages/InviteToGroup.vue'),
+    meta: {
+      title: '邀请好友',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/send-group-invite/:groupId',
+    name: 'SendGroupInvite',
+    component: () => import('../modules/chat/pages/SendGroupInvite.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/invite-with-reason/:groupId',
+    name: 'InviteWithReason',
+    component: () => import('../modules/chat/pages/InviteWithReason.vue'),
+    meta: {
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/group-invite-requests/:groupId',
+    name: 'GroupInviteRequests',
+    component: () => import('../modules/chat/pages/GroupInviteRequests.vue'),
+    meta: {
+      title: '邀请好友进群',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/remove-group-members/:groupId',
+    name: 'RemoveGroupMembers',
+    component: () => import('../modules/chat/pages/RemoveGroupMembers.vue'),
+    meta: {
+      title: '移除群成员',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true,
+      hideTopBar: true
+    }
+  },
+  {
+    path: '/transfer-ownership/:groupId',
+    name: 'TransferOwnership',
+    component: () => import('../modules/chat/pages/TransferOwnership.vue'),
+    meta: {
+      title: '选择新群主',
+      requiresAuth: true,
+      keepAlive: false,
+      showBack: false,
+      hideTopBar: true
     }
   },
   {
@@ -1424,7 +1628,8 @@ const routes = [
     meta: {
       title: '个人头像',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTopBar: true
     }
   },
   {
@@ -1589,10 +1794,11 @@ const routes = [
     name: 'CreateGroup',
     component: () => import('../modules/chat/pages/CreateGroup.vue'),
     meta: {
-      title: '选择联系人',
+      title: '发起群聊',
       requiresAuth: true,
       keepAlive: false,
-      hideTabBar: true
+      hideTabBar: true,
+      hideTopBar: true  // 隐藏外层导航栏，使用组件内部的导航栏
     }
   },
   {
@@ -1947,7 +2153,7 @@ router.beforeEach(async (to, from, next) => {
       '/add-friend': '添加朋友',
       '/new-friends': '新的朋友',
       '/contacts': '通讯录',
-      '/chat': '微信',
+      '/chat': '叶语',
       '/discover': '发现',
       '/profile': '我',
       '/moments': '朋友圈'
