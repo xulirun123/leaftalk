@@ -1,3 +1,74 @@
+# 依赖
 node_modules/
-*.log
+server/node_modules/
+
+# 构建产物
+dist/
+deployment/dist/
+
+# 环境变量
 .env
+.env.local
+.env.*.local
+
+# 日志
+*.log
+logs/
+server/logs/
+server/server-log.txt
+server/server-output.log
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 上传文件
+uploads/
+server/uploads/
+leaftalk-new/uploads/
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+.vite/
+node_modules/.vite/
+
+# 测试文件（保留在项目中但不提交）
+test-*.html
+test-*.js
+*-test.html
+*-demo.html
+*-debug.html
+*-fix.html
+check-*.js
+fix-*.js
+debug-*.js
+
+# 数据库备份
+*.sql.backup
+database/backups/
+
+# Redis
+*.rdb
+dump.rdb
+
+# PM2
+.pm2/
+
+# 临时脚本目录
+temp-scripts/
+
+# 部署相关
+deployment/
+
+# 其他
+{
+*.bak

@@ -1,0 +1,57 @@
+# Node modules
+node_modules
+server/node_modules
+
+# 开发文件
+.git
+.gitignore
+.env.local
+.env.development
+
+# 构建文件
+# dist  # 注释掉，因为 Docker 需要使用预构建的 dist 目录
+.vite
+
+# 日志
+logs
+*.log
+npm-debug.log*
+
+# 测试文件
+coverage
+.nyc_output
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 临时文件
+tmp
+temp
+*.tmp
+
+# 部署相关
+deployment
+leaftalk-deployment.zip
+*.bat
+*.sh
+!docker-entrypoint.sh
+
+# 文档
+README.md
+docs
+
+# 数据库备份
+*.sql
+database
+
+# 上传文件（保留目录结构）
+server/uploads/*
+!server/uploads/.gitkeep
+
