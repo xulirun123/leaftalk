@@ -7571,12 +7571,11 @@ app.put('/api/groups/:groupId/join-requests/:requestId', authenticateToken, asyn
 })
 
 /**
- * 邀请好友加入群聊
- * 逻辑：
- * 1. 生成邀请码
- * 2. 发送邀请卡片消息给被邀请人
- * 3. 被邀请人点击卡片后弹出确认对话框
- * 4. 确认后调用加入群聊接口
+ * 【重写】邀请好友加入群聊
+ * 核心逻辑：
+ * 1. 生成邀请码并保存到数据库
+ * 2. 发送邀请卡片消息给被邀请人（使用服务器时间戳）
+ * 3. 被邀请人点击卡片后调用加入接口
  */
 app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, res) => {
   try {
@@ -7584,6 +7583,8 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
     const { groupId } = req.params
     const { inviteeIds } = req.body
     const inviterId = req.user.userId
+
+    console.log('📨 [邀请流程] 开始处理邀请请求:', { groupId, inviteeIds, inviterId })
 
     // 参数验证
     if (!inviteeIds || !Array.isArray(inviteeIds) || inviteeIds.length === 0) {
@@ -7653,11 +7654,16 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
     }
 
     // 发送邀请卡片给每个被邀请人
-    for (const inviteeId of inviteeIds) {
-      // 生成消息ID和时间戳（确保每条消息的时间戳递增）
-      const now = Date.now()
-      const messageId = `msg_${now}_${Math.random().toString(36).substr(2, 9)}`
-      const timestamp = new Date(now).toISOString()
+    // 使用基准时间戳，确保所有邀请消息的时间戳都大于当前时间
+    let baseTimestamp = Date.now()
+
+    for (let i = 0; i < inviteeIds.length; i++) {
+      const inviteeId = inviteeIds[i]
+
+      // 每条消息的时间戳递增 100ms，确保顺序正确
+      const messageTimestamp = baseTimestamp + (i * 100)
+      const messageId = `msg_${messageTimestamp}_${Math.random().toString(36).substr(2, 9)}`
+      const timestampISO = new Date(messageTimestamp).toISOString()
 
       // 获取被邀请人信息
       const [inviteeInfo] = await pool.execute(
@@ -7675,45 +7681,42 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
 
       const messageContent = JSON.stringify(inviteCardWithInvitee)
 
-      // 保存消息到数据库（使用统一的时间戳）
+      // 保存消息到数据库
       await pool.execute(
         'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [messageId, inviterId, inviteeId, messageContent, 'group_invite', new Date(now)]
+        [messageId, inviterId, inviteeId, messageContent, 'group_invite', new Date(messageTimestamp)]
       )
+
+      console.log(`📝 邀请消息已保存到数据库: ${messageId}, timestamp: ${timestampISO}`)
+
+      // 构建要发送的消息对象
+      const messageToSend = {
+        id: messageId,
+        senderId: inviterId,
+        receiverId: inviteeId,
+        content: messageContent,
+        type: 'group_invite',
+        timestamp: messageTimestamp, // 使用数字时间戳，确保前端排序正确
+        timestampISO: timestampISO
+      }
 
       // 通过WebSocket发送给被邀请人
       const inviteeSocketId = userSockets.get(inviteeId)
       if (inviteeSocketId) {
-        const messageToSend = {
-          id: messageId,
-          senderId: inviterId,
-          receiverId: inviteeId,
-          content: messageContent,
-          type: 'group_invite',
-          timestamp: timestamp
-        }
-        console.log('📤 发送群邀请消息给被邀请人:', JSON.stringify(messageToSend))
+        console.log(`📤 发送群邀请消息给被邀请人 ${inviteeId}:`, messageToSend.id)
         io.to(inviteeSocketId).emit('new_message', messageToSend)
       }
 
       // 同时发送给邀请人自己（让邀请人也能看到发送的邀请卡片）
       const inviterSocketId = userSockets.get(inviterId)
       if (inviterSocketId) {
-        const messageToSend = {
-          id: messageId,
-          senderId: inviterId,
-          receiverId: inviteeId,
-          content: messageContent,
-          type: 'group_invite',
-          timestamp: timestamp,
+        const messageToInviter = {
+          ...messageToSend,
           isOwn: true // 标记为自己发送的消息
         }
-        console.log('📤 发送群邀请消息给邀请人:', JSON.stringify(messageToSend))
-        io.to(inviterSocketId).emit('new_message', messageToSend)
+        console.log(`📤 发送群邀请消息给邀请人 ${inviterId}:`, messageToInviter.id)
+        io.to(inviterSocketId).emit('new_message', messageToInviter)
       }
-
-      // 添加小延迟，确保下一条消息的时间戳更大
-      await new Promise(resolve => setTimeout(resolve, 10))
     }
 
     res.json({
@@ -7766,8 +7769,13 @@ app.get('/api/groups/:groupId/check-membership', authenticateToken, async (req, 
 })
 
 /**
- * 通过邀请码加入群聊
- * 被邀请人点击邀请卡片后调用此接口
+ * 【重写】通过邀请码加入群聊
+ * 核心逻辑：
+ * 1. 验证邀请码有效性
+ * 2. 检查用户是否已是群成员
+ * 3. 判断是否需要审核（群主/管理员邀请直接加入，普通成员邀请需审核）
+ * 4. 直接加入或创建申请记录
+ * 5. 发送系统消息通知群成员
  */
 app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
   try {
@@ -7775,7 +7783,7 @@ app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
     const { inviteCode, reason } = req.body
     const userId = req.user.userId
 
-    console.log('🔑 通过邀请码加入群聊:', { inviteCode, userId, reason })
+    console.log('🔑 [加入流程] 开始处理加入请求:', { inviteCode, userId, reason })
 
     if (!inviteCode) {
       return res.status(400).json({ success: false, error: '邀请码不能为空' })
@@ -7783,7 +7791,10 @@ app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
 
     // 查询邀请链接信息
     const [inviteLinks] = await pool.execute(
-      'SELECT group_id, inviter_id, is_active FROM `group_invite_links` WHERE invite_code = ?',
+      `SELECT gil.group_id, gil.inviter_id, gil.is_active, gm.role as inviter_role
+       FROM group_invite_links gil
+       LEFT JOIN group_members gm ON gil.inviter_id = gm.user_id AND gil.group_id = gm.group_id
+       WHERE gil.invite_code = ?`,
       [inviteCode]
     )
 
@@ -7870,23 +7881,20 @@ app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
       )
       const userName = userInfo.length > 0 ? userInfo[0].nickname : `用户${userId}`
 
-      // 发送系统消息
-      const systemMessage = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        senderId: 0,
-        receiverId: groupId,
-        type: 'system',
-        content: `${userName} 通过邀请链接加入了群聊`,
-        timestamp: new Date().toISOString(),
-        groupId: groupId
-      }
+      // 生成系统消息（使用服务器当前时间戳）
+      const now = Date.now()
+      const systemMessageId = `msg_${now}_${Math.random().toString(36).substr(2, 9)}`
+      const systemMessageContent = `${userName} 通过邀请链接加入了群聊`
 
+      // 保存系统消息到数据库
       await pool.execute(
-        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-        [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [systemMessageId, 0, groupId, systemMessageContent, 'system', new Date(now)]
       )
 
-      // 通过WebSocket发送给所有群成员
+      console.log(`📝 [加入流程] 系统消息已保存: ${systemMessageId}, timestamp: ${now}`)
+
+      // 获取所有群成员
       const [members] = await pool.execute(
         'SELECT user_id FROM `group_members` WHERE group_id = ?',
         [groupId]
@@ -7894,6 +7902,19 @@ app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
 
       const memberCount = members.length
 
+      // 构建系统消息对象（使用数字时间戳）
+      const systemMessage = {
+        id: systemMessageId,
+        senderId: 0,
+        receiverId: groupId,
+        type: 'system',
+        content: systemMessageContent,
+        timestamp: now, // 使用数字时间戳
+        timestampISO: new Date(now).toISOString(),
+        groupId: groupId
+      }
+
+      // 通过WebSocket发送给所有群成员
       members.forEach(member => {
         const memberId = member.user_id
         const userSocketId = userSockets.get(memberId)
@@ -7907,7 +7928,7 @@ app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
         }
       })
 
-      console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
+      console.log(`📢 [加入流程] 已通知 ${memberCount} 个群成员：新成员加入`)
 
       console.log('✅ 用户已直接加入群聊')
       res.json({
@@ -8179,23 +8200,20 @@ app.post('/api/groups/:groupId/invite-requests/:requestId/accept', authenticateT
     const groupName = groupInfo.length > 0 ? groupInfo[0].name : '群聊'
     const userName = userInfo.length > 0 ? userInfo[0].nickname : `用户${applicantId}`
 
-    // 发送系统消息到群聊
-    const systemMessage = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      senderId: 0,
-      receiverId: groupId,
-      type: 'system',
-      content: `${userName} 通过邀请加入了群聊`,
-      timestamp: new Date().toISOString(),
-      groupId: groupId
-    }
+    // 生成系统消息（使用服务器当前时间戳）
+    const now = Date.now()
+    const systemMessageId = `msg_${now}_${Math.random().toString(36).substr(2, 9)}`
+    const systemMessageContent = `${userName} 通过邀请加入了群聊`
 
+    // 保存系统消息到数据库
     await pool.execute(
-      'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-      [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+      'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [systemMessageId, 0, groupId, systemMessageContent, 'system', new Date(now)]
     )
 
-    // 通过WebSocket通知所有群成员
+    console.log(`📝 [审核通过] 系统消息已保存: ${systemMessageId}, timestamp: ${now}`)
+
+    // 获取所有群成员
     const [members] = await pool.execute(
       'SELECT user_id FROM `group_members` WHERE group_id = ?',
       [groupId]
@@ -8203,6 +8221,19 @@ app.post('/api/groups/:groupId/invite-requests/:requestId/accept', authenticateT
 
     const memberCount = members.length
 
+    // 构建系统消息对象（使用数字时间戳）
+    const systemMessage = {
+      id: systemMessageId,
+      senderId: 0,
+      receiverId: groupId,
+      type: 'system',
+      content: systemMessageContent,
+      timestamp: now, // 使用数字时间戳
+      timestampISO: new Date(now).toISOString(),
+      groupId: groupId
+    }
+
+    // 通过WebSocket通知所有群成员
     members.forEach(member => {
       const memberId = member.user_id
       const userSocketId = userSockets.get(memberId)
@@ -8216,7 +8247,7 @@ app.post('/api/groups/:groupId/invite-requests/:requestId/accept', authenticateT
       }
     })
 
-    console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
+    console.log(`📢 [审核通过] 已通知 ${memberCount} 个群成员：新成员加入`)
 
     // 通知申请人审核通过
     const applicantSocketId = userSockets.get(applicantId)
