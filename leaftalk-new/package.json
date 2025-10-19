@@ -1,6 +1,6 @@
 {
   "name": "leaftalk-enterprise",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "叶语 - 企业级高性能跨平台即时通讯应用",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
