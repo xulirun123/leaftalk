@@ -279,8 +279,12 @@ const confirmInvite = async () => {
       setTimeout(() => {
         // 邀请完成后，返回到群聊页面而不是上一页
         // 这样可以避免返回到邀请申请页面导致权限错误
-        const groupId = route.params.groupId as string
-        router.push(`/chat/group_${groupId}`)
+        let groupId = route.params.groupId as string
+        // 确保 groupId 格式正确（如果已经包含 group_ 前缀，就不要再添加）
+        if (!groupId.startsWith('group_')) {
+          groupId = `group_${groupId}`
+        }
+        router.push(`/chat/${groupId}`)
       }, 1500)
     } else {
       appStore.showToast(result.error || '邀请失败', 'error')
