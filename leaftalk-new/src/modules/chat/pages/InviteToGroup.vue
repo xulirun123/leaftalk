@@ -261,7 +261,16 @@ const confirmInvite = async () => {
 
     console.log('📨 发送群邀请:', { groupId, inviteeIds })
 
-    const response = await fetch(`http://localhost:8893/api/groups/${groupId}/invite-request`, {
+    // 准备跳转路径
+    let targetGroupId = groupId
+    // 确保 groupId 格式正确
+    // 1. 移除所有 group_ 前缀
+    targetGroupId = targetGroupId.replace(/^group_+/, '')
+    // 2. 添加单个 group_ 前缀
+    targetGroupId = `group_${targetGroupId}`
+
+    // 先发起请求，不等待响应完成就跳转
+    const responsePromise = fetch(`http://localhost:8893/api/groups/${groupId}/invite-request`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -270,23 +279,17 @@ const confirmInvite = async () => {
       body: JSON.stringify({ inviteeIds })
     })
 
+    // 立即跳转到群聊页面，提升响应速度
+    router.push(`/chat/${targetGroupId}`)
+
+    // 在后台处理响应
+    const response = await responsePromise
     const result = await response.json()
 
     if (result.success) {
+      // 跳转后显示成功提示
       appStore.showToast(result.message || '邀请已发送', 'success')
       selectedFriends.value = []
-
-      setTimeout(() => {
-        // 邀请完成后，返回到群聊页面而不是上一页
-        // 这样可以避免返回到邀请申请页面导致权限错误
-        let groupId = route.params.groupId as string
-        // 确保 groupId 格式正确
-        // 1. 移除所有 group_ 前缀
-        groupId = groupId.replace(/^group_+/, '')
-        // 2. 添加单个 group_ 前缀
-        groupId = `group_${groupId}`
-        router.push(`/chat/${groupId}`)
-      }, 1500)
     } else {
       appStore.showToast(result.error || '邀请失败', 'error')
     }
