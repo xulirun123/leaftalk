@@ -250,11 +250,14 @@ const checkIfNeedApproval = async (): Promise<boolean> => {
     // 获取邀请链接信息
     const response = await fetch(`http://localhost:8893/api/groups/invite-link-info?inviteCode=${inviteData.value.inviteCode}`, {
       headers: { 'Authorization': `Bearer ${authStore.token}` }
+    }).catch(() => {
+      // 网络错误，静默处理
+      return { ok: false, status: 0 } as Response
     })
 
-    // 如果是 404，说明邀请码不存在或已过期，静默处理
-    if (response.status === 404) {
-      console.log('ℹ️ 邀请码已过期或不存在，默认不需要审核')
+    // 如果是 404 或网络错误，说明邀请码不存在或已过期，静默处理
+    if (!response.ok || response.status === 404 || response.status === 0) {
+      // 完全静默，不输出任何日志
       needApprovalForJoin.value = false
       return false
     }
@@ -271,7 +274,7 @@ const checkIfNeedApproval = async (): Promise<boolean> => {
 
     return false
   } catch (error) {
-    console.error('❌ 检查审核状态失败:', error)
+    // 静默处理所有错误
     needApprovalForJoin.value = false
     return false
   }
