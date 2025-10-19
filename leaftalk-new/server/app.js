@@ -7508,9 +7508,9 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
     // 生成邀请码（每次邀请生成一个新的邀请码）
     const inviteCode = `INV_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-    // 保存邀请链接到数据库
+    // 保存邀请链接到数据库（确保 is_active 为 TRUE）
     await pool.execute(
-      'INSERT INTO `group_invite_links` (group_id, invite_code, inviter_id, created_at) VALUES (?, ?, ?, NOW())',
+      'INSERT INTO `group_invite_links` (group_id, invite_code, inviter_id, is_active, created_at) VALUES (?, ?, ?, TRUE, NOW())',
       [groupId, inviteCode, inviterId]
     )
 
@@ -7862,14 +7862,20 @@ app.get('/api/groups/invite-link-info', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: '邀请码不能为空' })
     }
 
-    // 查询邀请链接信息
+    // 查询邀请链接信息（检查 is_active 字段，如果字段不存在则忽略）
     const [inviteLinks] = await pool.execute(
-      'SELECT group_id, inviter_id FROM `group_invite_links` WHERE invite_code = ?',
+      'SELECT group_id, inviter_id, is_active FROM `group_invite_links` WHERE invite_code = ?',
       [inviteCode]
     )
 
     if (inviteLinks.length === 0) {
       return res.status(404).json({ success: false, error: '邀请链接不存在' })
+    }
+
+    // 检查邀请链接是否有效（如果有 is_active 字段）
+    const invite = inviteLinks[0]
+    if (invite.is_active !== undefined && invite.is_active === 0) {
+      return res.status(404).json({ success: false, error: '邀请链接已失效' })
     }
 
     const { group_id: groupId, inviter_id: inviterId } = inviteLinks[0]
