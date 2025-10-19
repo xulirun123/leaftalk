@@ -7493,6 +7493,22 @@ app.put('/api/groups/:groupId/join-requests/:requestId', authenticateToken, asyn
 
       console.log('✅ 进群申请已同意')
 
+      // 获取更新后的成员数量
+      const [groupMembers] = await pool.execute(
+        'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
+        [groupId]
+      )
+      const memberCount = groupMembers[0].count
+
+      // 通知所有群成员成员数量变化
+      if (io) {
+        io.to(groupId).emit('group-members-changed', {
+          groupId,
+          memberCount
+        })
+        console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
+      }
+
       // 通过 WebSocket 通知被邀请人审核通过
       const userSocketId = userSockets.get(userId)
       if (userSocketId) {
@@ -7858,6 +7874,22 @@ app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
         }
       })
 
+      // 获取更新后的成员数量
+      const [groupMembers] = await pool.execute(
+        'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
+        [groupId]
+      )
+      const memberCount = groupMembers[0].count
+
+      // 通知所有群成员成员数量变化
+      if (io) {
+        io.to(groupId).emit('group-members-changed', {
+          groupId,
+          memberCount
+        })
+        console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
+      }
+
       console.log('✅ 用户已直接加入群聊')
       res.json({
         success: true,
@@ -8157,6 +8189,22 @@ app.post('/api/groups/:groupId/invite-requests/:requestId/accept', authenticateT
         io.to(userSocketId).emit('new_message', systemMessage)
       }
     })
+
+    // 获取更新后的成员数量
+    const [groupMembers] = await pool.execute(
+      'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
+      [groupId]
+    )
+    const memberCount = groupMembers[0].count
+
+    // 通知所有群成员成员数量变化
+    if (io) {
+      io.to(groupId).emit('group-members-changed', {
+        groupId,
+        memberCount
+      })
+      console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
+    }
 
     // 通知申请人审核通过
     const applicantSocketId = userSockets.get(applicantId)
