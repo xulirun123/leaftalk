@@ -95,14 +95,35 @@
         <!-- 群管理 - 群主和管理员可见 -->
         <div v-if="isGroupOwner || currentUserRole === 'admin'" class="setting-item" @click="manageGroup">
           <span class="setting-label">群管理</span>
-          <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+          <div class="setting-right">
+            <!-- 申请人头像列表 -->
+            <div v-if="pendingRequestAvatars.length > 0" class="request-avatars">
+              <img
+                v-for="(avatar, index) in pendingRequestAvatars"
+                :key="index"
+                :src="avatar"
+                class="request-avatar"
+                :style="{ zIndex: pendingRequestAvatars.length - index }"
+              />
+            </div>
+            <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+          </div>
         </div>
 
         <!-- 邀请申请 - 仅群主和管理员可见，且群聊邀请确认已开启 -->
         <div v-if="(isGroupOwner || currentUserRole === 'admin') && groupSettings.requireApproval" class="setting-item" @click="viewInviteRequests">
           <span class="setting-label">邀请申请</span>
           <div class="setting-right">
-            <span v-if="pendingInviteCount > 0" class="badge">{{ pendingInviteCount }}</span>
+            <!-- 申请人头像列表 -->
+            <div v-if="pendingApplicantAvatars.length > 0" class="applicant-avatars">
+              <img
+                v-for="(avatar, index) in pendingApplicantAvatars"
+                :key="index"
+                :src="avatar"
+                class="applicant-avatar"
+                :style="{ zIndex: pendingApplicantAvatars.length - index }"
+              />
+            </div>
             <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
           </div>
         </div>
@@ -265,6 +286,13 @@ const groupSettings = ref({
 
 // 待审核的邀请申请数量
 const pendingInviteCount = ref(0)
+// 待审核的申请人头像列表（最多5个）
+const pendingApplicantAvatars = ref<string[]>([])
+
+// 计算属性：最多显示5个申请人头像
+const pendingRequestAvatars = computed(() => {
+  return pendingApplicantAvatars.value.slice(0, 5)
+})
 
 // 个人设置
 const isMuted = ref(false)
@@ -636,6 +664,41 @@ const loadGroupSettings = async () => {
     }
   } catch (error) {
     console.error('❌ 加载群组设置失败:', error)
+  }
+}
+
+// 加载待审核的申请人头像
+const loadPendingRequestAvatars = async () => {
+  try {
+    const groupId = route.params.id as string
+
+    // 只有群主和管理员才加载
+    if (!isGroupOwner.value && currentUserRole.value !== 'admin') {
+      return
+    }
+
+    const response = await fetch(`http://localhost:8893/api/groups/${groupId}/invite-requests`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      if (result.success && result.data) {
+        // 筛选出待处理的申请
+        const pendingRequests = result.data.filter((req: any) => req.status === 'pending')
+
+        // 获取最新的5个申请人头像
+        pendingApplicantAvatars.value = pendingRequests
+          .slice(0, 5)
+          .map((req: any) => req.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.user_id}`)
+
+        console.log('✅ 申请人头像已加载:', pendingApplicantAvatars.value.length)
+      }
+    }
+  } catch (error) {
+    console.error('❌ 加载申请人头像失败:', error)
   }
 }
 
@@ -1141,6 +1204,7 @@ onMounted(async () => {
     await loadGroupInfo()
     await loadAnnouncement()
     await loadPendingInviteCount()
+    await loadPendingRequestAvatars()
 
     clearTimeout(timeoutId)
     console.log('✅ GroupInfo 页面加载完成')
@@ -1182,6 +1246,7 @@ onActivated(async () => {
   console.log('🔄 GroupInfo 页面已激活，重新加载数据')
   try {
     await loadGroupSettings()  // 重新加载权限设置
+    await loadPendingRequestAvatars()  // 重新加载申请人头像
     console.log('✅ GroupInfo 权限设置已刷新')
   } catch (error) {
     console.error('❌ GroupInfo 权限设置刷新失败:', error)
@@ -1369,6 +1434,26 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 申请人头像列表 */
+.request-avatars {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.request-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid #fff;
+  margin-left: -8px;
+  object-fit: cover;
+}
+
+.request-avatar:first-child {
+  margin-left: 0;
 }
 
 .badge {

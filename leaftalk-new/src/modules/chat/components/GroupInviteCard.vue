@@ -63,7 +63,6 @@
       <div class="confirm-dialog" @click.stop>
         <div class="confirm-title">加入群聊</div>
         <div class="confirm-message">
-          <div class="message-text">申请加入「{{ inviteData.groupName }}」</div>
           <textarea
             v-model="joinReason"
             class="reason-input"

@@ -39,7 +39,16 @@
           <div class="item-title">群聊邀请申请</div>
         </div>
         <div class="item-right">
-          <span v-if="unreadRequestCount > 0" class="unread-badge">{{ unreadRequestCount }}</span>
+          <!-- 申请人头像列表 -->
+          <div v-if="pendingRequestAvatars.length > 0" class="request-avatars">
+            <img
+              v-for="(avatar, index) in pendingRequestAvatars"
+              :key="index"
+              :src="avatar"
+              class="request-avatar"
+              :style="{ zIndex: pendingRequestAvatars.length - index }"
+            />
+          </div>
           <iconify-icon icon="heroicons:chevron-right" width="20" color="#999"></iconify-icon>
         </div>
       </div>
@@ -101,6 +110,8 @@ const nameEditRestricted = ref(true)
 const isGroupOwner = ref(false)
 const currentUserRole = ref('')
 const unreadRequestCount = ref(0)
+// 待审核的申请人头像列表（最多5个）
+const pendingRequestAvatars = ref<string[]>([])
 
 // WebSocket事件处理
 const handleNewInviteRequest = (data: any) => {
@@ -266,10 +277,10 @@ const updateNameEditRestriction = async () => {
   }
 }
 
-// 加载未读申请数量
+// 加载未读申请数量和申请人头像
 const loadUnreadRequestCount = async () => {
   try {
-    const response = await fetch(`http://localhost:8893/api/groups/${groupId.value}/invite-requests/unread-count`, {
+    const response = await fetch(`http://localhost:8893/api/groups/${groupId.value}/invite-requests`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
@@ -277,9 +288,18 @@ const loadUnreadRequestCount = async () => {
 
     if (response.ok) {
       const result = await response.json()
-      if (result.success) {
-        unreadRequestCount.value = result.count || 0
+      if (result.success && result.data) {
+        // 筛选出待处理的申请
+        const pendingRequests = result.data.filter((req: any) => req.status === 'pending')
+        unreadRequestCount.value = pendingRequests.length
+
+        // 获取最新的5个申请人头像
+        pendingRequestAvatars.value = pendingRequests
+          .slice(0, 5)
+          .map((req: any) => req.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.user_id}`)
+
         console.log('✅ 未读申请数量:', unreadRequestCount.value)
+        console.log('✅ 申请人头像:', pendingRequestAvatars.value.length)
       }
     }
   } catch (error) {
@@ -397,6 +417,26 @@ const dissolveGroup = async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 申请人头像列表 */
+.request-avatars {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.request-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid #fff;
+  margin-left: -8px;
+  object-fit: cover;
+}
+
+.request-avatar:first-child {
+  margin-left: 0;
 }
 
 .unread-badge {
