@@ -98,7 +98,8 @@ export const useChatStore = defineStore('chat', () => {
     // 更新会话信息
     const session = sessions.value.find(s => s.id === sessionId)
     if (session) {
-      session.lastMessage = message
+      session.lastMessage = message.content
+      session.lastMessageType = message.type
       session.updatedAt = message.timestamp
       session.lastMessageTime = message.timestamp
     }
