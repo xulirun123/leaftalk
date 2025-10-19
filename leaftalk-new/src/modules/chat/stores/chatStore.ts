@@ -19,7 +19,8 @@ export interface ChatMessage {
 export interface ChatSession {
   id: string
   participants: string[]
-  lastMessage?: ChatMessage | string
+  lastMessage?: string
+  lastMessageType?: string
   unreadCount: number
   updatedAt: number
   createdAt?: number
@@ -285,6 +286,7 @@ export const useChatStore = defineStore('chat', () => {
       existingSession.name = sessionData.name
       existingSession.avatar = sessionData.avatar
       existingSession.lastMessage = sessionData.lastMessage
+      existingSession.lastMessageType = sessionData.lastMessageType || 'text'
       existingSession.lastMessageTime = sessionData.lastMessageTime || Date.now()
       existingSession.updatedAt = sessionData.lastMessageTime || Date.now()
       // 如果会话在删除列表中，从删除列表中移除
@@ -305,6 +307,7 @@ export const useChatStore = defineStore('chat', () => {
       name: sessionData.name,
       avatar: sessionData.avatar,
       lastMessage: sessionData.lastMessage,
+      lastMessageType: sessionData.lastMessageType || 'text',
       lastMessageTime: sessionData.lastMessageTime,
       type: sessionData.type || 'private'
     }
@@ -459,7 +462,8 @@ export const useChatStore = defineStore('chat', () => {
       session = {
         id: sessionId,
         participants,
-        lastMessage: message,
+        lastMessage: message.content,
+        lastMessageType: message.type,
         unreadCount: 0, // 发送者的未读数为0
         updatedAt: message.timestamp,
         createdAt: message.timestamp,
@@ -473,7 +477,8 @@ export const useChatStore = defineStore('chat', () => {
       console.log('✅ 创建新聊天项:', session.name)
     } else {
       // 更新现有会话
-      session.lastMessage = message
+      session.lastMessage = message.content
+      session.lastMessageType = message.type
       session.updatedAt = message.timestamp
       session.lastMessageTime = message.timestamp
       console.log('🔄 更新聊天项:', session.name)
@@ -603,7 +608,8 @@ export const useChatStore = defineStore('chat', () => {
       session = {
         id: sessionId,
         participants,
-        lastMessage: message,
+        lastMessage: message.content,
+        lastMessageType: message.type,
         unreadCount: 1, // 接收者的未读数为1
         updatedAt: message.timestamp,
         createdAt: message.timestamp,
@@ -617,7 +623,8 @@ export const useChatStore = defineStore('chat', () => {
       console.log('✅ 收到消息，创建新聊天项:', session.name, '类型:', isGroupMessage ? '群聊' : '私聊')
     } else {
       // 更新现有会话
-      session.lastMessage = message
+      session.lastMessage = message.content
+      session.lastMessageType = message.type
       session.updatedAt = message.timestamp
       session.lastMessageTime = message.timestamp
       session.unreadCount += 1 // 增加未读数
@@ -1395,6 +1402,7 @@ export const useChatStore = defineStore('chat', () => {
                 name: chat.nickname || `用户${otherUserId}`,
                 avatar: chat.avatar,
                 lastMessage: chat.last_message || '暂无消息',
+                lastMessageType: chat.last_message_type || 'text',
                 lastMessageTime: new Date(chat.last_message_time).getTime(),
                 updatedAt: new Date(chat.last_message_time).getTime(),
                 createdAt: Date.now(),

@@ -184,10 +184,8 @@ const chats = computed(() => {
       return true
     })
     .map((session: any) => {
-      // 提取 lastMessageType
-      if (session.lastMessage && typeof session.lastMessage === 'object' && session.lastMessage.type) {
-        session.lastMessageType = session.lastMessage.type
-      } else if (!session.lastMessageType) {
+      // 确保 lastMessageType 有默认值
+      if (!session.lastMessageType) {
         session.lastMessageType = 'text'
       }
 
