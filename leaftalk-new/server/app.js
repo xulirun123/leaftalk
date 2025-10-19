@@ -7894,7 +7894,6 @@ app.get('/api/groups/:groupId/invite-requests', authenticateToken, async (req, r
     }
 
     const role = memberRole[0].role
-    console.log('👤 用户角色:', { userId, role, groupId })
     if (role !== 'owner' && role !== 'creator' && role !== 'admin') {
       return res.status(403).json({ success: false, error: '只有群主和管理员可以查看邀请申请' })
     }
