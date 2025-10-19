@@ -63,25 +63,18 @@
       <div class="confirm-dialog" @click.stop>
         <div class="confirm-title">加入群聊</div>
         <div class="confirm-message">
-          <template v-if="needApprovalForJoin">
-            <div class="message-text">申请加入「{{ inviteData.groupName }}」</div>
-            <textarea
-              v-model="joinReason"
-              class="reason-input"
-              placeholder="填写申请理由（选填）"
-              maxlength="100"
-              rows="3"
-            ></textarea>
-          </template>
-          <template v-else>
-            确定要加入「{{ inviteData.groupName }}」吗？
-          </template>
+          <div class="message-text">申请加入「{{ inviteData.groupName }}」</div>
+          <textarea
+            v-model="joinReason"
+            class="reason-input"
+            :placeholder="defaultJoinReason"
+            maxlength="100"
+            rows="3"
+          ></textarea>
         </div>
         <div class="confirm-buttons">
           <button class="confirm-btn cancel" @click.stop="closeDialog">取消</button>
-          <button class="confirm-btn confirm" @click.stop="confirmJoin">
-            {{ needApprovalForJoin ? '发送申请' : '加入' }}
-          </button>
+          <button class="confirm-btn confirm" @click.stop="confirmJoin">申请</button>
         </div>
       </div>
     </div>
@@ -127,6 +120,12 @@ const showDialog = ref(false)
 const inviteeName = ref('好友')
 const joinReason = ref('')
 const needApprovalForJoin = ref(false)
+
+// 默认申请理由
+const defaultJoinReason = computed(() => {
+  const userName = authStore.user?.nickname || authStore.user?.username || '我'
+  return `${userName}申请加入群聊`
+})
 
 // 解析邀请数据
 const inviteData = computed<GroupInviteData>(() => {
@@ -175,29 +174,56 @@ const handleCardClick = async () => {
   // 邀请方点击：直接进入群聊
   if (isInviter.value) {
     console.log('👤 邀请方点击，进入群聊')
-    const groupId = inviteData.value.groupId.replace('group_', '')
+    const groupId = inviteData.value.groupId.replace(/^group_/, '')
     router.push(`/chat/group_${groupId}`)
     return
   }
 
-  // 被邀请方点击：根据状态处理
-  console.log('👥 被邀请方点击，状态:', cardStatus.value)
+  // 被邀请方点击：先检查是否已经是群成员
+  console.log('👥 被邀请方点击，检查成员状态...')
+
+  try {
+    const groupId = inviteData.value.groupId.replace(/^group_/, '')
+    const response = await fetch(`http://localhost:8893/api/groups/${groupId}/check-membership`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    const result = await response.json()
+    console.log('🔍 成员检查结果:', result)
+
+    if (result.success && result.isMember) {
+      // 已经是群成员，直接进入群聊
+      console.log('✅ 已是群成员，直接进入群聊')
+      cardStatus.value = 'joined'
+      router.push(`/chat/group_${groupId}`)
+      return
+    }
+  } catch (error) {
+    console.error('❌ 检查成员状态失败:', error)
+  }
+
+  // 不是群成员，根据状态处理
+  console.log('👥 不是群成员，状态:', cardStatus.value)
 
   if (cardStatus.value === 'joined') {
-    // 已加入：直接进入群聊（和邀请方一样）
+    // 已加入：直接进入群聊
     console.log('✅ 已是群成员，直接进入群聊')
-    const groupId = inviteData.value.groupId.replace('group_', '')
+    const groupId = inviteData.value.groupId.replace(/^group_/, '')
     router.push(`/chat/group_${groupId}`)
   } else if (cardStatus.value === 'pending') {
     // 待处理：弹出确认对话框
     console.log('✅ 不是群成员，弹出确认对话框')
+    // 设置默认申请理由
+    joinReason.value = defaultJoinReason.value
     // 检查是否需要审核
     await checkIfNeedApproval()
     showDialog.value = true
   } else if (cardStatus.value === 'approved') {
     // 审核通过：进入群聊
     console.log('✅ 审核通过，进入群聊')
-    const groupId = inviteData.value.groupId.replace('group_', '')
+    const groupId = inviteData.value.groupId.replace(/^group_/, '')
     router.push(`/chat/group_${groupId}`)
   } else if (cardStatus.value === 'waiting') {
     // 等待审核：提示
@@ -244,9 +270,10 @@ const checkIfNeedApproval = async () => {
 const confirmJoin = async () => {
   try {
     console.log('🔑 确认加入群聊，邀请码:', inviteData.value.inviteCode)
+    console.log('📝 申请理由:', joinReason.value)
 
     showDialog.value = false
-    appStore.showToast('正在加入群聊...', 'info')
+    appStore.showToast('正在提交申请...', 'info')
 
     const response = await fetch('http://localhost:8893/api/groups/join-by-invite', {
       method: 'POST',
@@ -256,7 +283,7 @@ const confirmJoin = async () => {
       },
       body: JSON.stringify({
         inviteCode: inviteData.value.inviteCode,
-        reason: joinReason.value || '申请加入群聊'
+        reason: joinReason.value || defaultJoinReason.value
       })
     })
 

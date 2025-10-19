@@ -7602,6 +7602,39 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
 })
 
 /**
+ * 检查用户是否是群成员
+ * 用于在点击邀请卡片时判断是否直接进入群聊
+ */
+app.get('/api/groups/:groupId/check-membership', authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { groupId } = req.params
+    const userId = req.user.userId
+
+    console.log('🔍 检查用户是否是群成员:', { groupId, userId })
+
+    // 检查用户是否已经是群成员
+    const [existingMember] = await pool.execute(
+      'SELECT id, role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, userId]
+    )
+
+    const isMember = existingMember.length > 0
+
+    console.log('✅ 检查结果:', { isMember })
+
+    res.json({
+      success: true,
+      isMember,
+      role: isMember ? existingMember[0].role : null
+    })
+  } catch (error) {
+    console.error('❌ 检查群成员失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+/**
  * 通过邀请码加入群聊
  * 被邀请人点击邀请卡片后调用此接口
  */
