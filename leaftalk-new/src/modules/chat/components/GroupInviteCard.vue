@@ -247,17 +247,21 @@ const closeDialog = () => {
 const checkIfNeedApproval = async () => {
   try {
     // 获取邀请链接信息
-    const [inviteLinks] = await Promise.all([
-      fetch(`http://localhost:8893/api/groups/invite-link-info?inviteCode=${inviteData.value.inviteCode}`, {
-        headers: { 'Authorization': `Bearer ${authStore.token}` }
-      }).then(res => res.json())
-    ])
+    const response = await fetch(`http://localhost:8893/api/groups/invite-link-info?inviteCode=${inviteData.value.inviteCode}`, {
+      headers: { 'Authorization': `Bearer ${authStore.token}` }
+    })
+
+    const inviteLinks = await response.json()
 
     if (inviteLinks.success && inviteLinks.data) {
       const { isInviterAdmin, requireApproval } = inviteLinks.data
       // 判断是否需要审核：邀请人是普通成员 + 群需要审核
       needApprovalForJoin.value = !isInviterAdmin && requireApproval
       console.log('🔍 是否需要审核:', needApprovalForJoin.value, { isInviterAdmin, requireApproval })
+    } else if (response.status === 404) {
+      // 邀请码不存在，可能已过期
+      console.warn('⚠️ 邀请码不存在或已过期')
+      needApprovalForJoin.value = false
     }
   } catch (error) {
     console.error('❌ 检查审核状态失败:', error)
