@@ -1646,6 +1646,51 @@ const handleGroupNameChanged = async (event: any) => {
   }
 }
 
+// 监听群成员变化事件
+const handleGroupMembersChanged = async (event: any) => {
+  const { groupId, memberCount } = event.detail || {}
+
+  console.log('👥 收到群成员变化事件:', {
+    groupId,
+    memberCount,
+    currentGroupId: otherUserId,
+    isMatch: groupId === otherUserId
+  })
+
+  // 如果是当前群聊，立即更新标题
+  if (isGroupChat && groupId === otherUserId) {
+    console.log('👥 当前群聊成员数量已变化，立即更新标题')
+
+    try {
+      // 获取当前群名（可能是备注名或原始群名）
+      const currentTitle = chatInfo.value.name || ''
+      // 移除旧的人数部分
+      const groupNameWithoutCount = currentTitle.replace(/（\d+）$/, '')
+
+      // 使用新的成员数量
+      const newTitle = `${groupNameWithoutCount}（${memberCount}）`
+
+      console.log('👥 准备更新标题:', {
+        oldTitle: chatInfo.value.name,
+        newTitle,
+        memberCount
+      })
+
+      chatInfo.value.name = newTitle
+      if (route.meta) {
+        route.meta.title = newTitle
+      }
+
+      // 更新 localStorage 中的成员数量
+      localStorage.setItem(`group_member_count_${groupId}`, String(memberCount))
+
+      console.log('✅ 群聊标题已更新为:', newTitle)
+    } catch (error) {
+      console.error('❌ 更新群聊标题失败:', error)
+    }
+  }
+}
+
 // 监听群聊备注修改事件
 const handleGroupRemarkChanged = async (event: any) => {
   console.log('📝 收到群聊备注修改事件:', event.detail)
@@ -2524,8 +2569,9 @@ onMounted(async () => {
 
     window.addEventListener('group-name-changed', handleGroupNameChanged)
     window.addEventListener('group-remark-changed', handleGroupRemarkChanged)
+    window.addEventListener('group-members-changed', handleGroupMembersChanged)
     window.addEventListener('group-dissolved', handleGroupDissolved)
-    console.log('✅✅✅ 已注册群名称、备注修改和解散事件监听')
+    console.log('✅✅✅ 已注册群名称、备注、成员变化和解散事件监听')
   }
 
   // 暴露删除测试函数到全局
@@ -2601,10 +2647,11 @@ onUnmounted(() => {
     eventBus.off('chatBackground:updated')
   }
 
-  // 移除群名称和备注修改事件监听
+  // 移除群名称、备注、成员变化和解散事件监听
   if (isGroupChat) {
     window.removeEventListener('group-name-changed', handleGroupNameChanged)
     window.removeEventListener('group-remark-changed', handleGroupRemarkChanged)
+    window.removeEventListener('group-members-changed', handleGroupMembersChanged)
     window.removeEventListener('group-dissolved', handleGroupDissolved)
   }
 })
