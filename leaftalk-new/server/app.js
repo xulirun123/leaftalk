@@ -7514,11 +7514,15 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
     // 生成邀请码（每次邀请生成一个新的邀请码）
     const inviteCode = `INV_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
+    console.log(`📝 准备插入邀请码到数据库: ${inviteCode}`)
+
     // 保存邀请链接到数据库（确保 is_active 为 TRUE）
-    await pool.execute(
+    const [insertResult] = await pool.execute(
       'INSERT INTO `group_invite_links` (group_id, invite_code, inviter_id, is_active, created_at) VALUES (?, ?, ?, TRUE, NOW())',
       [groupId, inviteCode, inviterId]
     )
+
+    console.log(`✅ 邀请码已插入数据库: ${inviteCode}, insertId: ${insertResult.insertId}`)
 
     // 构建邀请卡片内容
     const inviteCard = {
@@ -7864,7 +7868,10 @@ app.get('/api/groups/invite-link-info', authenticateToken, async (req, res) => {
     await dbReady
     const { inviteCode } = req.query
 
+    console.log(`🔍 查询邀请链接信息: ${inviteCode}`)
+
     if (!inviteCode) {
+      console.log('❌ 邀请码为空')
       return res.status(400).json({ success: false, error: '邀请码不能为空' })
     }
 
@@ -7874,13 +7881,20 @@ app.get('/api/groups/invite-link-info', authenticateToken, async (req, res) => {
       [inviteCode]
     )
 
+    console.log(`📋 查询结果: ${inviteLinks.length} 条记录`)
+    if (inviteLinks.length > 0) {
+      console.log(`📋 邀请链接详情:`, inviteLinks[0])
+    }
+
     if (inviteLinks.length === 0) {
+      console.log(`❌ 邀请链接不存在: ${inviteCode}`)
       return res.status(404).json({ success: false, error: '邀请链接不存在' })
     }
 
     // 检查邀请链接是否有效（如果有 is_active 字段）
     const invite = inviteLinks[0]
     if (invite.is_active !== undefined && invite.is_active === 0) {
+      console.log(`❌ 邀请链接已失效: ${inviteCode}`)
       return res.status(404).json({ success: false, error: '邀请链接已失效' })
     }
 

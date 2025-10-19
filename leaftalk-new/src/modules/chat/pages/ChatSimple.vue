@@ -902,8 +902,16 @@ const shouldShowTime = (message: any, index: number) => {
     return true
   }
 
+  // 将时间戳转换为数字（支持字符串和数字格式）
+  const currentTime = typeof message.timestamp === 'string'
+    ? new Date(message.timestamp).getTime()
+    : Number(message.timestamp)
+  const prevTime = typeof prevMessage.timestamp === 'string'
+    ? new Date(prevMessage.timestamp).getTime()
+    : Number(prevMessage.timestamp)
+
   // 计算与前一条消息的时间间隔（毫秒）
-  const timeDiff = message.timestamp - prevMessage.timestamp
+  const timeDiff = currentTime - prevTime
   // 超过10分钟（600000毫秒）才显示时间
   return timeDiff > 600000
 }
