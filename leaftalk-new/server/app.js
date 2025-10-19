@@ -5409,6 +5409,85 @@ app.get('/api/groups/my-groups', async (req, res) => {
   }
 })
 
+/**
+ * 获取邀请链接信息（用于判断是否需要审核）
+ * 注意：此路由必须在 /api/groups/:groupId 之前，否则会被 :groupId 匹配
+ */
+app.get('/api/groups/invite-link-info', (req, res, next) => {
+  console.log('🚀 收到 invite-link-info 请求:', req.query)
+  next()
+}, authenticateToken, async (req, res) => {
+  try {
+    await dbReady
+    const { inviteCode } = req.query
+
+    console.log(`🔍 查询邀请链接信息: ${inviteCode}`)
+
+    if (!inviteCode) {
+      console.log('❌ 邀请码为空')
+      return res.status(400).json({ success: false, error: '邀请码不能为空' })
+    }
+
+    // 查询邀请链接信息（检查 is_active 字段，如果字段不存在则忽略）
+    const [inviteLinks] = await pool.execute(
+      'SELECT group_id, inviter_id, is_active FROM `group_invite_links` WHERE invite_code = ?',
+      [inviteCode]
+    )
+
+    console.log(`📋 查询结果: ${inviteLinks.length} 条记录`)
+    if (inviteLinks.length > 0) {
+      console.log(`📋 邀请链接详情:`, inviteLinks[0])
+    }
+
+    if (inviteLinks.length === 0) {
+      console.log(`❌ 邀请链接不存在: ${inviteCode}`)
+      return res.status(404).json({ success: false, error: '邀请链接不存在' })
+    }
+
+    // 检查邀请链接是否有效（如果有 is_active 字段）
+    const invite = inviteLinks[0]
+    if (invite.is_active !== undefined && invite.is_active === 0) {
+      console.log(`❌ 邀请链接已失效: ${inviteCode}`)
+      return res.status(404).json({ success: false, error: '邀请链接已失效' })
+    }
+
+    const { group_id: groupId, inviter_id: inviterId } = inviteLinks[0]
+
+    // 获取群设置
+    const [groupInfo] = await pool.execute(
+      'SELECT require_approval FROM `groups` WHERE id = ?',
+      [groupId]
+    )
+
+    if (groupInfo.length === 0) {
+      return res.status(404).json({ success: false, error: '群聊不存在' })
+    }
+
+    const requireApproval = groupInfo[0].require_approval === 1
+
+    // 检查邀请人的角色
+    const [inviterRole] = await pool.execute(
+      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
+      [groupId, inviterId]
+    )
+
+    const isInviterAdmin = inviterRole.length > 0 && (inviterRole[0].role === 'owner' || inviterRole[0].role === 'creator' || inviterRole[0].role === 'admin')
+
+    res.json({
+      success: true,
+      data: {
+        groupId,
+        inviterId,
+        requireApproval,
+        isInviterAdmin
+      }
+    })
+  } catch (error) {
+    console.error('❌ 获取邀请链接信息失败:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
 // 获取群聊详情
 app.get('/api/groups/:groupId', async (req, res) => {
   try {
@@ -7857,81 +7936,6 @@ app.get('/api/groups/:groupId/join-requests/my-status', authenticateToken, async
   } catch (error) {
     console.error('获取申请状态失败:', error)
     res.status(500).json({ success: false, error: '获取申请状态失败' })
-  }
-})
-
-/**
- * 获取邀请链接信息（用于判断是否需要审核）
- */
-app.get('/api/groups/invite-link-info', authenticateToken, async (req, res) => {
-  try {
-    await dbReady
-    const { inviteCode } = req.query
-
-    console.log(`🔍 查询邀请链接信息: ${inviteCode}`)
-
-    if (!inviteCode) {
-      console.log('❌ 邀请码为空')
-      return res.status(400).json({ success: false, error: '邀请码不能为空' })
-    }
-
-    // 查询邀请链接信息（检查 is_active 字段，如果字段不存在则忽略）
-    const [inviteLinks] = await pool.execute(
-      'SELECT group_id, inviter_id, is_active FROM `group_invite_links` WHERE invite_code = ?',
-      [inviteCode]
-    )
-
-    console.log(`📋 查询结果: ${inviteLinks.length} 条记录`)
-    if (inviteLinks.length > 0) {
-      console.log(`📋 邀请链接详情:`, inviteLinks[0])
-    }
-
-    if (inviteLinks.length === 0) {
-      console.log(`❌ 邀请链接不存在: ${inviteCode}`)
-      return res.status(404).json({ success: false, error: '邀请链接不存在' })
-    }
-
-    // 检查邀请链接是否有效（如果有 is_active 字段）
-    const invite = inviteLinks[0]
-    if (invite.is_active !== undefined && invite.is_active === 0) {
-      console.log(`❌ 邀请链接已失效: ${inviteCode}`)
-      return res.status(404).json({ success: false, error: '邀请链接已失效' })
-    }
-
-    const { group_id: groupId, inviter_id: inviterId } = inviteLinks[0]
-
-    // 获取群设置
-    const [groupInfo] = await pool.execute(
-      'SELECT require_approval FROM `groups` WHERE id = ?',
-      [groupId]
-    )
-
-    if (groupInfo.length === 0) {
-      return res.status(404).json({ success: false, error: '群聊不存在' })
-    }
-
-    const requireApproval = groupInfo[0].require_approval === 1
-
-    // 检查邀请人的角色
-    const [inviterRole] = await pool.execute(
-      'SELECT role FROM `group_members` WHERE group_id = ? AND user_id = ?',
-      [groupId, inviterId]
-    )
-
-    const isInviterAdmin = inviterRole.length > 0 && (inviterRole[0].role === 'owner' || inviterRole[0].role === 'creator' || inviterRole[0].role === 'admin')
-
-    res.json({
-      success: true,
-      data: {
-        groupId,
-        inviterId,
-        requireApproval,
-        isInviterAdmin
-      }
-    })
-  } catch (error) {
-    console.error('获取邀请链接信息失败:', error)
-    res.status(500).json({ success: false, error: '获取邀请链接信息失败' })
   }
 })
 
