@@ -782,7 +782,13 @@ const displayMessages = computed(() => {
       senderId: msgSenderId,
       receiverId: String(msg.receiverId),
       status: (msg as any).status || 'sent',
-      error: (msg as any).error
+      error: (msg as any).error,
+      // 保留系统消息的额外字段
+      operatorId: (msg as any).operatorId,
+      operatorName: (msg as any).operatorName,
+      newGroupName: (msg as any).newGroupName,
+      removedUserIds: (msg as any).removedUserIds,
+      removedUserNames: (msg as any).removedUserNames
     }
   })
 })
