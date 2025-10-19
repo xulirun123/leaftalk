@@ -6515,14 +6515,22 @@ app.post('/api/groups/:groupId/remove-members', authenticateToken, async (req, r
 
     // 通知所有群成员成员数量变化（遍历每个成员单独发送）
     if (io) {
+      console.log('📢 准备通知群成员数量变化:', { groupId, memberCount, totalMembers: groupMembers.length })
       groupMembers.forEach(member => {
         const memberId = member.user_id
         const memberSocketId = userSockets.get(memberId)
+        console.log(`📤 尝试通知用户 ${memberId}:`, {
+          hasSocket: !!memberSocketId,
+          socketId: memberSocketId
+        })
         if (memberSocketId) {
           io.to(memberSocketId).emit('group-members-changed', {
             groupId,
             memberCount
           })
+          console.log(`✅ 已发送 group-members-changed 给用户 ${memberId}`)
+        } else {
+          console.log(`⚠️ 用户 ${memberId} 没有在线，跳过通知`)
         }
       })
       console.log('📢 已通知群成员：成员数量变化，当前成员数:', memberCount)

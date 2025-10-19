@@ -2127,36 +2127,36 @@ const loadChatInfo = async () => {
         }
       }
 
-      // 获取群成员数量并预加载到缓存（如果还没有从localStorage获取到）
+      // 优先从 localStorage 获取最新的成员数量（可能是实时更新的）
+      const savedMemberCount = localStorage.getItem(`group_member_count_${otherUserId}`)
+      if (savedMemberCount) {
+        memberCount = parseInt(savedMemberCount)
+        console.log('✅ 从 localStorage 获取成员数量:', memberCount)
+      }
+
+      // 如果 localStorage 中没有，则从 API 获取
       if (memberCount === 0) {
         try {
-          // 使用 getGroupMembers 预加载群成员数据到缓存
-          const members = await getGroupMembers(otherUserId)
-          memberCount = members.length
-          console.log('✅ 获取群成员数量并缓存:', memberCount)
-          console.log('✅ 群成员数据已缓存，包含群昵称信息')
-        } catch (error) {
-          console.warn('⚠️ 预加载群成员数据失败:', error)
-          // 降级方案：直接获取群成员数量
-          try {
-            const membersResponse = await fetch(`http://localhost:8893/api/groups/${otherUserId}/members`, {
-              headers: {
-                'Authorization': `Bearer ${authStore.token}`
-              }
-            })
-
-            if (membersResponse.ok) {
-              const membersResult = await membersResponse.json()
-              if (membersResult.success && membersResult.data) {
-                memberCount = membersResult.data.length
-                console.log('✅ 获取群成员数量（降级）:', memberCount)
-              }
-            } else if (membersResponse.status === 404) {
-              console.log('⚠️ 后端未找到群成员，使用 localStorage 中的成员数量')
+          // 直接调用 API 获取最新的群成员数量
+          const membersResponse = await fetch(`http://localhost:8893/api/groups/${otherUserId}/members`, {
+            headers: {
+              'Authorization': `Bearer ${authStore.token}`
             }
-          } catch (err) {
-            console.warn('⚠️ 降级方案也失败:', err)
+          })
+
+          if (membersResponse.ok) {
+            const membersResult = await membersResponse.json()
+            if (membersResult.success && membersResult.data) {
+              memberCount = membersResult.data.length
+              console.log('✅ 从 API 获取群成员数量:', memberCount)
+              // 保存到 localStorage
+              localStorage.setItem(`group_member_count_${otherUserId}`, String(memberCount))
+            }
+          } else if (membersResponse.status === 404) {
+            console.log('⚠️ 后端未找到群成员')
           }
+        } catch (error) {
+          console.warn('⚠️ 获取群成员数量失败:', error)
         }
       }
 
