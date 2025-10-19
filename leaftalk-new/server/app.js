@@ -6506,20 +6506,26 @@ app.post('/api/groups/:groupId/remove-members', authenticateToken, async (req, r
       })
     }
 
-    // 获取更新后的成员数量
+    // 获取更新后的成员数量和所有成员ID
     const [groupMembers] = await pool.execute(
-      'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
+      'SELECT user_id FROM `group_members` WHERE group_id = ?',
       [groupId]
     )
-    const memberCount = groupMembers[0].count
+    const memberCount = groupMembers.length
 
-    // 通知所有群成员成员数量变化
+    // 通知所有群成员成员数量变化（遍历每个成员单独发送）
     if (io) {
-      io.to(groupId).emit('group-members-changed', {
-        groupId,
-        memberCount
+      groupMembers.forEach(member => {
+        const memberId = member.user_id
+        const memberSocketId = userSockets.get(memberId)
+        if (memberSocketId) {
+          io.to(memberSocketId).emit('group-members-changed', {
+            groupId,
+            memberCount
+          })
+        }
       })
-      console.log('📢 已通知群成员：成员数量变化')
+      console.log('📢 已通知群成员：成员数量变化，当前成员数:', memberCount)
     }
 
     res.json({ success: true, message: '成员已移除', data: { memberCount } })
@@ -7493,18 +7499,24 @@ app.put('/api/groups/:groupId/join-requests/:requestId', authenticateToken, asyn
 
       console.log('✅ 进群申请已同意')
 
-      // 获取更新后的成员数量
+      // 获取更新后的成员数量和所有成员ID
       const [groupMembers] = await pool.execute(
-        'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
+        'SELECT user_id FROM `group_members` WHERE group_id = ?',
         [groupId]
       )
-      const memberCount = groupMembers[0].count
+      const memberCount = groupMembers.length
 
-      // 通知所有群成员成员数量变化
+      // 通知所有群成员成员数量变化（遍历每个成员单独发送）
       if (io) {
-        io.to(groupId).emit('group-members-changed', {
-          groupId,
-          memberCount
+        groupMembers.forEach(member => {
+          const memberId = member.user_id
+          const memberSocketId = userSockets.get(memberId)
+          if (memberSocketId) {
+            io.to(memberSocketId).emit('group-members-changed', {
+              groupId,
+              memberCount
+            })
+          }
         })
         console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
       }
@@ -7866,29 +7878,22 @@ app.post('/api/groups/join-by-invite', authenticateToken, async (req, res) => {
         [groupId]
       )
 
+      const memberCount = members.length
+
       members.forEach(member => {
         const memberId = member.user_id
         const userSocketId = userSockets.get(memberId)
         if (userSocketId) {
           io.to(userSocketId).emit('new_message', systemMessage)
+          // 同时发送成员数量变化事件
+          io.to(userSocketId).emit('group-members-changed', {
+            groupId,
+            memberCount
+          })
         }
       })
 
-      // 获取更新后的成员数量
-      const [groupMembers] = await pool.execute(
-        'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
-        [groupId]
-      )
-      const memberCount = groupMembers[0].count
-
-      // 通知所有群成员成员数量变化
-      if (io) {
-        io.to(groupId).emit('group-members-changed', {
-          groupId,
-          memberCount
-        })
-        console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
-      }
+      console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
 
       console.log('✅ 用户已直接加入群聊')
       res.json({
@@ -8182,29 +8187,22 @@ app.post('/api/groups/:groupId/invite-requests/:requestId/accept', authenticateT
       [groupId]
     )
 
+    const memberCount = members.length
+
     members.forEach(member => {
       const memberId = member.user_id
       const userSocketId = userSockets.get(memberId)
       if (userSocketId) {
         io.to(userSocketId).emit('new_message', systemMessage)
+        // 同时发送成员数量变化事件
+        io.to(userSocketId).emit('group-members-changed', {
+          groupId,
+          memberCount
+        })
       }
     })
 
-    // 获取更新后的成员数量
-    const [groupMembers] = await pool.execute(
-      'SELECT COUNT(*) as count FROM `group_members` WHERE group_id = ?',
-      [groupId]
-    )
-    const memberCount = groupMembers[0].count
-
-    // 通知所有群成员成员数量变化
-    if (io) {
-      io.to(groupId).emit('group-members-changed', {
-        groupId,
-        memberCount
-      })
-      console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
-    }
+    console.log('📢 已通知群成员：成员数量变化，新成员数:', memberCount)
 
     // 通知申请人审核通过
     const applicantSocketId = userSockets.get(applicantId)

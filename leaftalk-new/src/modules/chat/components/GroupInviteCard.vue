@@ -271,6 +271,8 @@ const closeDialog = () => {
 // 返回值：true = 需要审核，false = 不需要审核
 const checkIfNeedApproval = async (): Promise<boolean> => {
   try {
+    console.log('🔍 开始检查是否需要审核，邀请码:', inviteData.value.inviteCode)
+
     // 获取邀请链接信息
     const response = await fetch(`http://localhost:8893/api/groups/invite-link-info?inviteCode=${inviteData.value.inviteCode}`, {
       headers: { 'Authorization': `Bearer ${authStore.token}` }
@@ -279,28 +281,39 @@ const checkIfNeedApproval = async (): Promise<boolean> => {
       return { ok: false, status: 0 } as Response
     })
 
+    console.log('🔍 API响应状态:', response.status, response.ok)
+
     // 如果是 404 或网络错误，说明邀请码不存在或已过期，静默处理
     if (!response.ok || response.status === 404 || response.status === 0) {
       // 完全静默，不输出任何日志
       needApprovalForJoin.value = false
+      console.log('🔍 API响应失败，默认不需要审核')
       return false
     }
 
     const inviteLinks = await response.json()
+    console.log('🔍 API返回数据:', inviteLinks)
 
     if (inviteLinks.success && inviteLinks.data) {
       const { isInviterAdmin, requireApproval } = inviteLinks.data
       // 判断是否需要审核：邀请人是普通成员 + 群需要审核
       const needApproval = !isInviterAdmin && requireApproval
       needApprovalForJoin.value = needApproval
-      console.log('🔍 审核检查结果:', { needApproval, isInviterAdmin, requireApproval })
+      console.log('🔍 审核检查详细结果:', {
+        needApproval,
+        isInviterAdmin,
+        requireApproval,
+        计算逻辑: `!${isInviterAdmin} && ${requireApproval} = ${needApproval}`
+      })
       return needApproval
     }
 
     needApprovalForJoin.value = false
+    console.log('🔍 API返回数据无效，默认不需要审核')
     return false
   } catch (error) {
     // 静默处理所有错误
+    console.error('🔍 检查审核失败:', error)
     needApprovalForJoin.value = false
     return false
   }
