@@ -373,12 +373,13 @@ const setupEventListeners = () => {
       const { groupId, operatorName } = payload || {}
 
       if (groupId) {
-        // 删除本地群聊项
-        chatStore.deleteChatItem(groupId).then(() => {
-          console.log('✅ 被踢出群聊，已删除本地群聊项:', groupId)
-        }).catch(err => {
-          console.warn('⚠️ 删除群聊项失败:', err)
-        })
+        // 不删除聊天项，保留消息历史
+        // 只标记用户已被移除，禁止发送新消息
+        console.log('🚫 用户已被移除群聊，保留消息历史:', groupId)
+
+        // 可以在这里添加一个标记，表示用户已被移除
+        // 例如：localStorage.setItem(`removed_from_group_${groupId}`, 'true')
+        // 这样在发送消息时可以检查这个标记，禁止发送
       }
     } catch (error) {
       console.error('❌ 处理 removed_from_group 事件失败:', error)
