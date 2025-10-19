@@ -216,9 +216,23 @@ const handleCardClick = async () => {
     console.log('✅ 不是群成员，弹出确认对话框')
     // 设置默认申请理由
     joinReason.value = defaultJoinReason.value
-    // 检查是否需要审核（如果邀请码存在）
-    const approvalCheckSuccess = await checkIfNeedApproval()
-    // 即使邀请码不存在，也显示对话框让用户尝试加入
+
+    // 检查邀请码是否过期（从邀请码中提取时间戳）
+    const inviteCodeTimestamp = parseInt(inviteData.value.inviteCode.split('_')[1])
+    const now = Date.now()
+    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000
+    const isExpired = (now - inviteCodeTimestamp) > sevenDaysInMs
+
+    if (!isExpired) {
+      // 邀请码未过期，检查是否需要审核
+      await checkIfNeedApproval()
+    } else {
+      // 邀请码已过期，默认不需要审核
+      console.log('ℹ️ 邀请码已过期，跳过审核检查')
+      needApprovalForJoin.value = false
+    }
+
+    // 显示对话框让用户尝试加入
     showDialog.value = true
   } else if (cardStatus.value === 'approved') {
     // 审核通过：进入群聊
