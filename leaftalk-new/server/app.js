@@ -7646,7 +7646,10 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
 
     // 发送邀请卡片给每个被邀请人
     for (const inviteeId of inviteeIds) {
-      const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      // 生成消息ID和时间戳（确保每条消息的时间戳递增）
+      const now = Date.now()
+      const messageId = `msg_${now}_${Math.random().toString(36).substr(2, 9)}`
+      const timestamp = new Date(now).toISOString()
 
       // 获取被邀请人信息
       const [inviteeInfo] = await pool.execute(
@@ -7664,10 +7667,10 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
 
       const messageContent = JSON.stringify(inviteCardWithInvitee)
 
-      // 保存消息到数据库
+      // 保存消息到数据库（使用统一的时间戳）
       await pool.execute(
-        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-        [messageId, inviterId, inviteeId, messageContent, 'group_invite']
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [messageId, inviterId, inviteeId, messageContent, 'group_invite', new Date(now)]
       )
 
       // 通过WebSocket发送给被邀请人
@@ -7679,7 +7682,7 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
           receiverId: inviteeId,
           content: messageContent,
           type: 'group_invite',
-          timestamp: new Date().toISOString()
+          timestamp: timestamp
         }
         console.log('📤 发送群邀请消息给被邀请人:', JSON.stringify(messageToSend))
         io.to(inviteeSocketId).emit('new_message', messageToSend)
@@ -7694,12 +7697,15 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
           receiverId: inviteeId,
           content: messageContent,
           type: 'group_invite',
-          timestamp: new Date().toISOString(),
+          timestamp: timestamp,
           isOwn: true // 标记为自己发送的消息
         }
         console.log('📤 发送群邀请消息给邀请人:', JSON.stringify(messageToSend))
         io.to(inviterSocketId).emit('new_message', messageToSend)
       }
+
+      // 添加小延迟，确保下一条消息的时间戳更大
+      await new Promise(resolve => setTimeout(resolve, 10))
     }
 
     res.json({
