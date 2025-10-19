@@ -214,8 +214,6 @@ const handleCardClick = async () => {
   } else if (cardStatus.value === 'pending') {
     // 待处理：弹出确认对话框
     console.log('✅ 不是群成员，弹出确认对话框')
-    // 设置默认申请理由
-    joinReason.value = defaultJoinReason.value
     // 检查是否需要审核
     await checkIfNeedApproval()
     showDialog.value = true
