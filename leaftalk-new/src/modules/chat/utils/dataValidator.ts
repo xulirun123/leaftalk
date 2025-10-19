@@ -158,19 +158,31 @@ export class DataValidator {
       errors.push('消息ID无效')
     }
 
-    if (!message.senderId || typeof message.senderId !== 'string') {
+    // senderId 可以是字符串或数字（系统消息的 senderId 是 0）
+    if (message.senderId === undefined || message.senderId === null) {
       errors.push('发送者ID无效')
+    } else if (typeof message.senderId !== 'string' && typeof message.senderId !== 'number') {
+      errors.push('发送者ID类型无效')
     }
 
-    if (!message.receiverId || typeof message.receiverId !== 'string') {
+    // receiverId 可以是字符串或数字
+    if (message.receiverId === undefined || message.receiverId === null) {
       errors.push('接收者ID无效')
+    } else if (typeof message.receiverId !== 'string' && typeof message.receiverId !== 'number') {
+      errors.push('接收者ID类型无效')
     }
 
     if (typeof message.content !== 'string') {
       errors.push('消息内容无效')
     }
 
-    if (message.type && !['text', 'image', 'voice', 'video', 'file'].includes(message.type)) {
+    // 允许的消息类型：文本、图片、语音、视频、文件、系统消息、群邀请、红包、转账等
+    const validTypes = [
+      'text', 'image', 'voice', 'video', 'file',
+      'system', 'group_invite', 'red_packet', 'transfer',
+      'location', 'contact', 'link', 'emoji'
+    ]
+    if (message.type && !validTypes.includes(message.type)) {
       errors.push('消息类型无效')
     }
 
