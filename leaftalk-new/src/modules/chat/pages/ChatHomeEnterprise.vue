@@ -184,6 +184,13 @@ const chats = computed(() => {
       return true
     })
     .map((session: any) => {
+      // 提取 lastMessageType
+      if (session.lastMessage && typeof session.lastMessage === 'object' && session.lastMessage.type) {
+        session.lastMessageType = session.lastMessage.type
+      } else if (!session.lastMessageType) {
+        session.lastMessageType = 'text'
+      }
+
       // 处理群聊备注和名称
       if (session.type === 'group' || session.id.startsWith('group_')) {
         // 从localStorage获取最新的成员数量
