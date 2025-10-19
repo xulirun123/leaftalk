@@ -1192,6 +1192,18 @@ const handleRemarkChanged = (event: any) => {
   }
 }
 
+// 处理群成员变化事件
+const handleGroupMembersChanged = async (event: any) => {
+  const { groupId, memberCount } = event.detail || {}
+  const currentGroupId = route.params.id as string
+
+  if (groupId === currentGroupId) {
+    console.log('👥 检测到群成员变化:', { groupId, memberCount })
+    // 重新加载群信息以更新成员列表和数量
+    await loadGroupInfo()
+  }
+}
+
 onMounted(async () => {
   console.log('🔄 GroupInfo 页面已挂载')
   try {
@@ -1226,6 +1238,9 @@ onMounted(async () => {
   // 监听群备注更新事件
   window.addEventListener('group-remark-changed', handleRemarkChanged)
 
+  // 监听群成员变化事件
+  window.addEventListener('group-members-changed', handleGroupMembersChanged)
+
   // 监听权限设置变化事件
   window.addEventListener('group-name-edit-permission-changed', handlePermissionChanged)
 })
@@ -1259,6 +1274,7 @@ onUnmounted(() => {
   window.removeEventListener('group-nickname-changed', handleNicknameChanged)
   window.removeEventListener('group-name-changed', handleGroupNameChanged)
   window.removeEventListener('group-remark-changed', handleRemarkChanged)
+  window.removeEventListener('group-members-changed', handleGroupMembersChanged)
   window.removeEventListener('group-name-edit-permission-changed', handlePermissionChanged)
 })
 </script>
