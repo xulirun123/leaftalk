@@ -216,8 +216,9 @@ const handleCardClick = async () => {
     console.log('✅ 不是群成员，弹出确认对话框')
     // 设置默认申请理由
     joinReason.value = defaultJoinReason.value
-    // 检查是否需要审核
-    await checkIfNeedApproval()
+    // 检查是否需要审核（如果邀请码存在）
+    const approvalCheckSuccess = await checkIfNeedApproval()
+    // 即使邀请码不存在，也显示对话框让用户尝试加入
     showDialog.value = true
   } else if (cardStatus.value === 'approved') {
     // 审核通过：进入群聊
@@ -244,7 +245,7 @@ const closeDialog = () => {
 }
 
 // 检查是否需要审核
-const checkIfNeedApproval = async () => {
+const checkIfNeedApproval = async (): Promise<boolean> => {
   try {
     // 获取邀请链接信息
     const response = await fetch(`http://localhost:8893/api/groups/invite-link-info?inviteCode=${inviteData.value.inviteCode}`, {
@@ -258,14 +259,18 @@ const checkIfNeedApproval = async () => {
       // 判断是否需要审核：邀请人是普通成员 + 群需要审核
       needApprovalForJoin.value = !isInviterAdmin && requireApproval
       console.log('🔍 是否需要审核:', needApprovalForJoin.value, { isInviterAdmin, requireApproval })
+      return true
     } else if (response.status === 404) {
-      // 邀请码不存在，可能已过期
-      console.warn('⚠️ 邀请码不存在或已过期')
+      // 邀请码不存在，可能已过期，但仍然允许用户尝试加入
+      console.warn('⚠️ 邀请码不存在或已过期，将尝试直接加入')
       needApprovalForJoin.value = false
+      return false
     }
+    return false
   } catch (error) {
     console.error('❌ 检查审核状态失败:', error)
     needApprovalForJoin.value = false
+    return false
   }
 }
 
