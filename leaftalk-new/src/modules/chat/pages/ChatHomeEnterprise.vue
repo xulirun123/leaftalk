@@ -334,6 +334,26 @@ const formatLastMessage = (chat: any) => {
   const message = chat.lastMessage
   if (!message) return '暂无消息'
 
+  // 🔥 优先根据 lastMessageType 格式化消息
+  if (chat.lastMessageType) {
+    if (chat.lastMessageType === 'image') return '[图片]'
+    if (chat.lastMessageType === 'voice') return '[语音]'
+    if (chat.lastMessageType === 'video') return '[视频]'
+    if (chat.lastMessageType === 'file') return '[文件]'
+    if (chat.lastMessageType === 'location') return '[位置]'
+    if (chat.lastMessageType === 'custom_emoji') return '[动画表情]'
+    if (chat.lastMessageType === 'group_invite') return '[链接] 群聊邀请'
+    if (chat.lastMessageType === 'system_notification') {
+      // 解析系统通知内容
+      try {
+        const notificationData = JSON.parse(message)
+        return `[系统通知] ${notificationData.title || '通知'}`
+      } catch (error) {
+        return '[系统通知]'
+      }
+    }
+  }
+
   // 判断是否是群聊
   const isGroupChat = chat.type === 'group' || (chat.id && String(chat.id).startsWith('group_'))
 
