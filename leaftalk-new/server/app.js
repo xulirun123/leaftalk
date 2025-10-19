@@ -7556,20 +7556,22 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
       // 通过WebSocket发送给被邀请人
       const inviteeSocketId = userSockets.get(inviteeId)
       if (inviteeSocketId) {
-        io.to(inviteeSocketId).emit('new_message', {
+        const messageToSend = {
           id: messageId,
           senderId: inviterId,
           receiverId: inviteeId,
           content: messageContent,
           type: 'group_invite',
           timestamp: new Date().toISOString()
-        })
+        }
+        console.log('📤 发送群邀请消息给被邀请人:', JSON.stringify(messageToSend))
+        io.to(inviteeSocketId).emit('new_message', messageToSend)
       }
 
       // 同时发送给邀请人自己（让邀请人也能看到发送的邀请卡片）
       const inviterSocketId = userSockets.get(inviterId)
       if (inviterSocketId) {
-        io.to(inviterSocketId).emit('new_message', {
+        const messageToSend = {
           id: messageId,
           senderId: inviterId,
           receiverId: inviteeId,
@@ -7577,7 +7579,9 @@ app.post('/api/groups/:groupId/invite-request', authenticateToken, async (req, r
           type: 'group_invite',
           timestamp: new Date().toISOString(),
           isOwn: true // 标记为自己发送的消息
-        })
+        }
+        console.log('📤 发送群邀请消息给邀请人:', JSON.stringify(messageToSend))
+        io.to(inviterSocketId).emit('new_message', messageToSend)
       }
     }
 
