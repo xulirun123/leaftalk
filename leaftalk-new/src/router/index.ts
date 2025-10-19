@@ -992,6 +992,17 @@ const routes = [
     }
   },
   {
+    path: '/group-info/:id',
+    name: 'GroupInfo',
+    component: () => import('../modules/chat/pages/GroupInfo.vue'),
+    meta: {
+      title: '群聊信息',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
     path: '/group-members/:id',
     name: 'GroupMembersPage',
     component: () => import('../modules/chat/pages/GroupMembers.vue'),
@@ -1010,7 +1021,10 @@ const routes = [
       title: '群聊名称',
       requiresAuth: true,
       keepAlive: false,
-      hideTabBar: true
+      hideTabBar: true,
+      hideTopBar: false,
+      showBack: true,
+      topBarTitle: '修改群名称'
     }
   },
   {
@@ -1018,11 +1032,13 @@ const routes = [
     name: 'EditGroupRemark',
     component: () => import('../modules/chat/pages/EditGroupRemark.vue'),
     meta: {
-      title: '',
+      title: '修改群备注',
       requiresAuth: true,
       keepAlive: false,
-      hideTopBar: true,
-      hideTabBar: true
+      hideTopBar: false,
+      hideTabBar: true,
+      showBack: true,
+      topBarTitle: '修改群备注'
     }
   },
   {
@@ -1033,8 +1049,10 @@ const routes = [
       title: '设置我在本群的昵称',
       requiresAuth: true,
       keepAlive: false,
-      hideTopBar: true,
-      hideTabBar: true
+      hideTopBar: false,
+      hideTabBar: true,
+      showBack: true,
+      topBarTitle: '修改我在本群的昵称'
     }
   },
   {
@@ -1045,8 +1063,9 @@ const routes = [
       title: '群公告',
       requiresAuth: true,
       keepAlive: false,
-      showBack: false,
-      hideTopBar: true
+      showBack: true,
+      hideTopBar: false,
+      topBarTitle: '群公告'
     }
   },
   {
@@ -1056,9 +1075,10 @@ const routes = [
     meta: {
       title: '群管理',
       requiresAuth: true,
-      keepAlive: false,
-      showBack: false,
-      hideTopBar: true
+      keepAlive: true,
+      showBack: true,
+      hideTopBar: false,
+      topBarTitle: '群管理'
     }
   },
   {
@@ -1069,8 +1089,9 @@ const routes = [
       title: '群管理员',
       requiresAuth: true,
       keepAlive: false,
-      showBack: false,
-      hideTopBar: true
+      showBack: true,
+      hideTopBar: false,
+      topBarTitle: '群管理员'
     }
   },
   {
@@ -1081,8 +1102,9 @@ const routes = [
       title: '添加管理员',
       requiresAuth: true,
       keepAlive: false,
-      showBack: false,
-      hideTopBar: true
+      showBack: true,
+      hideTopBar: false,
+      topBarTitle: '添加管理员'
     }
   },
   {
@@ -1094,7 +1116,9 @@ const routes = [
       requiresAuth: true,
       keepAlive: false,
       hideTabBar: true,
-      hideTopBar: true
+      hideTopBar: false,
+      showBack: true,
+      topBarTitle: '群二维码'
     }
   },
   {
@@ -1106,7 +1130,9 @@ const routes = [
       requiresAuth: true,
       keepAlive: false,
       hideTabBar: true,
-      hideTopBar: true
+      hideTopBar: false,
+      showBack: true,
+      topBarTitle: '邀请进群申请'
     }
   },
   {
@@ -1142,11 +1168,12 @@ const routes = [
     name: 'GroupInviteRequests',
     component: () => import('../modules/chat/pages/GroupInviteRequests.vue'),
     meta: {
-      title: '邀请好友进群',
+      title: '群聊邀请申请',
       requiresAuth: true,
       keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true
+      showBack: true,
+      hideTopBar: false,
+      topBarTitle: '群聊邀请申请'
     }
   },
   {
@@ -1169,8 +1196,9 @@ const routes = [
       title: '选择新群主',
       requiresAuth: true,
       keepAlive: false,
-      showBack: false,
-      hideTopBar: true
+      showBack: true,
+      hideTopBar: false,
+      topBarTitle: '选择新群主'
     }
   },
   {
@@ -1760,11 +1788,12 @@ const routes = [
   {
     path: '/group-chats',
     name: 'GroupChats',
-    component: () => import('../modules/chat/pages/StartGroupChat.vue'),
+    component: () => import('../modules/chat/pages/CreateGroup.vue'),
     meta: {
-      title: '群聊',
+      title: '发起群聊',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTabBar: true
     }
   },
   {
@@ -1797,8 +1826,7 @@ const routes = [
       title: '发起群聊',
       requiresAuth: true,
       keepAlive: false,
-      hideTabBar: true,
-      hideTopBar: true  // 隐藏外层导航栏，使用组件内部的导航栏
+      hideTabBar: true
     }
   },
   {
@@ -1817,31 +1845,11 @@ const routes = [
 
 
   {
-    path: '/group/:id',
-    name: 'GroupInfo',
-    component: () => import('../modules/chat/pages/GroupInfo.vue'),
-    meta: {
-      title: '群聊信息',
-      requiresAuth: true,
-      keepAlive: false
-    }
-  },
-  {
     path: '/my-groups',
     name: 'MyGroups',
     component: () => import('../modules/chat/pages/MyGroups.vue'),
     meta: {
       title: '我的群组',
-      requiresAuth: true,
-      keepAlive: false
-    }
-  },
-  {
-    path: '/chat-info/:id',
-    name: 'ChatInfo',
-    component: () => import('../modules/chat/pages/ChatInfo.vue'),
-    meta: {
-      title: '聊天信息',
       requiresAuth: true,
       keepAlive: false
     }
@@ -1939,11 +1947,12 @@ const routes = [
   {
     path: '/group/:id',
     name: 'GroupChat',
-    component: () => import('../modules/chat/pages/GroupChat.vue'),
+    component: () => import('../modules/chat/pages/ChatSimple.vue'),
     meta: {
       title: '群聊',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTabBar: true
     }
   },
   {
@@ -1960,11 +1969,12 @@ const routes = [
   {
     path: '/start-group-chat',
     name: 'StartGroupChat',
-    component: () => import('../modules/chat/pages/StartGroupChat.vue'),
+    component: () => import('../modules/chat/pages/CreateGroup.vue'),
     meta: {
       title: '发起群聊',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTabBar: true
     }
   },
 

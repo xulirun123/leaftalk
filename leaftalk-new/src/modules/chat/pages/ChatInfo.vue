@@ -215,7 +215,11 @@ const loadSessionSettings = async () => {
     const authStore = useAuthStore()
 
     const currentUserId = String(authStore.user?.id || '')
-    const sessionId = chatStore.generateSessionId(currentUserId, userId)
+    // 🛡️ 判断是否为群聊
+    const isGroupChat = String(userId).startsWith('group_')
+    const sessionId = isGroupChat
+      ? String(userId)
+      : chatStore.generateSessionId(currentUserId, userId)
 
     console.log('📋 加载会话设置，sessionId:', sessionId)
 
@@ -310,7 +314,11 @@ const searchHistory = async () => {
   const authStore = useAuthStore()
 
   const currentUserId = String(authStore.user?.id || '')
-  const sessionId = chatStore.generateSessionId(currentUserId, userId)
+  // 🛡️ 判断是否为群聊
+  const isGroupChat = String(userId).startsWith('group_')
+  const sessionId = isGroupChat
+    ? String(userId)
+    : chatStore.generateSessionId(currentUserId, userId)
 
   console.log('🔍 跳转到搜索页面，sessionId:', sessionId)
   router.push(`/chat-search/${sessionId}`)
@@ -379,11 +387,7 @@ const handleImageError = (event: Event) => {
   min-height: 100vh;
   background: #E5E5E5;
   overflow-y: auto;
-  position: absolute;
-  top: 65px; /* 从顶部导航栏下方开始，间距为0 */
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* 移除 position: absolute 和 top，使用正常文档流 */
 }
 
 .user-section {
@@ -464,8 +468,12 @@ const handleImageError = (event: Event) => {
   padding: 0 16px;
   cursor: pointer;
   transition: background-color 0.2s;
-  font-size: 16px;
+  font-size: 14px; /* 修改为14px */
   color: #333;
+}
+
+.setting-item .setting-label {
+  font-size: 14px; /* 确保标签文本也是14px */
 }
 
 .setting-item:hover {

@@ -165,11 +165,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '../../../shared/stores/appStore'
+import { useAuthStore } from '../../../stores/auth'
 import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
 
 const router = useRouter()
 const route = useRoute()
 const appStore = useAppStore()
+const authStore = useAuthStore()
 
 // 响应式数据
 const searchKeyword = ref('')
@@ -192,47 +194,9 @@ const memberCategories = [
 // 群信息和成员数据
 const groupInfo = ref({
   id: route.params.groupId,
-  name: '家族群聊',
-  memberCount: 25,
-  members: [
-    { 
-      id: 'user1', 
-      name: '张三', 
-      avatar: '/avatar1.jpg',
-      role: 'owner',
-      isOnline: true,
-      lastSeen: new Date(),
-      joinTime: Date.now() - 86400000 * 30 
-    },
-    { 
-      id: 'user2', 
-      name: '李四', 
-      avatar: '/avatar2.jpg',
-      role: 'admin',
-      isOnline: false,
-      lastSeen: new Date(Date.now() - 3600000),
-      joinTime: Date.now() - 86400000 * 25 
-    },
-    { 
-      id: 'user3', 
-      name: '王五', 
-      avatar: '/avatar3.jpg',
-      role: 'admin',
-      isOnline: true,
-      lastSeen: new Date(),
-      joinTime: Date.now() - 86400000 * 20 
-    },
-    // 添加更多成员数据...
-    ...Array.from({ length: 22 }, (_, i) => ({
-      id: `user${i + 4}`,
-      name: `成员${i + 1}`,
-      avatar: `/avatar${(i % 10) + 1}.jpg`,
-      role: 'member',
-      isOnline: Math.random() > 0.5,
-      lastSeen: new Date(Date.now() - Math.random() * 86400000 * 7),
-      joinTime: Date.now() - Math.random() * 86400000 * 30
-    }))
-  ]
+  name: '群聊',
+  memberCount: 0,
+  members: []
 })
 
 // 计算属性
@@ -388,8 +352,50 @@ const removeMember = () => {
   hideActionSheet()
 }
 
-onMounted(() => {
-  console.log('群成员页面加载:', route.params.groupId)
+onMounted(async () => {
+  const groupId = route.params.groupId as string
+  console.log('群成员页面加载:', groupId)
+
+  try {
+    // 获取群成员列表
+    const membersResponse = await fetch(`http://localhost:8893/api/groups/${groupId}/members`, {
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (membersResponse.ok) {
+      const membersResult = await membersResponse.json()
+      console.log('✅ 获取群成员成功:', membersResult)
+
+      if (membersResult.success && membersResult.data) {
+        const members = membersResult.data.map((member: any) => ({
+          id: member.id,
+          name: member.nickname || member.username || '未知用户',
+          avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.id}`,
+          role: member.role || 'member',
+          isOnline: false,
+          lastSeen: new Date(),
+          joinTime: member.joined_at ? new Date(member.joined_at).getTime() : Date.now()
+        }))
+
+        groupInfo.value.members = members
+        groupInfo.value.memberCount = members.length
+
+        // 获取当前用户的角色
+        const currentUserId = authStore.user?.id
+        const currentMember = members.find((m: any) => String(m.id) === String(currentUserId))
+        if (currentMember) {
+          currentUserRole.value = currentMember.role
+        }
+
+        console.log('✅ 成员列表已加载:', members)
+      }
+    }
+  } catch (error) {
+    console.error('❌ 加载群成员失败:', error)
+    appStore.showToast('加载群成员失败', 'error')
+  }
 })
 </script>
 

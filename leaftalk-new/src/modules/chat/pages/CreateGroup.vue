@@ -1,14 +1,36 @@
 <template>
   <div class="create-group-page">
+    <!-- 使用全局 MobileTopBar -->
+    <MobileTopBar
+      title="发起群聊"
+      :showBack="true"
+      :rightButtons="rightButtons"
+      @back="goBack"
+      @buttonClick="handleButtonClick"
+    />
+
     <!-- 搜索框 -->
     <div class="search-container">
-      <iconify-icon icon="heroicons:magnifying-glass" width="16" class="search-icon"></iconify-icon>
-      <input
-        v-model="searchQuery"
-        type="text"
-        placeholder="搜索"
-        class="search-input"
-      />
+      <div class="search-box">
+        <!-- 已选择的联系人头像 -->
+        <div v-if="selectedMembers.length > 0" class="selected-avatars">
+          <img
+            v-for="member in selectedMembers"
+            :key="member.id"
+            :src="member.avatar"
+            :alt="member.name"
+            class="selected-avatar"
+          />
+        </div>
+
+        <!-- 搜索输入框（无图标） -->
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="搜索"
+          class="search-input"
+        />
+      </div>
     </div>
 
     <!-- 面对面建群 -->
@@ -79,11 +101,17 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '../stores/chatStore'
+import { useAuthStore } from '@/stores/auth'
+import { useAppStore } from '@/shared/stores/appStore'
 import { contactsApi } from '../../contacts/services/contactsApi'
+import { GroupAvatarGenerator } from '@/shared/utils/groupAvatarGenerator'
+import MobileTopBar from '@/shared/components/mobile/MobileTopBar.vue'
 import pinyin from 'pinyin'
 
 const router = useRouter()
 const chatStore = useChatStore()
+const authStore = useAuthStore()
+const appStore = useAppStore()
 const eventBus = inject('eventBus')
 
 // 响应式数据
@@ -101,6 +129,33 @@ const hasStarred = computed(() => {
   return contacts.value.some((c: any) => c.isStarred)
 })
 
+// 顶部导航栏右侧按钮
+const rightButtons = computed(() => {
+  const count = selectedMembers.value.length
+  return [{
+    text: count > 0 ? `完成(${count})` : '完成',
+    action: 'confirm',
+    disabled: !canCreate.value
+  }]
+})
+
+// 返回上一页
+const goBack = () => {
+  console.log('🔙 发起群聊页面返回')
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/contacts')
+  }
+}
+
+// 处理顶部导航栏按钮点击
+const handleButtonClick = (button: any) => {
+  if (button.action === 'confirm') {
+    createGroup()
+  }
+}
+
 // 跳转到面对面建群
 const goToFaceToFace = () => {
   router.push('/face-to-face-add')
@@ -109,22 +164,33 @@ const goToFaceToFace = () => {
 // 获取当前用户信息
 const getCurrentUserInfo = () => {
   try {
-    const userInfo = localStorage.getItem('user_info')
-    if (userInfo) {
-      const user = JSON.parse(userInfo)
-      return {
-        id: user.id || 'current-user',
-        name: user.name || '当前用户',
-        username: user.username || 'current'
+    // 尝试多个可能的存储键名
+    const keys = ['yeyu_user_info', 'yeyu_user', 'user', 'user_info']
+    for (const key of keys) {
+      const userInfo = localStorage.getItem(key)
+      if (userInfo) {
+        const user = JSON.parse(userInfo)
+        if (user.id) {
+          return {
+            id: user.id.toString(),
+            name: user.nickname || user.name || user.username || '当前用户',
+            username: user.username || user.yeyu_id || 'current',
+            avatar: user.avatar
+          }
+        }
       }
     }
   } catch (error) {
     console.error('获取用户信息失败:', error)
   }
+
+  // 如果都没有找到，返回默认值
+  console.warn('⚠️ 未找到用户信息，使用默认值')
   return {
-    id: 'current-user',
+    id: 'user_' + Date.now(),
     name: '当前用户',
-    username: 'current'
+    username: 'current',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=current'
   }
 }
 
@@ -305,53 +371,155 @@ const removeMember = (contactId: string) => {
   }
 }
 
-const createGroup = () => {
+const createGroup = async () => {
   if (!canCreate.value) return
 
-  // 生成默认群聊名称
-  const memberNames = selectedMembers.value.slice(0, 3).map(m => m.name).join('、')
-  const defaultGroupName = `${memberNames}${selectedMembers.value.length > 3 ? '等' : ''}的群聊`
-
-  // 生成群聊ID和头像
-  const groupId = 'group_' + Date.now()
-
-  // 创建群聊对象
-  const newGroup = {
-    id: groupId,
-    name: defaultGroupName,
-    members: [
-      getCurrentUserInfo(), // 当前用户
-      ...selectedMembers.value
-    ],
-    avatar: generateGroupAvatar(),
-    createdAt: Date.now(),
-    type: 'group'
-  }
-
-  console.log('创建群聊:', newGroup)
-
-  // 保存群聊到localStorage（群组数据，不是聊天列表）
   try {
-    const existingGroups = JSON.parse(localStorage.getItem('leaftalk_groups') || '[]')
-    existingGroups.push(newGroup)
-    localStorage.setItem('leaftalk_groups', JSON.stringify(existingGroups))
-    console.log('✅ 群聊已保存到群组列表:', newGroup)
+    // 1️⃣ 生成群聊ID
+    const groupId = 'group_' + Date.now()
+    console.log('📝 生成群聊ID:', groupId)
+
+    // 2️⃣ 获取当前用户信息
+    const currentUser = getCurrentUserInfo()
+    console.log('👤 当前用户:', currentUser)
+
+    // 3️⃣ 生成群聊名称
+    const memberNames = selectedMembers.value.slice(0, 3).map(m => m.name).join('、')
+    const groupName = `${memberNames}${selectedMembers.value.length > 3 ? '等' : ''}的群聊`
+    console.log('📛 群聊名称:', groupName)
+
+    // 4️⃣ 生成群聊头像（异步操作）
+    const groupAvatar = await generateGroupAvatar()
+    console.log('🖼️ 群聊头像生成完成')
+
+    // 5️⃣ 构建成员列表（包括当前用户）
+    const members = [
+      {
+        id: currentUser.id,
+        name: currentUser.name,
+        avatar: currentUser.avatar
+      },
+      ...selectedMembers.value
+    ]
+    console.log('👥 成员列表:', members)
+
+    // 6️⃣ 调用后端API创建群聊
+    console.log('📡 调用后端API创建群聊...')
+    const response = await fetch('http://localhost:8893/api/groups/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      },
+      body: JSON.stringify({
+        id: groupId,
+        name: groupName,
+        title: groupName,
+        avatar: groupAvatar,
+        creatorId: currentUser.id,
+        members: members.map(m => ({
+          id: m.id,
+          name: m.name,
+          avatar: m.avatar
+        }))
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || '创建群聊失败')
+    }
+
+    const result = await response.json()
+    console.log('✅ 后端创建群聊成功:', result)
+
+    // 7️⃣ 创建本地聊天会话对象
+    const participantIds = members.map(m => m.id)
+    const chatSession = {
+      id: groupId,
+      type: 'group',
+      name: groupName,
+      avatar: groupAvatar,
+      participants: participantIds,
+      lastMessage: '你创建了群聊',
+      lastMessageTime: Date.now(),
+      unreadCount: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isPinned: false
+    }
+    console.log('✅ 本地聊天会话对象:', chatSession)
+
+    // 8️⃣ 保存到 chatStore
+    if (chatStore && chatStore.sessions) {
+      chatStore.sessions.unshift(chatSession)
+      console.log('✅ 已添加到 chatStore.sessions')
+
+      if (typeof chatStore.saveToCache === 'function') {
+        chatStore.saveToCache()
+        console.log('✅ 已保存到 chatStore 缓存')
+      }
+    }
+
+    // 9️⃣ 保存到 localStorage（备份）
+    try {
+      const existingChats = JSON.parse(localStorage.getItem('leaftalk_chats') || '[]')
+      existingChats.unshift(chatSession)
+      localStorage.setItem('leaftalk_chats', JSON.stringify(existingChats))
+      console.log('✅ 已保存到 localStorage')
+    } catch (error) {
+      console.error('⚠️ 保存到 localStorage 失败:', error)
+    }
+
+    // 🔟 跳转到群聊页面
+    console.log('🚀 跳转到群聊页面:', `/group/${groupId}`)
+    router.push(`/group/${groupId}`)
+
   } catch (error) {
-    console.error('❌ 保存群聊失败:', error)
+    console.error('❌ 创建群聊失败:', error)
+    appStore.showToast(error instanceof Error ? error.message : '创建群聊失败', 'error')
   }
-
-  // 显示成功消息
-  alert(`群聊 "${defaultGroupName}" 创建成功！请在通讯录-我的群组中查看。`)
-
-  // 返回通讯录页面
-  router.push('/contacts')
 }
 
-// 生成群聊头像（简单版本）
-const generateGroupAvatar = () => {
-  // 使用第一个成员的头像作为群聊头像
-  const firstMember = selectedMembers.value[0]
-  return firstMember?.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=group'
+// 生成群聊头像（组合成员头像）
+const generateGroupAvatar = async () => {
+  try {
+    // 获取当前用户信息
+    const currentUser = getCurrentUserInfo()
+
+    // 构建成员列表（包括当前用户）
+    const members = [
+      {
+        id: currentUser.id,
+        name: currentUser.name,
+        avatar: currentUser.avatar,
+        joinTime: Date.now()
+      },
+      ...selectedMembers.value.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        avatar: m.avatar,
+        joinTime: Date.now()
+      }))
+    ]
+
+    console.log('🎨 生成群聊头像，成员数:', members.length)
+
+    // 使用 GroupAvatarGenerator 生成组合头像
+    const groupAvatar = await GroupAvatarGenerator.generateGroupAvatar(members, {
+      size: 36,
+      backgroundColor: '#f0f0f0',
+      borderColor: '#ffffff',
+      borderWidth: 0
+    })
+
+    console.log('✅ 群聊头像生成成功')
+    return groupAvatar
+  } catch (error) {
+    console.error('❌ 生成群聊头像失败:', error)
+    // 返回默认头像
+    return 'https://api.dicebear.com/7.x/avataaars/svg?seed=group'
+  }
 }
 
 // 组件挂载时加载联系人
@@ -369,13 +537,13 @@ onMounted(() => {
   position: relative;
 }
 
-/* 搜索框 */
+/* 搜索框容器 */
 .search-container {
   position: fixed;
-  top: 65px; /* 状态栏25px + 导航栏40px，与顶部导航栏间距为0 */
+  top: 65px; /* 状态栏25px + 导航栏40px = 65px，间距为0 */
   left: 0;
   right: 0;
-  height: 36px;
+  height: 42px; /* 容器高度42px */
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -384,10 +552,31 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.search-icon {
-  color: #999;
+/* 搜索框 */
+.search-box {
+  flex: 1;
+  height: 30px; /* 搜索框高度30px */
+  background: #F5F5F5;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 6px;
+}
+
+/* 已选择的联系人头像 */
+.selected-avatars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
-  margin-right: 8px;
+}
+
+.selected-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 2px; /* 方形，轻微圆角 */
+  object-fit: cover;
 }
 
 .search-input {
@@ -397,12 +586,14 @@ onMounted(() => {
   outline: none;
   background: transparent;
   height: 100%;
+  min-width: 60px;
+  padding-left: 8px;
 }
 
 /* 面对面建群 */
 .face-to-face-item {
   position: fixed;
-  top: 107px; /* 65px + 36px + 6px */
+  top: 107px; /* 65px + 42px */
   left: 0;
   right: 0;
   height: 36px;
@@ -439,7 +630,7 @@ onMounted(() => {
 /* 联系人列表 */
 .contact-list {
   position: fixed;
-  top: 143px; /* 65px + 36px + 6px + 36px */
+  top: 143px; /* 65px + 42px + 36px */
   left: 0;
   right: 0;
   bottom: 0;

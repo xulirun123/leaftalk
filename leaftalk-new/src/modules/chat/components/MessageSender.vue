@@ -88,7 +88,12 @@ const sendMessage = async (messageData: MessageData) => {
     // 在发送前检查是否已存在会话，用于抑制重复“开始新的聊天”提示
     let existedBefore = false
     try {
-      const preSessionId = chatStore.generateSessionId(currentUserId, String(props.receiverId))
+      // 🛡️ 判断是否为群聊消息
+      const isGroupMessage = String(props.receiverId).startsWith('group_')
+      const preSessionId = isGroupMessage
+        ? String(props.receiverId)
+        : chatStore.generateSessionId(currentUserId, String(props.receiverId))
+
       existedBefore = chatStore.hasSession(preSessionId)
       sessionId = preSessionId
     } catch {}

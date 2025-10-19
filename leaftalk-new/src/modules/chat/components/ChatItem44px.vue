@@ -90,9 +90,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import OptimizedAvatar from '../../../shared/components/common/OptimizedAvatar.vue'
 import { getRealAvatarUrl } from '../../../shared/utils/avatar'
+import { GroupAvatarGenerator } from '../../../shared/utils/groupAvatarGenerator'
 
 interface ChatItemProps {
   chat: {
@@ -108,6 +109,7 @@ interface ChatItemProps {
     chatType?: 'private' | 'group' | 'system'
     memberCount?: number
     draft?: string
+    participants?: string[]
   }
   isSelecting?: boolean
   isSelected?: boolean
@@ -126,8 +128,114 @@ const emit = defineEmits<{
   delete: [chat: any]
 }>()
 
+// 动态生成的群头像
+const dynamicGroupAvatar = ref<string>('')
+
+// 为群聊生成动态头像（使用真实成员数据）
+const generateDynamicGroupAvatar = async () => {
+  if (props.chat.chatType !== 'group' && !props.chat.id.startsWith('group_')) return
+
+  try {
+    console.log(`📐 为群聊 ${props.chat.id} 生成动态头像`)
+
+    // 从后端获取真实成员列表
+    const authStore = (await import('@/stores/auth')).useAuthStore()
+    const token = authStore.token
+
+    if (!token) {
+      console.warn('⚠️ 没有token，无法获取群成员')
+      return
+    }
+
+    const response = await fetch(`http://localhost:8893/api/groups/${props.chat.id}/members`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (!response.ok) {
+      console.warn('⚠️ 获取群成员失败')
+      return
+    }
+
+    const result = await response.json()
+    if (!result.success || !result.data || result.data.length === 0) {
+      console.warn('⚠️ 群成员数据为空')
+      return
+    }
+
+    // 使用真实成员数据生成头像
+    const members = result.data.map((m: any, index: number) => ({
+      id: m.id || m.user_id || `member_${index}`,
+      name: m.nickname || m.name || `成员${index + 1}`,
+      avatar: m.avatar || getRealAvatarUrl(m.id || m.user_id),
+      joinTime: m.joined_at ? new Date(m.joined_at).getTime() : Date.now() - (result.data.length - index) * 1000
+    }))
+
+    console.log(`📐 群聊 ${props.chat.id} 真实成员数: ${members.length}`)
+
+    // 保存成员数量到localStorage
+    localStorage.setItem(`group_member_count_${props.chat.id}`, String(members.length))
+
+    const avatar = await GroupAvatarGenerator.generateGroupAvatar(members, {
+      size: 44,
+      backgroundColor: '#f0f0f0',
+      borderColor: '#ffffff',
+      borderWidth: 0
+    })
+
+    dynamicGroupAvatar.value = avatar
+    console.log(`✅ 群聊 ${props.chat.id} 动态头像生成成功`)
+  } catch (error) {
+    console.error(`❌ 生成群聊头像失败:`, error)
+  }
+}
+
+// 监听成员数变化，重新生成头像
+onMounted(() => {
+  if (props.chat.chatType === 'group' || props.chat.id.startsWith('group_')) {
+    generateDynamicGroupAvatar()
+  }
+})
+
+// 监听props变化，重新生成头像
+watch(() => props.chat.memberCount, (newCount, oldCount) => {
+  if (newCount !== oldCount && (props.chat.chatType === 'group' || props.chat.id.startsWith('group_'))) {
+    console.log(`📐 群聊 ${props.chat.id} 成员数变化: ${oldCount} -> ${newCount}，重新生成头像`)
+    generateDynamicGroupAvatar()
+  }
+})
+
+// 监听群成员变化事件
+const handleGroupMembersChanged = (event: any) => {
+  const { groupId } = event.detail || {}
+  if (groupId === props.chat.id) {
+    console.log(`📐 群聊 ${props.chat.id} 成员变化，重新生成头像`)
+    generateDynamicGroupAvatar()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('group-members-changed', handleGroupMembersChanged)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('group-members-changed', handleGroupMembersChanged)
+})
+
 // 统一规范化头像：强制走后端真实头像API，避免 /uploads 404
 const normalizedAvatar = computed(() => {
+  // 如果是群聊，使用动态生成的群头像
+  if (props.chat.chatType === 'group' && dynamicGroupAvatar.value) {
+    return dynamicGroupAvatar.value
+  }
+
+  // 如果有预设的头像，使用预设的
+  if (props.chat.avatar) {
+    return props.chat.avatar
+  }
+
+  // 否则使用用户头像API
   const id = (props.chat as any).userId || props.chat.id
   return getRealAvatarUrl(id)
 })

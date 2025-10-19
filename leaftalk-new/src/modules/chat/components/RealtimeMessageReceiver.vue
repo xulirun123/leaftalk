@@ -25,6 +25,7 @@ import { useAuthStore } from '../../../stores/auth'
 import { useUnreadStore } from '../stores/unread'
 import { useContactStore } from '../../contacts/stores/contactsStore'
 import { useCallStore } from '../stores/callStore'
+import { useGroupPermissionsStore } from '../stores/groupPermissions'
 
 import ConnectionStatus from './ConnectionStatus.vue'
 
@@ -58,6 +59,7 @@ const router = useRouter()
 const chatStore = useChatStore()
 const contactStore = useContactStore()
 const callStore = useCallStore()
+const groupPerms = useGroupPermissionsStore()
 
 const authStore = useAuthStore()
 const unreadStore = useUnreadStore()
@@ -149,7 +151,7 @@ function removeEventListeners() {
   const s = socket.value
   if (!s) return
   try {
-    const events = ['connect','disconnect','connect_error','new_message','system_message','message_status','user_status','blacklist_updated','incoming_call','webrtc:incoming-call','call_timeout','call_answered','call_ended','unread_update']
+    const events = ['connect','disconnect','connect_error','new_message','system_message','message_status','user_status','blacklist_updated','incoming_call','webrtc:incoming-call','call_timeout','call_answered','call_ended','unread_update','group_settings_updated','group_announcement_updated']
     events.forEach(evt => { try { (s as any).off(evt) } catch {} })
   } catch {}
 }
@@ -280,16 +282,152 @@ const setupEventListeners = () => {
 
   // 未读消息计数更新
   socket.value.on('unread_update', handleUnreadUpdate)
+
+  // 群设置实时更新（权限/审核开关）
+  socket.value.on('group_settings_updated', (payload: any) => {
+    try {
+      console.log('🔔 收到 group_settings_updated:', payload)
+      const groupId = String(payload?.groupId || '')
+      const onlyAdmin = !!payload?.only_admin_can_rename
+      const requireApproval = !!payload?.require_approval
+
+      // 写入 Pinia，全局可响应
+      if (groupId) {
+        groupPerms.setSettings(groupId, {
+          onlyAdminCanRename: onlyAdmin,
+          requireApproval: requireApproval
+        })
+      }
+
+      // 转发为全局自定义事件，供页面监听（兼容已有页面逻辑）
+      try { window.dispatchEvent(new CustomEvent('group-name-edit-permission-changed', { detail: { groupId, nameEditRestricted: onlyAdmin } })) } catch {}
+      try { window.dispatchEvent(new CustomEvent('group-invite-approval-changed', { detail: { groupId, requireApproval } })) } catch {}
+    } catch (e) {
+      console.warn('处理 group_settings_updated 事件失败:', e)
+    }
+  })
+
+  // 群公告更新事件
+  socket.value.on('group_announcement_updated', (payload: any) => {
+    try {
+      console.log('📢 收到 group_announcement_updated:', payload)
+      const groupId = String(payload?.groupId || '')
+
+      // 转发为全局自定义事件，供页面监听
+      if (groupId) {
+        window.dispatchEvent(new CustomEvent('group-announcement-updated', {
+          detail: { groupId }
+        }))
+      }
+    } catch (e) {
+      console.warn('处理 group_announcement_updated 事件失败:', e)
+    }
+  })
+
+  // 群成员变化事件
+  socket.value.on('group-members-changed', (payload: any) => {
+    try {
+      console.log('👥 收到 group-members-changed:', payload)
+      const { groupId, memberCount } = payload || {}
+
+      if (groupId) {
+        // 保存成员数量到localStorage
+        localStorage.setItem(`group_member_count_${groupId}`, String(memberCount))
+
+        // 转发为全局自定义事件，供页面监听
+        window.dispatchEvent(new CustomEvent('group-members-changed', {
+          detail: { groupId, memberCount }
+        }))
+        console.log('📢 已转发 group-members-changed 事件')
+      }
+    } catch (error) {
+      console.error('❌ 处理 group-members-changed 事件失败:', error)
+    }
+  })
+
+  // 群成员退出事件
+  socket.value.on('group-member-left', (payload: any) => {
+    try {
+      console.log('🚪 收到 group-member-left:', payload)
+      const { groupId, memberCount } = payload || {}
+
+      if (groupId) {
+        // 保存成员数量到localStorage
+        localStorage.setItem(`group_member_count_${groupId}`, String(memberCount))
+
+        // 转发为全局自定义事件，供页面监听
+        window.dispatchEvent(new CustomEvent('group-members-changed', {
+          detail: { groupId, memberCount }
+        }))
+        console.log('📢 已转发 group-member-left 事件')
+      }
+    } catch (error) {
+      console.error('❌ 处理 group-member-left 事件失败:', error)
+    }
+  })
+
+  // 群名称更新事件
+  socket.value.on('group_name_updated', (payload: any) => {
+    try {
+      console.log('📢📢📢 收到 group_name_updated:', payload)
+      console.log('📢 payload 详情:', JSON.stringify(payload, null, 2))
+      const { groupId, newGroupName } = payload || {}
+      console.log('📢 解析后:', { groupId, newGroupName })
+
+      if (groupId && newGroupName) {
+        // 1. 更新 chatStore 中的会话名称（只在没有备注时更新显示名称）
+        const session = chatStore.sessions.find(s => s.id === groupId)
+        if (session) {
+          // 检查是否有群聊备注
+          const savedRemark = localStorage.getItem(`group_remark_${groupId}`)
+
+          // 保留成员数（如果有）
+          const memberCountMatch = session.name?.match(/（(\d+)）$/)
+          const memberCount = memberCountMatch ? memberCountMatch[1] : ''
+
+          // 如果有备注，保持备注名称；否则使用新群名
+          if (savedRemark && savedRemark.trim()) {
+            // 有备注，保持备注名称不变
+            const remarkName = savedRemark.trim()
+            session.name = memberCount ? `${remarkName}（${memberCount}）` : remarkName
+            console.log('✅ 保持群备注名称:', session.name)
+          } else {
+            // 没有备注，使用新群名
+            session.name = memberCount ? `${newGroupName}（${memberCount}）` : newGroupName
+            console.log('✅ 更新为新群名:', session.name)
+          }
+
+          // 保存到缓存
+          chatStore.saveToCache()
+        }
+
+        // 2. 转发为全局自定义事件，供页面监听
+        console.log('📢 准备转发 group-name-changed 事件...')
+        window.dispatchEvent(new CustomEvent('group-name-changed', {
+          detail: { groupId, newGroupName }
+        }))
+        console.log('✅✅✅ 已转发 group-name-changed 事件:', { groupId, newGroupName })
+      } else {
+        console.warn('⚠️ groupId 或 newGroupName 为空，不转发事件')
+      }
+    } catch (e) {
+      console.error('❌ 处理 group_name_updated 事件失败:', e)
+    }
+  })
+
 }
 
 // 处理新消息接收
 const handleNewMessage = async (message: any) => {
   console.log('📨 收到新消息:', message)
+  console.log('📨 消息类型:', message.type)
+  console.log('📨 发送者ID:', message.senderId)
 
   const currentUserId = authStore.user?.id
 
-  // 确保不是自己发送的消息
-  if (message.senderId === currentUserId) {
+  // 确保不是自己发送的消息（公告消息和系统消息除外）
+  if (message.senderId === currentUserId && message.type !== 'announcement' && message.type !== 'system') {
+    console.log('⚠️ 过滤掉自己发送的消息')
     return
   }
 
@@ -301,8 +439,14 @@ const handleNewMessage = async (message: any) => {
     content: message.content,
     type: message.type || 'text',
     timestamp: message.timestamp || Date.now(),
-    status: 'delivered'
+    status: 'delivered',
+    senderName: message.senderName || null  // 添加发送者昵称
   }
+
+  console.log('📨 处理后的消息:', chatMessage)
+
+  // 🛡️ 判断是否为群聊消息
+  const isGroupMessage = String(message.receiverId).startsWith('group_')
 
   // 获取发送者真实信息
   let senderInfo = {
@@ -312,33 +456,90 @@ const handleNewMessage = async (message: any) => {
     avatar: message.senderAvatar || null
   }
 
-  // 如果消息中没有发送者信息，尝试从API获取
-  if (!message.senderName || !message.senderAvatar) {
+  // 如果是群聊消息，获取群聊信息和发送者的群昵称
+  if (isGroupMessage) {
     try {
-      console.log('🔍 获取发送者信息，用户ID:', message.senderId)
-      const response = await fetch(`http://localhost:8893/api/users/${message.senderId}`, {
+      console.log('🔍 获取群聊信息，群ID:', message.receiverId)
+      const response = await fetch(`http://localhost:8893/api/groups/${message.receiverId}`, {
         headers: {
           'Authorization': `Bearer ${authStore.token}`
         }
       })
 
       if (response.ok) {
-        const userData = await response.json()
-        if (userData.success && userData.data) {
+        const groupData = await response.json()
+        if (groupData.success && groupData.data) {
           senderInfo = {
-            id: message.senderId,
-            name: userData.data.nickname || userData.data.username || `用户${message.senderId}`,
-            nickname: userData.data.nickname || userData.data.username || `用户${message.senderId}`,
-            avatar: userData.data.avatar || `http://localhost:8893/api/users/${message.senderId}/avatar`
+            ...senderInfo,
+            groupName: groupData.data.name || groupData.data.title || `群聊${message.receiverId.substring(6, 16)}`,
+            groupAvatar: groupData.data.avatar || null,
+            groupId: message.receiverId
           }
-          console.log('✅ 获取到发送者信息:', senderInfo)
+          console.log('✅ 获取到群聊信息:', senderInfo)
         }
       }
+
+      // 获取群成员信息，包括发送者的群昵称
+      try {
+        const membersResponse = await fetch(`http://localhost:8893/api/groups/${message.receiverId}/members`, {
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`
+          }
+        })
+
+        if (membersResponse.ok) {
+          const membersData = await membersResponse.json()
+          if (membersData.success && membersData.data) {
+            const sender = membersData.data.find((m: any) => String(m.id) === String(message.senderId))
+            if (sender && sender.group_nickname) {
+              // 缓存发送者的群昵称到localStorage
+              localStorage.setItem(`group_member_nickname_${message.receiverId}_${message.senderId}`, sender.group_nickname)
+              console.log('✅ 缓存发送者群昵称:', sender.group_nickname)
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ 获取群成员信息失败:', error)
+      }
     } catch (error) {
-      console.warn('⚠️ 获取发送者信息失败:', error)
+      console.warn('⚠️ 获取群聊信息失败:', error)
+      // 使用默认群聊名称
+      senderInfo = {
+        ...senderInfo,
+        groupName: `群聊${message.receiverId.substring(6, 16)}`,
+        groupId: message.receiverId
+      }
+    }
+  } else {
+    // 如果消息中没有发送者信息，尝试从API获取
+    if (!message.senderName || !message.senderAvatar) {
+      try {
+        console.log('🔍 获取发送者信息，用户ID:', message.senderId)
+        const response = await fetch(`http://localhost:8893/api/users/${message.senderId}`, {
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`
+          }
+        })
+
+        if (response.ok) {
+          const userData = await response.json()
+          if (userData.success && userData.data) {
+            senderInfo = {
+              id: message.senderId,
+              name: userData.data.nickname || userData.data.username || `用户${message.senderId}`,
+              nickname: userData.data.nickname || userData.data.username || `用户${message.senderId}`,
+              avatar: userData.data.avatar || `http://localhost:8893/api/users/${message.senderId}/avatar`
+            }
+            console.log('✅ 获取到发送者信息:', senderInfo)
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ 获取发送者信息失败:', error)
+      }
     }
   }
 
+  console.log('📨 接收方创建聊天项，消息类型:', isGroupMessage ? '群聊' : '私聊')
   console.log('📨 接收方创建聊天项，发送者信息:', senderInfo)
   console.log('📨 接收方创建聊天项，消息内容:', chatMessage.content)
 
@@ -351,7 +552,11 @@ const handleNewMessage = async (message: any) => {
   }
 
   // 检查创建后的聊天项
-  const sessionId = generateSessionId(chatMessage.senderId, chatMessage.receiverId)
+  // 🛡️ 使用已声明的 isGroupMessage 变量
+  const sessionId = isGroupMessage
+    ? String(chatMessage.receiverId)
+    : generateSessionId(chatMessage.senderId, chatMessage.receiverId)
+
   const createdSession = chatStore.sessions.find(s => s.id === sessionId)
   if (createdSession) {
     console.log('📨 接收方聊天项创建完成:', {
@@ -398,7 +603,12 @@ const handleUserStatusUpdate = (status: any) => {
 const handleSystemMessage = (payload: { type: string; targetUserId?: string; content: string }) => {
   try {
     const targetId = payload.targetUserId
-    const sessionId = generateSessionId(String(authStore.user?.id || ''), String(targetId || ''))
+    // 🛡️ 判断是否为群聊消息
+    const isGroupMessage = String(targetId || '').startsWith('group_')
+    const sessionId = isGroupMessage
+      ? String(targetId || '')
+      : generateSessionId(String(authStore.user?.id || ''), String(targetId || ''))
+
     chatStore.addMessage(sessionId, {
       id: `sys_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       senderId: authStore.user?.id,
@@ -689,7 +899,12 @@ const sendMessage = async (message: any): Promise<boolean> => {
           console.error('❌ 消息发送失败:', response?.error)
           // 如果后端拒收（例如被对方拉黑），在当前会话插入一条系统提示
           try {
-            const sessionId = generateSessionId(String(authStore.user?.id || ''), String(fullMessage.receiverId))
+            // 🛡️ 判断是否为群聊消息
+            const isGroupMessage = String(fullMessage.receiverId).startsWith('group_')
+            const sessionId = isGroupMessage
+              ? String(fullMessage.receiverId)
+              : generateSessionId(String(authStore.user?.id || ''), String(fullMessage.receiverId))
+
             chatStore.addMessage(sessionId, {
               id: `sys_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
               senderId: authStore.user?.id,

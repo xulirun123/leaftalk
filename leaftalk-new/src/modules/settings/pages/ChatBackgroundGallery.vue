@@ -96,8 +96,8 @@ const confirmSelection = () => {
       console.log('📢 已触发 chatBackground:updated 事件')
     }
 
-    // 返回到聊天背景页面（返回一级）
-    router.go(-1)
+    // 跳转到聊天页面
+    router.push(`/chat/${chatId}`)
   } catch (error) {
     console.error('❌ 保存背景设置失败:', error)
   }

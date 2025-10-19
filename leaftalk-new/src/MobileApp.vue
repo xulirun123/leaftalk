@@ -44,7 +44,7 @@
     </div>
 
     <!-- 实时消息接收器 -->
-    <RealtimeMessageReceiver :show-status="false" />
+    <RealtimeMessageReceiver ref="realtimeReceiverRef" :show-status="false" />
 
     <!-- 全局通话悬浮窗（呼叫/通话中且开启迷你模式时显示） -->
     <FloatingCallWidget />
@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, inject, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from './shared/stores/appStore'
 import { useAuthStore } from './stores/auth'
@@ -93,6 +93,9 @@ const { t } = useGlobalLanguage()
 
 const showGestureIndicator = ref(false)
 const isDevelopment = computed(() => process.env.NODE_ENV === 'development')
+
+// 实时消息接收器 ref
+const realtimeReceiverRef = ref<any>(null)
 
 // 页面切换动画
 const transitionName = ref('slide-left')
@@ -229,6 +232,26 @@ const calculatePageTitle = () => {
     console.log('🔍 计算聊天页面标题, chatId:', chatId)
 
     if (chatId) {
+      // 处理群聊 (格式: group_xxx)
+      if (chatId.startsWith('group_')) {
+        console.log('👥 这是一个群聊，chatId:', chatId)
+
+        // 优先使用 route.meta.title（ChatSimple.vue 已经设置好了）
+        if (route.meta?.title && typeof route.meta.title === 'string' && route.meta.title !== '群聊') {
+          console.log('✅ 使用 route.meta.title:', route.meta.title)
+          return route.meta.title
+        }
+
+        // 从 chatStore 中查找群聊信息
+        const session = chatStore.sessions.find(s => s.id === chatId)
+        if (session && session.name) {
+          console.log('✅ 从 chatStore 获取群聊名称:', session.name)
+          return session.name
+        }
+        console.log('⚠️ 未在 chatStore 中找到群聊信息，返回默认值')
+        return '群聊'
+      }
+
       // 解析聊天ID (格式: chat_1_2)
       const parts = chatId.split('_')
       if (parts.length === 3) {
@@ -346,9 +369,17 @@ const pageSubtitle = computed(() => {
   return subtitleMap[route.path] || ''
 })
 
+// 动态顶部导航栏按钮（用于某些页面动态更新按钮）
+const dynamicTopBarButtons = ref<any[]>([])
+
 // 顶部导航栏按钮
 const topBarButtons = computed(() => {
   if (!route || !route.path) return []
+
+  // 群公告页面：使用动态按钮
+  if (route.path.startsWith('/group-announcement/')) {
+    return dynamicTopBarButtons.value
+  }
 
   // 选择联系人页：右上角“完成”文本按钮
   if (route.path === '/select-contact') {
@@ -374,7 +405,7 @@ const topBarButtons = computed(() => {
   }
 
   // 聊天页面的按钮 - 横排三点
-  if (route.path.startsWith('/chat/')) {
+  if (route.path.startsWith('/chat/') || route.path.startsWith('/group/')) {
     return [{ icon: 'heroicons:ellipsis-horizontal', action: 'chatInfo' }]
   }
 
@@ -444,31 +475,39 @@ const handleTopBarClick = (payload: any) => {
       router.push('/add-friend')
       break
     case 'chatInfo':
-      // 解析聊天ID获取对方用户ID
+      // 解析聊天ID获取对方用户ID或群聊ID
       const chatId = route.params.id as string
       console.log('🔍 点击聊天详情按钮, chatId:', chatId)
       if (chatId) {
-        const parts = chatId.split('_')
-        console.log('🔍 解析chatId parts:', parts, 'length:', parts.length)
-        // chatId 格式可能是 "userId1_userId2" (2个部分) 或 "chat_userId1_userId2" (3个部分)
-        if (parts.length === 2) {
-          // 格式: "userId1_userId2"
-          const userId1 = parts[0]
-          const userId2 = parts[1]
-          const currentUserId = String(authStore.user?.id)
-          const actualOtherId = currentUserId === userId1 ? userId2 : userId1
-          console.log('🔍 跳转到聊天详情页:', `/chat-info/${actualOtherId}`)
-          router.push(`/chat-info/${actualOtherId}`)
-        } else if (parts.length === 3) {
-          // 格式: "chat_userId1_userId2"
-          const userId1 = parts[1]
-          const userId2 = parts[2]
-          const currentUserId = String(authStore.user?.id)
-          const actualOtherId = currentUserId === userId1 ? userId2 : userId1
-          console.log('🔍 跳转到聊天详情页:', `/chat-info/${actualOtherId}`)
-          router.push(`/chat-info/${actualOtherId}`)
+        // 判断是否为群聊
+        if (chatId.startsWith('group_')) {
+          // 群聊：直接跳转到群聊信息页面（使用 /group-info/:id 路由）
+          console.log('🔍 跳转到群聊信息页:', `/group-info/${chatId}`)
+          router.push(`/group-info/${chatId}`)
         } else {
-          console.error('❌ chatId 格式不正确:', chatId, parts)
+          // 私聊：解析用户ID
+          const parts = chatId.split('_')
+          console.log('🔍 解析chatId parts:', parts, 'length:', parts.length)
+          // chatId 格式可能是 "userId1_userId2" (2个部分) 或 "chat_userId1_userId2" (3个部分)
+          if (parts.length === 2) {
+            // 格式: "userId1_userId2"
+            const userId1 = parts[0]
+            const userId2 = parts[1]
+            const currentUserId = String(authStore.user?.id)
+            const actualOtherId = currentUserId === userId1 ? userId2 : userId1
+            console.log('🔍 跳转到聊天详情页:', `/chat-info/${actualOtherId}`)
+            router.push(`/chat-info/${actualOtherId}`)
+          } else if (parts.length === 3) {
+            // 格式: "chat_userId1_userId2"
+            const userId1 = parts[1]
+            const userId2 = parts[2]
+            const currentUserId = String(authStore.user?.id)
+            const actualOtherId = currentUserId === userId1 ? userId2 : userId1
+            console.log('🔍 跳转到聊天详情页:', `/chat-info/${actualOtherId}`)
+            router.push(`/chat-info/${actualOtherId}`)
+          } else {
+            console.error('❌ chatId 格式不正确:', chatId, parts)
+          }
         }
       }
       break
@@ -495,6 +534,15 @@ const handleTopBarClick = (payload: any) => {
       }
       break
 
+    case 'edit':
+    case 'done':
+      // 群公告页面的编辑/完成按钮，转发给页面组件
+      console.log('📢 转发顶部按钮事件:', action)
+      window.dispatchEvent(new CustomEvent('top-bar-action', {
+        detail: { action }
+      }))
+      break
+
     default:
       console.log('Unknown action:', action)
   }
@@ -502,12 +550,52 @@ const handleTopBarClick = (payload: any) => {
 
 // 处理返回按钮
 const handleBack = () => {
+  console.log('🔙 处理返回按钮，当前路径:', route.path)
+
   // 选择联系人页（通话邀请）返回到通话页面
   if (route.path === '/select-contact' && route.query.from === 'callInvite') {
     router.push({ name: 'Call', query: { action: 'active' } })
     return
   }
-  router.back()
+
+  // 特殊页面的返回逻辑
+  if (route.path.startsWith('/edit-group-name/')) {
+    router.push(`/group-info/${route.params.id}`)
+    return
+  }
+
+  if (route.path.startsWith('/edit-group-nickname/')) {
+    router.push(`/group-info/${route.params.id}`)
+    return
+  }
+
+  if (route.path.startsWith('/group-management/')) {
+    router.push(`/group-info/${route.params.groupId}`)
+    return
+  }
+
+  if (route.path.startsWith('/group-info/')) {
+    router.push(`/chat/${route.params.id}`)
+    return
+  }
+
+  if (route.path.startsWith('/chat/')) {
+    router.push('/')
+    return
+  }
+
+  // 默认返回
+  try {
+    if (window.history.length > 1) {
+      router.back()
+    } else {
+      // 如果历史记录为空，返回到首页
+      router.push('/')
+    }
+  } catch (error) {
+    console.error('❌ 返回失败:', error)
+    router.push('/')
+  }
 }
 
 // 处理底部导航栏切换
@@ -601,6 +689,14 @@ const checkAndFixDatabase = async () => {
 onMounted(async () => {
   console.log('MobileApp mounted')
 
+  // 暴露 RealtimeMessageReceiver 到全局
+  if (realtimeReceiverRef.value) {
+    (window as any).$realtimeReceiver = realtimeReceiverRef.value
+    console.log('✅ 全局RealtimeMessageReceiver已注册')
+  } else {
+    console.warn('⚠️ RealtimeMessageReceiver ref 未初始化')
+  }
+
   // 首先恢复用户登录状态
   console.log('🔄 恢复用户登录状态...')
   const restored = appStore.restoreUserFromStorage()
@@ -669,6 +765,29 @@ onMounted(async () => {
   console.log('🧪 全局测试函数已注册:')
   console.log('  - window.testDirectNavigation() - 测试直接URL修改')
   console.log('  - window.testWindowLocation() - 测试window.location修改')
+
+  // 监听群名称修改事件
+  window.addEventListener('group-name-changed', handleGroupNameChanged)
+  console.log('✅ 已注册群名称修改事件监听')
+
+  // 监听聊天标题更新事件
+  window.addEventListener('chat-title-updated', (event: any) => {
+    console.log('📢 收到聊天标题更新事件:', event.detail)
+    if (event.detail?.title) {
+      pageTitle.value = event.detail.title
+      console.log('✅ 页面标题已更新为:', pageTitle.value)
+    }
+  })
+  console.log('✅ 已注册聊天标题更新事件监听')
+
+  // 监听动态更新顶部导航栏按钮事件
+  window.addEventListener('update-top-bar-buttons', (event: any) => {
+    console.log('📢 收到更新顶部导航栏按钮事件:', event.detail)
+    if (event.detail?.buttons) {
+      dynamicTopBarButtons.value = event.detail.buttons
+    }
+  })
+  console.log('✅ 已注册动态顶部导航栏按钮事件监听')
 })
 
 // 监听路由变化，确保标题正确更新
@@ -681,6 +800,11 @@ watch(
       pageTitle.value = calculatePageTitle()
       console.log('📋 标题已更新为:', pageTitle.value)
     }, 10)
+
+    // 路由变化时清空动态按钮（除非是群公告页面）
+    if (!route.path.startsWith('/group-announcement/')) {
+      dynamicTopBarButtons.value = []
+    }
   },
   { immediate: true, deep: true }
 )
@@ -731,6 +855,36 @@ watch(
   },
   { immediate: true }
 )
+
+// 监听群名称修改事件，更新页面标题
+const handleGroupNameChanged = (event: any) => {
+  console.log('🔥 MobileApp 收到群名称修改事件:', event.detail)
+
+  // 如果当前在聊天页面，立即更新标题
+  if (route.path.startsWith('/chat/')) {
+    console.log('🔥 当前在聊天页面，立即更新标题')
+    console.log('🔥 当前 route.meta.title:', route.meta?.title)
+
+    // 直接使用 route.meta.title（ChatSimple.vue 已经更新了）
+    if (route.meta?.title && typeof route.meta.title === 'string') {
+      console.log('🔥 直接使用 route.meta.title:', route.meta.title)
+      pageTitle.value = route.meta.title
+    } else {
+      // 如果 route.meta.title 还没更新，使用 calculatePageTitle
+      setTimeout(() => {
+        const newTitle = calculatePageTitle()
+        console.log('🔥 使用 calculatePageTitle 更新标题为:', newTitle)
+        pageTitle.value = newTitle
+      }, 50)
+    }
+  }
+}
+
+// 在卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('group-name-changed', handleGroupNameChanged)
+  console.log('✅ 已移除群名称修改事件监听')
+})
 
 
 </script>

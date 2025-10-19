@@ -59,11 +59,17 @@ export class ChatGuard {
   /**
    * 验证聊天操作的合法性
    * @param userId1 用户ID1
-   * @param userId2 用户ID2
+   * @param userId2 用户ID2 (可以是用户ID或群ID)
    * @param operation 操作名称
    * @throws Error 如果是自聊天则抛出错误
    */
   static validateChatOperation(userId1: string | number, userId2: string | number, operation: string = '聊天操作'): void {
+    // 🛡️ 如果userId2是群ID，跳过自聊天检查
+    const userId2Str = String(userId2)
+    if (userId2Str.startsWith('group_')) {
+      return
+    }
+
     if (this.isSelfChat(userId1, userId2)) {
       const error = `🛡️ 防护系统阻止${operation}: 不能与自己进行聊天操作 (${userId1} === ${userId2})`
       console.error(error)

@@ -612,10 +612,10 @@ const sendFromPreview = async () => {
 
           console.log('✅ 背景设置成功')
 
-          // 跳转到聊天页面（返回三级，从拍摄页 -> 聊天背景页 -> 聊天详情页 -> 聊天页面）
+          // 跳转到聊天页面
           showPreview.value = false
           stopCamera()
-          router.go(-3)
+          router.push(`/chat/${chatId}`)
         })
       }
       reader.onerror = () => {

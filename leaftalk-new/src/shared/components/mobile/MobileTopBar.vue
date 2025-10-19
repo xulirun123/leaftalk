@@ -22,10 +22,15 @@
           v-for="(btn, index) in rightButtons"
           :key="index"
           class="action-btn"
+          :class="{
+            'action-btn-disabled': btn.disabled,
+            'action-btn-text': btn.text,
+            'action-btn-icon': !btn.text
+          }"
           @click="handleButtonClick(btn)"
         >
           <template v-if="btn.text">
-            <span class="action-text">{{ btn.text }}</span>
+            <span class="action-text" :class="{ 'action-text-disabled': btn.disabled }">{{ btn.text }}</span>
           </template>
           <template v-else>
             <iconify-icon :icon="btn.icon" width="20"></iconify-icon>
@@ -50,6 +55,7 @@ interface Props {
     icon?: string
     text?: string
     action: string
+    disabled?: boolean
   }>
   backgroundColor?: string
 }
@@ -80,6 +86,9 @@ const handleBack = () => {
 }
 
 const handleButtonClick = (button: any) => {
+  if (button.disabled) {
+    return
+  }
   console.log('🔘 MobileTopBar handleButtonClick:', button)
   emit('buttonClick', button)
 }
@@ -179,15 +188,50 @@ onMounted(() => {
   justify-content: center;
   cursor: pointer;
   color: #333;
-}
-.action-text {
-  font-size: 16px;
-  color: #07C160;
+  border-radius: 4px;
+  padding: 0;
+  transition: background 0.2s;
 }
 
-.back-btn:hover,
-.action-btn:hover {
+/* 文字按钮样式 */
+.action-btn-text {
+  background: #07C160;
+  height: 28px;
+  padding: 0 12px;
+}
+
+.action-btn-text.action-btn-disabled {
+  background: #E5E5E5;
+  cursor: not-allowed;
+}
+
+/* 图标按钮样式 */
+.action-btn-icon {
+  background: none;
+  width: 32px;
+  height: 32px;
+}
+
+.action-text {
+  font-size: 13px;
+  color: #000;
+  font-weight: normal;
+}
+
+.action-text-disabled {
+  color: #999;
+}
+
+.back-btn:hover {
   background: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
+}
+
+.action-btn-icon:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.action-btn-text:hover:not(.action-btn-disabled) {
+  background: #06AD56;
 }
 </style>

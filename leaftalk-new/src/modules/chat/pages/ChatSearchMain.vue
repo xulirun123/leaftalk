@@ -79,7 +79,7 @@
           </div>
 
           <div v-else-if="filteredResults.length === 0" class="empty-results">
-            <iconify-icon icon="heroicons:magnifying-glass" width="48" color="#ccc"></iconify-icon>
+            <iconify-icon icon="heroicons:magnifying-glass" width="36" color="#999"></iconify-icon>
             <p>未找到与"{{ searchKeyword }}"相关的结果</p>
           </div>
 
@@ -93,11 +93,11 @@
                 @click="openChatMessage(result)"
               >
                 <div class="result-avatar">
-                  <img :src="result.senderAvatar" :alt="result.senderName" />
+                  <img :src="result.chatAvatar || result.senderAvatar" :alt="result.chatName || result.senderName" />
                 </div>
                 <div class="result-content">
                   <div class="result-header">
-                    <span class="sender-name-text">{{ result.senderName }}</span>
+                    <span class="sender-name-text">{{ result.chatName || result.senderName }}</span>
                     <span class="result-time">{{ formatTime(result.timestamp) }}</span>
                   </div>
                   <div class="result-message">
@@ -847,10 +847,23 @@ onMounted(async () => {
 })
 
 // 页面激活时（从其他页面返回）
-onActivated(() => {
-  console.log('🔄 搜索页面被激活，保持之前的搜索状态')
-  // 不需要做任何操作，因为 keep-alive 会保持所有状态
-  // searchKeyword、hasSearched、selectedCategory、filteredResults 都会保持
+onActivated(async () => {
+  console.log('🔄 搜索页面被激活')
+
+  // 重置搜索状态
+  searchKeyword.value = ''
+  hasSearched.value = false
+  selectedCategory.value = 'all'
+
+  // 重新加载当前聊天的消息
+  await loadMessages()
+
+  // 聚焦搜索框
+  nextTick(() => {
+    if (searchInput.value) {
+      searchInput.value.focus()
+    }
+  })
 })
 </script>
 
@@ -894,13 +907,14 @@ onActivated(() => {
   flex: 1;
   border: none;
   outline: none;
-  font-size: 15px;
+  font-size: 13px; /* 修改为13px */
   color: #333;
   background: #FFFFFF;
 }
 
 .search-input::placeholder {
   color: #999;
+  font-size: 13px; /* 修改为13px */
 }
 
 .clear-btn {
@@ -922,8 +936,8 @@ onActivated(() => {
   padding: 0;
   background: none;
   border: none;
-  font-size: 15px;
-  color: #07C160;
+  font-size: 14px; /* 修改为14px */
+  color: #000000; /* 修改为黑色 */
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1069,12 +1083,12 @@ onActivated(() => {
 }
 
 .search-label {
-  font-size: 15px;
+  font-size: 11px; /* 修改为11px */
   color: #666;
 }
 
 .search-text {
-  font-size: 15px;
+  font-size: 11px; /* 修改为11px */
   color: #333;
   font-weight: 500;
 }
@@ -1102,17 +1116,24 @@ onActivated(() => {
 }
 
 .empty-results {
-  color: #999;
+  color: #999; /* 灰色 */
+}
+
+.empty-results iconify-icon {
+  color: #999; /* 图标改为灰色 */
+  width: 36px !important; /* 图标改小 */
+  height: 36px !important;
 }
 
 .empty-results p {
   margin: 12px 0 4px;
-  font-size: 15px;
-  color: #333;
+  font-size: 12px; /* 修改为12px */
+  color: #999; /* 修改为灰色 */
 }
 
 .empty-results span {
-  font-size: 13px;
+  font-size: 12px; /* 修改为12px */
+  color: #999; /* 灰色 */
 }
 
 .result-list {

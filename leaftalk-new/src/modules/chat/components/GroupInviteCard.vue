@@ -65,11 +65,25 @@
       <div class="confirm-dialog" @click.stop>
         <div class="confirm-title">加入群聊</div>
         <div class="confirm-message">
-          确定要加入「{{ inviteData.groupName }}」吗？
+          <template v-if="needApprovalForJoin">
+            <div class="message-text">申请加入「{{ inviteData.groupName }}」</div>
+            <textarea
+              v-model="joinReason"
+              class="reason-input"
+              placeholder="填写申请理由（选填）"
+              maxlength="100"
+              rows="3"
+            ></textarea>
+          </template>
+          <template v-else>
+            确定要加入「{{ inviteData.groupName }}」吗？
+          </template>
         </div>
         <div class="confirm-buttons">
           <button class="confirm-btn cancel" @click.stop="closeDialog">取消</button>
-          <button class="confirm-btn confirm" @click.stop="confirmJoin">加入</button>
+          <button class="confirm-btn confirm" @click.stop="confirmJoin">
+            {{ needApprovalForJoin ? '发送申请' : '加入' }}
+          </button>
         </div>
       </div>
     </div>
@@ -113,6 +127,8 @@ const socket = inject<any>('socket', null)
 const cardStatus = ref<'pending' | 'joined' | 'waiting' | 'approved' | 'rejected'>('pending')
 const showDialog = ref(false)
 const inviteeName = ref('好友')
+const joinReason = ref('')
+const needApprovalForJoin = ref(false)
 
 // 解析邀请数据
 const inviteData = computed<GroupInviteData>(() => {
@@ -149,7 +165,7 @@ const handleImageError = (e: Event) => {
 }
 
 // 点击卡片
-const handleCardClick = () => {
+const handleCardClick = async () => {
   console.log('🎯 点击邀请卡片', {
     isInviter: isInviter.value,
     cardStatus: cardStatus.value,
@@ -177,6 +193,8 @@ const handleCardClick = () => {
   } else if (cardStatus.value === 'pending') {
     // 待处理：弹出确认对话框
     console.log('✅ 不是群成员，弹出确认对话框')
+    // 检查是否需要审核
+    await checkIfNeedApproval()
     showDialog.value = true
   } else if (cardStatus.value === 'approved') {
     // 审核通过：进入群聊
@@ -199,13 +217,36 @@ const handleCardClick = () => {
 // 关闭对话框
 const closeDialog = () => {
   showDialog.value = false
+  joinReason.value = ''
+}
+
+// 检查是否需要审核
+const checkIfNeedApproval = async () => {
+  try {
+    // 获取邀请链接信息
+    const [inviteLinks] = await Promise.all([
+      fetch(`http://localhost:8893/api/groups/invite-link-info?inviteCode=${inviteData.value.inviteCode}`, {
+        headers: { 'Authorization': `Bearer ${authStore.token}` }
+      }).then(res => res.json())
+    ])
+
+    if (inviteLinks.success && inviteLinks.data) {
+      const { isInviterAdmin, requireApproval } = inviteLinks.data
+      // 判断是否需要审核：邀请人是普通成员 + 群需要审核
+      needApprovalForJoin.value = !isInviterAdmin && requireApproval
+      console.log('🔍 是否需要审核:', needApprovalForJoin.value, { isInviterAdmin, requireApproval })
+    }
+  } catch (error) {
+    console.error('❌ 检查审核状态失败:', error)
+    needApprovalForJoin.value = false
+  }
 }
 
 // 确认加入
 const confirmJoin = async () => {
   try {
     console.log('🔑 确认加入群聊，邀请码:', inviteData.value.inviteCode)
-    
+
     showDialog.value = false
     appStore.showToast('正在加入群聊...', 'info')
 
@@ -216,7 +257,8 @@ const confirmJoin = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        inviteCode: inviteData.value.inviteCode
+        inviteCode: inviteData.value.inviteCode,
+        reason: joinReason.value || '申请加入群聊'
       })
     })
 
@@ -593,6 +635,27 @@ onUnmounted(() => {
   text-align: center;
   padding: 0 20px 20px;
   line-height: 1.5;
+}
+
+.message-text {
+  margin-bottom: 12px;
+}
+
+.reason-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.reason-input:focus {
+  border-color: #576b95;
 }
 
 .confirm-buttons {

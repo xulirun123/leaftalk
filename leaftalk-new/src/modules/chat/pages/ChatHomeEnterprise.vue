@@ -50,7 +50,7 @@
               <div class="user-name">{{ getDisplayName(chat) }}</div>
               <!-- 最后消息和时间 -->
               <div class="message-time-row">
-                <div class="last-message">{{ formatLastMessage(chat.lastMessage) }}</div>
+                <div class="last-message">{{ formatLastMessage(chat) }}</div>
               </div>
             </div>
           </div>
@@ -183,6 +183,38 @@ const chats = computed(() => {
 
       return true
     })
+    .map((session: any) => {
+      // 处理群聊备注和名称
+      if (session.type === 'group' || session.id.startsWith('group_')) {
+        // 从localStorage获取最新的成员数量
+        try {
+          const cachedMemberCount = localStorage.getItem(`group_member_count_${session.id}`)
+          if (cachedMemberCount) {
+            session.memberCount = parseInt(cachedMemberCount, 10)
+          }
+        } catch (e) {
+          console.warn('读取群成员数量失败:', e)
+        }
+
+        // 检查是否有群聊备注
+        try {
+          const savedRemark = localStorage.getItem(`group_remark_${session.id}`)
+          if (savedRemark && savedRemark.trim()) {
+            // 提取成员数量
+            const memberCountMatch = session.name?.match(/（(\d+)）/)
+            const memberCount = memberCountMatch ? memberCountMatch[1] : ''
+
+            // 使用备注名替换群名
+            const remarkName = savedRemark.trim()
+            session.name = memberCount ? `${remarkName}（${memberCount}）` : remarkName
+          }
+        } catch (e) {
+          console.warn('读取群聊备注失败:', e)
+        }
+      }
+
+      return session
+    })
     .sort((a: any, b: any) => {
       // 置顶聊天排在前面
       if (a.isPinned && !b.isPinned) return -1
@@ -293,8 +325,75 @@ const formatTime = (timestamp: number) => {
   })
 }
 
-const formatLastMessage = (message: any) => {
+const formatLastMessage = (chat: any) => {
+  const message = chat.lastMessage
   if (!message) return '暂无消息'
+
+  // 判断是否是群聊
+  const isGroupChat = chat.type === 'group' || (chat.id && String(chat.id).startsWith('group_'))
+
+  // 获取发送者名称（仅群聊需要）
+  let senderPrefix = ''
+  if (isGroupChat && message && typeof message === 'object' && message.senderId) {
+    const senderId = String(message.senderId)
+    const currentUserId = String(authStore.user?.id || '')
+
+    console.log('🔍 formatLastMessage - 群聊消息:', {
+      chatId: chat.id,
+      senderId,
+      currentUserId,
+      messageType: typeof message,
+      hasSenderName: !!message.senderName,
+      senderName: message.senderName,
+      message
+    })
+
+    // 如果是当前用户发送的消息
+    if (senderId === currentUserId) {
+      senderPrefix = '我: '
+    } else {
+      // 获取发送者名称：优先级 备注名 > 群昵称 > 昵称
+      let senderName = ''
+
+      // 1. 尝试获取好友备注
+      try {
+        const saved = JSON.parse(localStorage.getItem(`friend_remark_${senderId}`) || 'null')
+        if (saved?.name && String(saved.name).trim()) {
+          senderName = String(saved.name).trim()
+          console.log('✅ 使用好友备注:', senderName)
+        }
+      } catch (e) {
+        console.warn('读取好友备注失败:', e)
+      }
+
+      // 2. 如果没有备注，尝试获取群昵称（从缓存）
+      if (!senderName && chat.id) {
+        try {
+          const groupNickname = localStorage.getItem(`group_member_nickname_${chat.id}_${senderId}`)
+          if (groupNickname && groupNickname.trim()) {
+            senderName = groupNickname.trim()
+            console.log('✅ 使用群昵称:', senderName)
+          }
+        } catch (e) {
+          console.warn('读取群昵称失败:', e)
+        }
+      }
+
+      // 3. 如果都没有，使用消息中的发送者昵称
+      if (!senderName && message.senderName) {
+        senderName = String(message.senderName).trim()
+        console.log('✅ 使用消息中的昵称:', senderName)
+      }
+
+      // 4. 如果还是没有，使用默认值
+      if (!senderName) {
+        senderName = `用户${senderId}`
+        console.log('⚠️ 使用默认值:', senderName)
+      }
+
+      senderPrefix = `${senderName}: `
+    }
+  }
 
   // 对象类型（新结构）
   if (typeof message === 'object') {
@@ -306,14 +405,14 @@ const formatLastMessage = (message: any) => {
         if (fid) {
           const saved = JSON.parse(localStorage.getItem(`friend_remark_${fid}`) || 'null')
           const name = (saved?.name && String(saved.name).trim()) || `用户${fid}`
-          return `[名片] ${name}`
+          return `${senderPrefix}[名片] ${name}`
         }
       } catch {}
-      return '[名片]'
+      return `${senderPrefix}[名片]`
     }
     // 其它消息类型：取content
     const txt = String(message.content || '').trim()
-    if (txt) return txt
+    if (txt) return `${senderPrefix}${txt}`
   }
 
   // 字符串/旧结构
@@ -327,15 +426,16 @@ const formatLastMessage = (message: any) => {
       const fid = String(payload.friendId)
       const saved = JSON.parse(localStorage.getItem(`friend_remark_${fid}`) || 'null')
       const name = (saved?.name && String(saved.name).trim()) || `用户${fid}`
-      return `[名片] ${name}`
+      return `${senderPrefix}[名片] ${name}`
     }
   } catch {}
 
   // 特殊占位符
-  if (messageStr.includes('[VOICE_CALL_ICON]')) return messageStr.replace('[VOICE_CALL_ICON]', '📞')
-  if (messageStr.includes('[VIDEO_CALL_ICON]')) return messageStr.replace('[VIDEO_CALL_ICON]', '📹')
+  let finalMessage = messageStr
+  if (finalMessage.includes('[VOICE_CALL_ICON]')) finalMessage = finalMessage.replace('[VOICE_CALL_ICON]', '📞')
+  if (finalMessage.includes('[VIDEO_CALL_ICON]')) finalMessage = finalMessage.replace('[VIDEO_CALL_ICON]', '📹')
 
-  return messageStr
+  return `${senderPrefix}${finalMessage}`
 }
 
 // 长按相关
@@ -392,84 +492,62 @@ const openChat = (chatId: string) => {
     return
   }
 
-  console.log('🔥 openChat 被调用:', chatId, '类型:', typeof chatId)
+  console.log('🔥 openChat 被调用:', chatId)
 
-  // 验证chatId
+  // 1️⃣ 验证chatId
   if (!chatId) {
     console.error('❌ chatId为空')
     appStore.showToast('无效的聊天ID', 'error')
     return
   }
+
+  // 2️⃣ 查找聊天会话
   const chat = chats.value.find(c => c.id === chatId)
-  if (chat) {
-    console.log('✅ 找到聊天:', chat.name, '聊天ID:', chat.id, '参与者:', chat.participants)
-    // 立即清除未读消息数
-    unreadStore.markAsRead(chatId)
+  if (!chat) {
+    console.error('❌ 未找到聊天:', chatId)
+    appStore.showToast('聊天不存在', 'error')
+    return
+  }
 
-    // 强制触发响应式更新
-    nextTick(() => {
-      const currentUserId = authStore.user?.id || '1'
+  console.log('✅ 找到聊天:', { id: chat.id, name: chat.name, type: chat.type })
 
-      // 使用ChatGuard检测并阻止自聊天
-      if (chat.participants && ChatGuard.isSelfChatParticipants(chat.participants)) {
-        console.error('❌ ChatGuard检测到自聊天参与者，阻止跳转:', chat.participants)
+  // 3️⃣ 清除未读消息数
+  unreadStore.markAsRead(chatId)
+
+  // 4️⃣ 异步处理跳转（确保UI更新）
+  nextTick(() => {
+    // 5️⃣ 判断是群聊还是私聊
+    if (chatId.startsWith('group_') || chat.type === 'group') {
+      // ✅ 群聊：直接跳转到 /group/:id
+      console.log('🚀 跳转到群聊页面:', `/group/${chatId}`)
+      router.push(`/group/${chatId}`)
+    } else {
+      // ✅ 私聊：需要进行自聊天检查
+      const currentUserId = String(authStore.user?.id || '1')
+
+      // 检查自聊天
+      if (ChatGuard.isSelfChatParticipants(chat.participants)) {
+        console.error('❌ 检测到自聊天参与者，阻止跳转')
         appStore.showToast('不能与自己聊天', 'error')
         return
       }
 
       if (ChatGuard.isSelfChatId(chatId)) {
-        console.error('❌ ChatGuard检测到自聊天ID，阻止跳转:', chatId)
+        console.error('❌ 检测到自聊天ID，阻止跳转')
         appStore.showToast('不能与自己聊天', 'error')
         return
       }
 
-      // 从聊天会话中获取对方用户ID
-      let otherUserId: string
-
-      if (chat.participants && chat.participants.length >= 2) {
-        // 如果有participants，找到对方用户ID
-        const foundOtherUserId = chat.participants.find((p: string) => p !== currentUserId)
-
-        if (foundOtherUserId) {
-          otherUserId = foundOtherUserId
-        } else {
-          // 这种情况应该已经被ChatGuard阻止了，但为了安全再次检查
-          console.error('❌ 无法找到对方用户ID，可能是自聊天:', chat.participants)
-          appStore.showToast('无效的聊天对象', 'error')
-          return
-        }
-      } else {
-        // 从chatId解析对方用户ID
-        try {
-          otherUserId = getOtherUserId(chatId, currentUserId)
-        } catch (error) {
-          console.error('❌ 无法解析聊天ID:', { chatId, currentUserId, error })
-          appStore.showToast('无效的聊天ID', 'error')
-          return
-        }
-      }
-
-      // 最终验证：确保不是自聊天
-      if (otherUserId === currentUserId) {
-        console.error('❌ 最终检查发现自聊天，阻止跳转:', { currentUserId, otherUserId })
-        appStore.showToast('不能与自己聊天', 'error')
-        return
-      }
-
-      // 🎯 生成正确的聊天URL
-      // 确保chatId格式正确，如果没有chat_前缀则添加
+      // 确保chatId格式正确（添加chat_前缀）
       let finalChatId = chatId
       if (!finalChatId.startsWith('chat_')) {
         finalChatId = `chat_${finalChatId}`
       }
 
-      const chatUrl = `/chat/${finalChatId}`
-      console.log('🚀 跳转到聊天页面:', chatUrl, '参数:', { currentUserId, otherUserId, originalChatId: chatId, finalChatId })
-      router.push(chatUrl)
-    })
-  } else {
-    console.error('❌ 未找到聊天:', chatId)
-  }
+      console.log('🚀 跳转到私聊页面:', `/chat/${finalChatId}`)
+      router.push(`/chat/${finalChatId}`)
+    }
+  })
 }
 
 // 菜单操作
@@ -581,6 +659,38 @@ const payment = () => {
 }
 
 // 生命周期
+// 处理群名称更新事件
+const handleGroupNameChanged = (event: any) => {
+  const { groupId, newGroupName } = event.detail
+  console.log('📢 聊天列表收到群名称更新事件:', { groupId, newGroupName })
+
+  // 查找并更新对应的会话
+  const session = chatStore.sessions.find(s => s.id === groupId)
+  if (session) {
+    // 检查是否有群聊备注
+    const savedRemark = localStorage.getItem(`group_remark_${groupId}`)
+
+    // 保留成员数（如果有）
+    const memberCountMatch = session.name?.match(/（(\d+)）$/)
+    const memberCount = memberCountMatch ? memberCountMatch[1] : ''
+
+    // 如果有备注，保持备注名称；否则使用新群名
+    if (savedRemark && savedRemark.trim()) {
+      // 有备注，保持备注名称不变
+      const remarkName = savedRemark.trim()
+      session.name = memberCount ? `${remarkName}（${memberCount}）` : remarkName
+      console.log('✅ 保持群备注名称:', session.name)
+    } else {
+      // 没有备注，使用新群名
+      session.name = memberCount ? `${newGroupName}（${memberCount}）` : newGroupName
+      console.log('✅ 更新为新群名:', session.name)
+    }
+
+    // 保存到缓存
+    chatStore.saveToCache()
+  }
+}
+
 onMounted(async () => {
   console.log('📱 ChatHomeEnterprise 组件挂载')
 
@@ -597,10 +707,18 @@ onMounted(async () => {
       showAddMenu.value = true
     })
   }
+
+  // 监听群名称更新事件
+  window.addEventListener('group-name-changed', handleGroupNameChanged)
+  console.log('✅ 已注册群名称更新事件监听')
 })
 
 onUnmounted(() => {
   endLongPress()
+
+  // 移除事件监听
+  window.removeEventListener('group-name-changed', handleGroupNameChanged)
+  console.log('✅ 已移除群名称更新事件监听')
 })
 
 // 初始化聊天数据

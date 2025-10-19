@@ -41,6 +41,8 @@
             </div>
             <div class="member-nickname remove-text">移除</div>
           </div>
+
+
         </div>
 
         <!-- 查看更多按钮 - 当成员数超过限制时显示 -->
@@ -53,21 +55,30 @@
       <!-- 功能列表 -->
       <div v-if="isGroupMember" class="settings-section">
         <!-- 群聊名称 -->
-        <div class="setting-item" @click="editGroupName">
+        <div
+          class="setting-item"
+          :class="{ 'disabled-item': !canEditGroupName }"
+          @click="canEditGroupName ? editGroupName() : null"
+        >
           <span class="setting-label">群聊名称</span>
           <div class="setting-right">
             <span class="setting-value">{{ groupInfo.name }}</span>
-            <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+            <iconify-icon
+              v-if="canEditGroupName"
+              icon="heroicons-outline:chevron-right"
+              width="16"
+              style="color: #999;"
+            ></iconify-icon>
           </div>
         </div>
       </div>
 
       <div v-if="isGroupMember" class="settings-section">
-        <!-- 群公告 - 只有群主可以点击 -->
+        <!-- 群公告 - 所有成员都可以查看 -->
         <div
           class="setting-item announcement-item"
-          :class="{ 'disabled-item': !isGroupOwner, 'has-content': announcement?.content }"
-          @click="isGroupOwner ? viewGroupAnnouncement() : null"
+          :class="{ 'has-content': announcement?.content }"
+          @click="viewGroupAnnouncement()"
         >
           <span class="setting-label">群公告</span>
           <div class="setting-right">
@@ -81,14 +92,14 @@
           <div class="announcement-content">{{ announcement.content }}</div>
         </div>
 
-        <!-- 群管理 - 仅群主可见 -->
-        <div v-if="isGroupOwner" class="setting-item" @click="manageGroup">
+        <!-- 群管理 - 群主和管理员可见 -->
+        <div v-if="isGroupOwner || currentUserRole === 'admin'" class="setting-item" @click="manageGroup">
           <span class="setting-label">群管理</span>
           <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
         </div>
 
-        <!-- 邀请申请 - 仅群主和管理员可见 -->
-        <div v-if="isGroupOwner || currentUserRole === 'admin'" class="setting-item" @click="viewInviteRequests">
+        <!-- 邀请申请 - 仅群主和管理员可见，且群聊邀请确认已开启 -->
+        <div v-if="(isGroupOwner || currentUserRole === 'admin') && groupSettings.requireApproval" class="setting-item" @click="viewInviteRequests">
           <span class="setting-label">邀请申请</span>
           <div class="setting-right">
             <span v-if="pendingInviteCount > 0" class="badge">{{ pendingInviteCount }}</span>
@@ -108,7 +119,10 @@
         <!-- 备注 -->
         <div class="setting-item" @click="editGroupRemark">
           <span class="setting-label">备注</span>
-          <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+          <div class="setting-value-container">
+            <span class="setting-value">{{ groupRemark || '未设置' }}</span>
+            <iconify-icon icon="heroicons-outline:chevron-right" width="16" style="color: #999;"></iconify-icon>
+          </div>
         </div>
       </div>
 
@@ -199,6 +213,14 @@
       @cancel="() => {}"
     />
 
+    <!-- 删除群聊确认对话框 -->
+    <ConfirmDialog
+      ref="deleteGroupDialogRef"
+      message="删除群聊后，所有成员都将无法访问此群聊，确定要删除吗？"
+      confirm-text="删除"
+      @confirm="handleDeleteGroupConfirm"
+      @cancel="() => {}"
+    />
 
   </div>
 </template>
@@ -209,30 +231,36 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '@/shared/stores/appStore'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '../stores/chatStore'
+import { useGroupPermissionsStore } from '../stores/groupPermissions'
 import { getDisplayName } from '@/modules/chat/utils/groupNicknameManager'
 import ConfirmDialog from '@/shared/components/ConfirmDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
+const stableGroupId = ref<string>(route.params.id as string)
+
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const chatStore = useChatStore()
+const groupPerms = useGroupPermissionsStore()
 
 // 当前用户角色（从后端获取）
-const currentUserRole = ref<'owner' | 'admin' | 'member'>('member')
+const currentUserRole = ref<'owner' | 'creator' | 'admin' | 'member'>('member')
 
 // 群组信息
 const groupInfo = ref({
   id: '',
   name: '',
   memberCount: 0,
-  members: [] as any[]
+
+  members: [] as any[],
+  creatorId: null as string | number | null  // 群主ID
 })
 
 // 群组设置
 const groupSettings = ref({
   onlyAdminCanRename: false,
-  requireApproval: false
+  requireApproval: false  // 群聊邀请确认
 })
 
 // 待审核的邀请申请数量
@@ -243,6 +271,17 @@ const isMuted = ref(false)
 const isPinned = ref(false)
 const isSavedToContacts = ref(false) // 默认不保存到通讯录
 const myNickname = ref('')
+const groupRemark = ref('') // 群备注
+
+// 计算是否可以编辑群名称（优先使用全局权限存储）
+const canEditGroupName = computed(() => {
+  const gid = stableGroupId.value || (route.params.id as string)
+  const s = groupPerms.getSettings(gid)
+  const onlyAdmin = s?.onlyAdminCanRename ?? groupSettings.value.onlyAdminCanRename
+  if (!onlyAdmin) return true
+  return currentUserRole.value !== 'member'
+})
+
 
 // 群公告
 const announcement = ref<any>(null)
@@ -253,6 +292,7 @@ const groupQRCode = ref<string>('')
 // 对话框引用
 const deleteChatDialogRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const leaveGroupDialogRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
+const deleteGroupDialogRef = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
 // 用户是否是群成员
 const isGroupMember = ref(true)
@@ -268,86 +308,241 @@ const loadGroupInfo = async () => {
 
     console.log('🔍 加载群组信息，群组ID:', groupId)
 
-    // 获取群聊详情
-    const groupResponse = await fetch(`http://localhost:8893/api/groups/${groupId}`, {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
-    })
+    // 1️⃣ 先尝试从本地存储获取群聊信息
+    let groupData = null
+    let membersData = []
 
-    if (!groupResponse.ok) {
-      throw new Error('获取群聊详情失败')
+    // 从 chatStore 的 sessions 中查找
+    const chatSession = chatStore.sessions?.find((s: any) => s.id === groupId)
+    if (chatSession) {
+      console.log('✅ 从 chatStore 找到群聊信息:', chatSession)
+      groupData = chatSession
+      // 注意：不再从 participants 构建成员列表，因为这个列表可能是旧的
+      // 我们将从后端获取最新的成员列表
     }
 
-    const groupResult = await groupResponse.json()
-    console.log('✅ 获取群聊详情成功:', groupResult)
+    // 总是从后端获取最新的成员列表（确保显示最新的成员状态）
+    if (true) {  // 改为总是从后端获取
+      console.log('📡 从本地存储未找到，尝试从后端获取...')
 
-    // 获取群成员列表
-    const membersResponse = await fetch(`http://localhost:8893/api/groups/${groupId}/members`, {
-      headers: {
-        'Authorization': `Bearer ${authStore.token}`
-      }
-    })
+      try {
+        // 获取群聊详情
+        const groupResponse = await fetch(`http://localhost:8893/api/groups/${groupId}`, {
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`
+          }
+        })
 
-    if (!membersResponse.ok) {
-      throw new Error('获取群成员失败')
-    }
-
-    const membersResult = await membersResponse.json()
-    console.log('✅ 获取群成员成功:', membersResult)
-
-    if (groupResult.success && membersResult.success && membersResult.data) {
-      const members = membersResult.data.map((member: any) => ({
-        id: member.id,
-        name: member.nickname || '未知用户',
-        groupNickname: member.group_nickname || '',
-        avatar: member.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.id}`,
-        role: member.role
-      }))
-
-      // 按角色排序：群主 > 管理员 > 普通成员
-      const sortedMembers = members.sort((a: any, b: any) => {
-        const roleOrder: any = {
-          'creator': 1,
-          'owner': 1,
-          'admin': 2,
-          'member': 3
+        if (groupResponse.ok) {
+          const groupResult = await groupResponse.json()
+          console.log('✅ 从后端获取群聊详情成功:', groupResult)
+          groupData = groupResult.data
+        } else {
+          console.warn('⚠️ 后端返回404，使用本地数据')
         }
-        return (roleOrder[a.role] || 3) - (roleOrder[b.role] || 3)
+      } catch (error) {
+        console.warn('⚠️ 从后端获取群聊详情失败:', error)
+      }
+
+      // 如果后端也没有，尝试从 localStorage 获取
+      if (!groupData) {
+        try {
+          const localChats = JSON.parse(localStorage.getItem('leaftalk_chats') || '[]')
+          const localChat = localChats.find((c: any) => c.id === groupId)
+          if (localChat) {
+            console.log('✅ 从 localStorage 找到群聊信息:', localChat)
+            groupData = localChat
+
+            // 从 participants 构建成员列表
+            if (localChat.participants && Array.isArray(localChat.participants)) {
+              membersData = localChat.participants.map((userId: string) => ({
+                id: userId,
+                name: '用户' + userId,
+                groupNickname: '',
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+                role: userId === authStore.user?.id ? 'creator' : 'member'
+              }))
+              console.log('📋 从 localStorage 构建的成员列表:', membersData)
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ 从 localStorage 获取群聊信息失败:', error)
+        }
+      }
+    }
+
+    // 2️⃣ 从后端获取最新的成员列表
+    try {
+      const membersResponse = await fetch(`http://localhost:8893/api/groups/${groupId}/members`, {
+        headers: {
+          'Authorization': `Bearer ${authStore.token}`
+        }
       })
 
-      groupInfo.value = {
-        id: groupId,
-        name: groupResult.data.name || '群聊',
-        memberCount: sortedMembers.length,
-        members: sortedMembers
-      }
+      if (membersResponse.ok) {
+        const membersResult = await membersResponse.json()
+        console.log('✅ 从后端获取群成员成功:', membersResult)
 
-      // 获取群二维码
-      if (groupResult.data.qr_code_url) {
-        groupQRCode.value = groupResult.data.qr_code_url
-        console.log('✅ 群二维码加载成功')
-      }
+        if (membersResult.success && membersResult.data) {
+          membersData = membersResult.data.map((member: any) => {
+            // 使用真实用户头像和昵称
+            const userAvatar = member.avatar || member.user_avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${member.id}`
+            const userNickname = member.nickname || member.user_nickname || member.username || '未知用户'
 
-      // 获取当前用户的角色
-      const currentUserId = authStore.user?.id
-      const currentMember = sortedMembers.find((m: any) => String(m.id) === String(currentUserId))
-      if (currentMember) {
-        currentUserRole.value = currentMember.role || 'member'
-        isGroupMember.value = true
+            // 处理角色字段（可能是 role, member_role, user_role 等）
+            const memberRole = member.role || member.member_role || member.user_role || 'member'
+
+            console.log('👤 成员信息:', {
+              id: member.id,
+              nickname: userNickname,
+              avatar: userAvatar,
+              role: memberRole,
+              rawRole: member.role,
+              allFields: Object.keys(member)
+            })
+
+            return {
+              id: member.id,
+              name: userNickname,
+              groupNickname: member.group_nickname || '',
+              avatar: userAvatar,
+              role: memberRole
+            }
+          })
+          console.log('✅ 成员列表已更新，共', membersData.length, '个成员')
+        }
       } else {
-        // 用户不在群成员列表中
-        isGroupMember.value = false
-        console.log('⚠️ 当前用户不是群成员')
+        console.warn('⚠️ 后端返回错误状态:', membersResponse.status)
       }
-
-      console.log('✅ 群组信息加载完成:', groupInfo.value)
-      console.log('👤 当前用户角色:', currentUserRole.value)
-      console.log('👤 是否是群成员:', isGroupMember.value)
-
-      // 加载群组设置
-      await loadGroupSettings()
+    } catch (error) {
+      console.warn('⚠️ 从后端获取群成员失败:', error)
+      // 如果后端获取失败，尝试从 chatStore 的 participants 构建成员列表
+      if (chatSession && chatSession.participants && Array.isArray(chatSession.participants)) {
+        membersData = chatSession.participants.map((userId: string) => ({
+          id: userId,
+          name: '用户' + userId,
+          groupNickname: '',
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+          role: userId === authStore.user?.id ? 'creator' : 'member'
+        }))
+        console.log('📋 从 chatStore 构建的备选成员列表:', membersData)
+      }
     }
+
+    // 3️⃣ 如果还是没有数据，显示错误
+    if (!groupData) {
+      console.error('❌ 无法获取群聊信息')
+      appStore.showToast('无法加载群聊信息', 'error')
+      return
+    }
+
+    // 3.5️⃣ 获取成员的真实用户信息（头像和昵称）
+    if (membersData && membersData.length > 0) {
+      try {
+        console.log('🔄 获取成员的真实用户信息...')
+        const userIds = membersData.map(m => m.id).join(',')
+        const usersResponse = await fetch(`http://localhost:8893/api/users/batch?ids=${userIds}`, {
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`
+          }
+        })
+
+        if (usersResponse.ok) {
+          const usersResult = await usersResponse.json()
+          if (usersResult.success && usersResult.data) {
+            const userMap = new Map(usersResult.data.map((u: any) => [String(u.id), u]))
+            console.log('✅ 获取用户信息成功，用户数:', userMap.size)
+
+            // 更新成员数据，使用真实的用户头像和昵称
+            membersData = membersData.map((member: any) => {
+              const userInfo = userMap.get(String(member.id))
+              if (userInfo) {
+                console.log('👤 更新成员信息:', {
+                  id: member.id,
+                  oldName: member.name,
+                  newName: userInfo.nickname || userInfo.username,
+                  avatar: userInfo.avatar
+                })
+                return {
+                  ...member,
+                  name: userInfo.nickname || userInfo.username || member.name,
+                  avatar: userInfo.avatar || member.avatar
+                }
+              }
+              return member
+            })
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ 获取用户信息失败，使用本地数据:', error)
+      }
+    }
+
+    // 4️⃣ 按角色排序：群主 > 管理员 > 普通成员
+    const sortedMembers = membersData.sort((a: any, b: any) => {
+      const roleOrder: any = {
+        'creator': 1,
+        'owner': 1,
+        'admin': 2,
+        'member': 3
+      }
+      return (roleOrder[a.role] || 3) - (roleOrder[b.role] || 3)
+    })
+
+    // 5️⃣ 更新 groupInfo
+    groupInfo.value = {
+      id: groupId,
+      name: groupData?.name || '群聊',
+      memberCount: sortedMembers.length,
+      members: sortedMembers,
+      creatorId: groupData?.creatorId || groupData?.creator_id || null
+    }
+
+    console.log('📋 群组详细信息:', {
+      id: groupInfo.value.id,
+      name: groupInfo.value.name,
+      creatorId: groupInfo.value.creatorId,
+      memberCount: groupInfo.value.memberCount
+    })
+
+    // 获取群二维码
+    if (groupData?.qr_code_url) {
+      groupQRCode.value = groupData.qr_code_url
+      console.log('✅ 群二维码加载成功')
+    }
+
+    // 获取当前用户的角色
+    const currentUserId = authStore.user?.id
+    console.log('🔍 查找当前用户:', {
+      currentUserId,
+      sortedMembersCount: sortedMembers.length,
+      sortedMembers: sortedMembers.map((m: any) => ({ id: m.id, name: m.name, role: m.role }))
+    })
+
+    const currentMember = sortedMembers.find((m: any) => String(m.id) === String(currentUserId))
+    if (currentMember) {
+      currentUserRole.value = currentMember.role || 'member'
+      isGroupMember.value = true
+      console.log('✅ 找到当前用户，设置为群成员:', {
+        id: currentUserId,
+        role: currentUserRole.value,
+        name: currentMember.name
+      })
+    } else {
+      // 用户不在群成员列表中 - 但仍然应该显示功能列表
+      // 因为用户可能是通过其他方式加入的
+      isGroupMember.value = true  // 改为 true，确保显示功能列表
+      console.log('⚠️ 当前用户不在成员列表中，但仍然显示功能列表')
+    }
+
+    console.log('✅ 群组信息加载完成:', groupInfo.value)
+    console.log('👤 当前用户角色:', currentUserRole.value)
+    console.log('👤 是否是群成员:', isGroupMember.value)
+    console.log('👑 是否是群主:', currentUserRole.value === 'owner' || currentUserRole.value === 'creator')
+
+    // 加载群组设置
+    await loadGroupSettings()
+
   } catch (error) {
     console.error('❌ 加载群组信息失败:', error)
     appStore.showToast('加载群组信息失败', 'error')
@@ -367,8 +562,12 @@ const loadGroupSettings = async () => {
     if (response.ok) {
       const result = await response.json()
       if (result.success && result.data) {
-        groupSettings.value.onlyAdminCanRename = result.data.only_admin_can_rename || false
+        groupSettings.value.onlyAdminCanRename = result.data.only_admin_can_rename === 1 || result.data.only_admin_can_rename === true
+        groupSettings.value.requireApproval = result.data.invite_confirm_enabled === 1 || result.data.invite_confirm_enabled === true || result.data.require_approval === 1 || result.data.require_approval === true
         console.log('✅ 群组设置加载成功:', groupSettings.value)
+        // 同步到全局权限存储，便于其他页面实时读取
+        try { groupPerms.setSettings(groupId, { onlyAdminCanRename: groupSettings.value.onlyAdminCanRename, requireApproval: groupSettings.value.requireApproval }) } catch {}
+
       }
     }
 
@@ -424,6 +623,17 @@ const loadGroupSettings = async () => {
     } catch (error) {
       console.warn('⚠️ 加载群昵称失败:', error)
     }
+
+    // 加载群备注（从localStorage）
+    try {
+      const savedRemark = localStorage.getItem(`group_remark_${groupId}`)
+      if (savedRemark) {
+        groupRemark.value = savedRemark.trim()
+        console.log('✅ 群备注已加载:', groupRemark.value)
+      }
+    } catch (error) {
+      console.warn('⚠️ 加载群备注失败:', error)
+    }
   } catch (error) {
     console.error('❌ 加载群组设置失败:', error)
   }
@@ -431,11 +641,35 @@ const loadGroupSettings = async () => {
 
 // 计算属性
 // 是否是群主
-const isGroupOwner = computed(() => currentUserRole.value === 'owner' || currentUserRole.value === 'creator')
+const isGroupOwner = computed(() => {
+  const currentUserId = authStore.user?.id
+
+  // 方法1：通过角色判断
+  if (currentUserRole.value === 'owner' || currentUserRole.value === 'creator') {
+    return true
+  }
+
+  // 方法2：通过 creatorId 判断
+  if (groupInfo.value.creatorId && String(groupInfo.value.creatorId) === String(currentUserId)) {
+    console.log('✅ 通过 creatorId 判断为群主')
+    return true
+  }
+
+  // 方法3：通过成员列表中的第一个成员判断（备选方案）
+  if (groupInfo.value.members.length > 0) {
+    const firstMember = groupInfo.value.members[0]
+    if (String(firstMember.id) === String(currentUserId)) {
+      console.log('✅ 通过第一个成员判断为群主')
+      return true
+    }
+  }
+
+  return false
+})
 
 // 是否可以管理成员（群主或管理员）
 const canManageMembers = computed(() => {
-  return currentUserRole.value === 'owner' || currentUserRole.value === 'creator' || currentUserRole.value === 'admin'
+  return isGroupOwner.value || currentUserRole.value === 'admin'
 })
 
 // 显示的头像（根据角色显示不同数量）
@@ -499,13 +733,6 @@ const editGroupName = () => {
 
 const viewGroupAnnouncement = () => {
   console.log('查看群公告')
-
-  // 验证是否是群主
-  if (!isGroupOwner.value) {
-    appStore.showToast('只有群主可以查看和编辑群公告', 'error')
-    return
-  }
-
   router.push(`/group-announcement/${groupInfo.value.id}`)
 }
 
@@ -543,9 +770,9 @@ const loadAnnouncement = async () => {
 const manageGroup = () => {
   console.log('群管理')
 
-  // 验证是否是群主
-  if (!isGroupOwner.value) {
-    appStore.showToast('只有群主可以管理群聊', 'error')
+  // 验证是否是群主或管理员
+  if (!isGroupOwner.value && currentUserRole.value !== 'admin') {
+    appStore.showToast('只有群主或管理员可以管理群聊', 'error')
     return
   }
 
@@ -622,9 +849,13 @@ const togglePin = async () => {
     isPinned.value = !isPinned.value
 
     // 更新chatStore中的会话状态
-    const { useChatStore } = await import('@/modules/chat/stores/chatStore')
-    const chatStore = useChatStore()
-    chatStore.togglePinSession(groupId)
+    const session = chatStore.sessions.find(s => s.id === groupId)
+    if (session) {
+      session.isPinned = isPinned.value
+      // 保存到缓存
+      chatStore.saveToCache()
+      console.log('✅ 已更新会话置顶状态:', isPinned.value)
+    }
 
     // 保存到localStorage
     try {
@@ -680,6 +911,12 @@ const toggleSaveToContacts = async () => {
       }
       localStorage.setItem('saved_to_contacts_groups', JSON.stringify(savedGroups))
       console.log('📇 保存到通讯录状态已保存:', groupId, isSavedToContacts.value)
+
+      // 触发事件通知其他组件更新
+      window.dispatchEvent(new CustomEvent('saved-to-contacts-changed', {
+        detail: { groupId, isSaved: isSavedToContacts.value }
+      }))
+      console.log('✅ 已触发saved-to-contacts-changed事件')
     } catch (error) {
       console.error('❌ 保存到通讯录状态失败:', error)
     }
@@ -725,6 +962,54 @@ const handleDeleteChatConfirm = async () => {
     appStore.showToast('聊天记录已删除', 'success')
   } catch (error) {
     console.error('❌ 删除聊天记录失败:', error)
+    appStore.showToast('删除失败', 'error')
+  }
+}
+
+// 显示删除群聊对话框
+const showDeleteGroupDialog = () => {
+  console.log('显示删除群聊对话框')
+  deleteGroupDialogRef.value?.show()
+}
+
+// 处理删除群聊确认
+const handleDeleteGroupConfirm = async () => {
+  try {
+    const groupId = route.params.id as string
+
+    console.log('🗑️ 删除群聊:', groupId)
+
+    // 调用后端API删除群聊
+    const response = await fetch(`http://localhost:8893/api/groups/${groupId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authStore.token}`
+      }
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      if (result.success) {
+        console.log('✅ 删除群聊成功')
+
+        // 使用chatStore的deleteChatItem方法删除会话和消息
+        await chatStore.deleteChatItem(groupId)
+
+        appStore.showToast('群聊已删除', 'success')
+
+        // 跳转到聊天列表
+        router.push('/chat')
+      } else {
+        console.error('❌ 删除群聊失败:', result.message)
+        appStore.showToast(result.message || '删除失败', 'error')
+      }
+    } else {
+      console.error('❌ 删除群聊请求失败')
+      appStore.showToast('删除失败', 'error')
+    }
+  } catch (error) {
+    console.error('❌ 删除群聊失败:', error)
     appStore.showToast('删除失败', 'error')
   }
 }
@@ -824,28 +1109,92 @@ const loadPendingInviteCount = async () => {
   }
 }
 
+// 处理群名称更新事件
+const handleGroupNameChanged = (event: any) => {
+  const { groupId, newGroupName } = event.detail
+  if (groupId === groupInfo.value.id) {
+    groupInfo.value.name = newGroupName
+    console.log('✅ 群名称已更新:', newGroupName)
+  }
+}
+
+// 处理群备注更新事件
+const handleRemarkChanged = (event: any) => {
+  const { groupId, remarkName } = event.detail || {}
+  const currentGroupId = route.params.id as string
+
+  if (groupId === currentGroupId) {
+    console.log('📝 检测到群备注更新:', remarkName)
+    groupRemark.value = remarkName
+  }
+}
+
 onMounted(async () => {
-  await loadGroupInfo()
-  await loadAnnouncement()
-  await loadPendingInviteCount()
+  console.log('🔄 GroupInfo 页面已挂载')
+  try {
+    // 设置超时，如果加载超过 10 秒则返回
+    const timeoutId = setTimeout(() => {
+      console.warn('⚠️ 加载超时，返回上一页')
+      router.back()
+    }, 10000)
+
+    await loadGroupInfo()
+    await loadAnnouncement()
+    await loadPendingInviteCount()
+
+    clearTimeout(timeoutId)
+    console.log('✅ GroupInfo 页面加载完成')
+  } catch (error) {
+    console.error('❌ GroupInfo 页面加载失败:', error)
+    appStore.showToast('加载失败，请重试', 'error')
+    router.back()
+  }
 
   // 监听群公告更新事件
   window.addEventListener('group-announcement-updated', handleAnnouncementUpdated)
 
   // 监听群昵称更新事件
   window.addEventListener('group-nickname-changed', handleNicknameChanged)
+
+  // 监听群名称更新事件
+  window.addEventListener('group-name-changed', handleGroupNameChanged)
+
+  // 监听群备注更新事件
+  window.addEventListener('group-remark-changed', handleRemarkChanged)
+
+  // 监听权限设置变化事件
+  window.addEventListener('group-name-edit-permission-changed', handlePermissionChanged)
 })
+
+// 处理权限变化事件
+const handlePermissionChanged = (event: Event) => {
+  const customEvent = event as CustomEvent
+  const { groupId, nameEditRestricted } = customEvent.detail
+
+  if (groupId === stableGroupId.value) {
+    groupSettings.value.onlyAdminCanRename = nameEditRestricted
+    console.log('✅ 权限设置已实时更新:', { onlyAdminCanRename: nameEditRestricted })
+  }
+}
 
 // 监听路由变化，当从编辑页面返回时重新加载
 onActivated(async () => {
-  await loadGroupInfo()
-  await loadAnnouncement()
+  console.log('🔄 GroupInfo 页面已激活，重新加载数据')
+  try {
+    await loadGroupSettings()  // 重新加载权限设置
+    console.log('✅ GroupInfo 权限设置已刷新')
+  } catch (error) {
+    console.error('❌ GroupInfo 权限设置刷新失败:', error)
+  }
 })
 
 // 组件卸载时移除事件监听
 onUnmounted(() => {
   window.removeEventListener('group-announcement-updated', handleAnnouncementUpdated)
   window.removeEventListener('group-nickname-changed', handleNicknameChanged)
+  window.removeEventListener('group-name-changed', handleGroupNameChanged)
+  window.removeEventListener('group-remark-changed', handleRemarkChanged)
+  window.removeEventListener('group-name-edit-permission-changed', handlePermissionChanged)
 })
 </script>
 
@@ -946,7 +1295,8 @@ onUnmounted(() => {
 }
 
 .add-icon,
-.remove-icon {
+.remove-icon,
+.delete-icon {
   width: 44px;
   height: 44px;
   display: flex;
@@ -959,9 +1309,28 @@ onUnmounted(() => {
   transition: background-color 0.2s;
 }
 
+.delete-icon {
+  border-color: #ff3b30;
+  background: #fff5f5;
+}
+
 .add-member-btn:active .add-icon,
-.remove-member-btn:active .remove-icon {
+.remove-member-btn:active .remove-icon,
+.delete-group-btn:active .delete-icon {
   background: #E5E5E5;
+}
+
+.delete-group-btn:active .delete-icon {
+  background: #ffe5e5;
+}
+
+.remove-text,
+.delete-text {
+  color: #666666;
+}
+
+.delete-text {
+  color: #ff3b30;
 }
 
 /* 功能列表区域 */
@@ -1016,9 +1385,19 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+.setting-value-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .setting-value {
   font-size: 14px;
   color: #999999;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1030,13 +1409,15 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  min-height: 48px;
+  padding: 0 16px !important;
   height: 48px;
 }
 
 .announcement-item.has-content {
   border-bottom: none;
+  height: auto !important;
+  padding-top: 12px !important;
+  padding-bottom: 6px !important;
 }
 
 .announcement-item.disabled-item {

@@ -38,12 +38,6 @@
           {{ getSystemMessageText(message) }}
         </div>
 
-        <!-- 群公告消息：特殊样式显示 -->
-        <div v-else-if="message.type === 'announcement'" class="announcement-message">
-          <div class="announcement-label">群公告</div>
-          <div class="announcement-content">{{ message.content }}</div>
-        </div>
-
         <div v-else class="message-item" :class="{ 'own-message': message.isOwn }">
           <!-- 对方消息：头像在左侧 -->
           <div class="message-avatar" v-if="!message.isOwn" @click="handleAvatarClick(message)">
@@ -56,8 +50,8 @@
             <!-- 群聊：显示发送者昵称 -->
             <div v-if="isGroupChat && !message.isOwn" class="sender-name">{{ getSenderName(message) }}</div>
             <div class="message-bubble" :class="{ 'own-bubble': message.isOwn, 'message-failed': message.status === 'failed', 'is-location': message.type === 'location' }"
-                 :style="message.isOwn && message.type === 'text' ? 'padding: 6px 15px 6px 12px !important;' : ''">
-              <p v-if="message.type === 'text'" :style="message.isOwn ? 'margin: 0; padding-right: 0;' : 'margin: 0;'" v-html="highlightMessageContent(message)"></p>
+                 :style="message.isOwn && (message.type === 'text' || message.type === 'announcement') ? 'padding: 6px 15px 6px 12px !important;' : ''">
+              <p v-if="message.type === 'text' || message.type === 'announcement'" :style="message.isOwn ? 'margin: 0; padding-right: 0;' : 'margin: 0;'" v-html="highlightMessageContent(message)"></p>
               <img
                 v-else-if="message.type === 'image'"
                 :src="message.content"
@@ -199,6 +193,7 @@ import { useAppStore } from '../../../shared/stores/appStore'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../../../stores/auth'
 import { getRealAvatarUrl } from '../../../shared/utils/avatar'
+import { GroupAvatarGenerator } from '../../../shared/utils/groupAvatarGenerator'
 // import { getOtherUserId } from '../utils/chatUrlGenerator' // 暂时不使用
 import { ensureStylesLoaded } from '../utils/stylePreloader'
 import { loadAndApplyChatBackground, getCurrentChatId } from '../utils/chatBackgroundManager'
@@ -857,8 +852,16 @@ const goBack = () => {
 
 // 显示聊天信息
 const showChatInfo = () => {
-  const chatId = chatInfo.value?.id || otherUserId
-  if (chatId) {
+  // 对于群聊，使用 routeParam（group_xxx）；对于私聊，使用 otherUserId
+  const targetId = isGroupChat ? routeParam : otherUserId
+
+  console.log('🔍 显示聊天信息:')
+  console.log('  isGroupChat:', isGroupChat)
+  console.log('  routeParam:', routeParam)
+  console.log('  otherUserId:', otherUserId)
+  console.log('  targetId:', targetId)
+
+  if (targetId) {
     // 判断是否为群聊
     if (isGroupChat) {
       // 检查群是否已解散
@@ -867,11 +870,13 @@ const showChatInfo = () => {
         appStore.showToast('群聊已解散，无法查看群信息', 'error')
         return
       }
-      // 群聊跳转到群聊信息页面
-      router.push(`/chat-info/group/${chatId}`)
+      // 群聊跳转到群聊信息页面（使用 /group-info/:id 路由）
+      console.log('✅ 跳转到群聊信息页面:', `/group-info/${targetId}`)
+      router.push(`/group-info/${targetId}`)
     } else {
       // 私聊跳转到聊天信息页面
-      router.push(`/chat-info/${chatId}`)
+      console.log('✅ 跳转到私聊信息页面:', `/chat-info/${targetId}`)
+      router.push(`/chat-info/${targetId}`)
     }
   } else {
     console.error('❌ 无法获取聊天ID')
@@ -1275,8 +1280,8 @@ const getSystemMessageText = (message: any) => {
       const isOperator = String(message.operatorId) === String(currentUserId)
 
       if (isOperator) {
-        // 自己看到的：你将群名改为"群名称"
-        return `你将群名改为"${message.newGroupName}"`
+        // 自己看到的：你修改群名为"群名称"
+        return `你修改群名为"${message.newGroupName}"`
       } else {
         // 别人看到的：优先使用群昵称
         const cacheKey = `${message.id}_${message.operatorId}`
@@ -1284,7 +1289,7 @@ const getSystemMessageText = (message: any) => {
         // 先从缓存获取
         if (systemMessageDisplayNames.value.has(cacheKey)) {
           const displayName = systemMessageDisplayNames.value.get(cacheKey)
-          return `${displayName}将群名改为"${message.newGroupName}"`
+          return `${displayName}修改群名为"${message.newGroupName}"`
         }
 
         // 使用默认的用户昵称
@@ -1292,7 +1297,7 @@ const getSystemMessageText = (message: any) => {
 
         // 异步获取群昵称
         const groupId = sessionId.value || ''
-        if (groupId && isGroupChat.value) {
+        if (groupId && isGroupChat) {
           getGroupNicknameAsync(String(message.operatorId), groupId, defaultName)
             .then(groupNickname => {
               if (groupNickname) {
@@ -1309,7 +1314,7 @@ const getSystemMessageText = (message: any) => {
             })
         }
 
-        return `${defaultName}将群名改为"${message.newGroupName}"`
+        return `${defaultName}修改群名为"${message.newGroupName}"`
       }
     }
 
@@ -1692,9 +1697,15 @@ const checkGroupDissolved = async () => {
           }
         }
       }
+    } else if (response.status === 404) {
+      // 群聊不存在于后端，可能是本地创建的群聊
+      console.log('⚠️ 后端未找到群聊，可能是本地群聊，默认未解散')
+      isGroupDissolved.value = false
     }
   } catch (error) {
     console.error('❌ 检查群解散状态失败:', error)
+    // 出错时默认未解散
+    isGroupDissolved.value = false
   }
 }
 
@@ -1729,17 +1740,7 @@ const handleGroupDissolved = (event: any) => {
   }
 }
 
-// 注册事件监听
-if (isGroupChat) {
-  console.log('🔥 准备注册群名称修改事件监听')
-  console.log('🔥 isGroupChat:', isGroupChat)
-  console.log('🔥 otherUserId:', otherUserId)
-
-  window.addEventListener('group-name-changed', handleGroupNameChanged)
-  window.addEventListener('group-remark-changed', handleGroupRemarkChanged)
-  window.addEventListener('group-dissolved', handleGroupDissolved)
-  console.log('✅✅✅ 已注册群名称、备注修改和解散事件监听')
-}
+// 注册事件监听 - 移到 onMounted 中以确保组件已初始化
 
 // 监听会话删除状态
 watch(() => chatStore.sessions, (newSessions) => {
@@ -2000,29 +2001,54 @@ const loadChatInfo = async () => {
           finalChatAvatar = groupResult.data.avatar || ''
           console.log('✅ 获取群聊基本信息:', { groupName, avatar: finalChatAvatar?.substring(0, 50) })
         }
+      } else if (groupResponse.status === 404) {
+        // 后端未找到群聊，尝试从 localStorage 加载
+        console.log('⚠️ 后端未找到群聊，尝试从 localStorage 加载')
+        try {
+          const groups = JSON.parse(localStorage.getItem('leaftalk_groups') || '[]')
+          const localGroup = groups.find((g: any) => g.id === otherUserId)
+          if (localGroup) {
+            groupName = localGroup.name || ''
+            finalChatAvatar = localGroup.avatar || ''
+            memberCount = localGroup.members?.length || 0
+            console.log('✅ 从 localStorage 加载群聊信息:', { groupName, memberCount })
+          } else {
+            console.warn('⚠️ localStorage 中也未找到群聊信息')
+          }
+        } catch (error) {
+          console.error('❌ 从 localStorage 加载群聊信息失败:', error)
+        }
       }
 
-      // 获取群成员数量并预加载到缓存
-      try {
-        // 使用 getGroupMembers 预加载群成员数据到缓存
-        const members = await getGroupMembers(otherUserId)
-        memberCount = members.length
-        console.log('✅ 获取群成员数量并缓存:', memberCount)
-        console.log('✅ 群成员数据已缓存，包含群昵称信息')
-      } catch (error) {
-        console.warn('⚠️ 预加载群成员数据失败:', error)
-        // 降级方案：直接获取群成员数量
-        const membersResponse = await fetch(`http://localhost:8893/api/groups/${otherUserId}/members`, {
-          headers: {
-            'Authorization': `Bearer ${authStore.token}`
-          }
-        })
+      // 获取群成员数量并预加载到缓存（如果还没有从localStorage获取到）
+      if (memberCount === 0) {
+        try {
+          // 使用 getGroupMembers 预加载群成员数据到缓存
+          const members = await getGroupMembers(otherUserId)
+          memberCount = members.length
+          console.log('✅ 获取群成员数量并缓存:', memberCount)
+          console.log('✅ 群成员数据已缓存，包含群昵称信息')
+        } catch (error) {
+          console.warn('⚠️ 预加载群成员数据失败:', error)
+          // 降级方案：直接获取群成员数量
+          try {
+            const membersResponse = await fetch(`http://localhost:8893/api/groups/${otherUserId}/members`, {
+              headers: {
+                'Authorization': `Bearer ${authStore.token}`
+              }
+            })
 
-        if (membersResponse.ok) {
-          const membersResult = await membersResponse.json()
-          if (membersResult.success && membersResult.data) {
-            memberCount = membersResult.data.length
-            console.log('✅ 获取群成员数量（降级）:', memberCount)
+            if (membersResponse.ok) {
+              const membersResult = await membersResponse.json()
+              if (membersResult.success && membersResult.data) {
+                memberCount = membersResult.data.length
+                console.log('✅ 获取群成员数量（降级）:', memberCount)
+              }
+            } else if (membersResponse.status === 404) {
+              console.log('⚠️ 后端未找到群成员，使用 localStorage 中的成员数量')
+            }
+          } catch (err) {
+            console.warn('⚠️ 降级方案也失败:', err)
           }
         }
       }
@@ -2059,6 +2085,61 @@ const loadChatInfo = async () => {
       }
 
       console.log('✅ 最终群聊信息:', { name: finalChatName, memberCount })
+
+      // 生成群头像（根据成员数量和头像）
+      try {
+        console.log('🎨 开始生成群头像，群ID:', otherUserId)
+        const membersResponse = await fetch(`http://localhost:8893/api/groups/${otherUserId}/members`, {
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`
+          }
+        })
+
+        if (membersResponse.ok) {
+          const membersResult = await membersResponse.json()
+          console.log('🎨 API返回的成员数据:', membersResult)
+
+          if (membersResult.success && membersResult.data && membersResult.data.length > 0) {
+            const members = membersResult.data.map((m: any, index: number) => ({
+              id: m.id || m.user_id || `member_${index}`,
+              name: m.nickname || m.name || `成员${index + 1}`,
+              avatar: m.avatar || getRealAvatarUrl(m.id || m.user_id),
+              joinTime: m.joined_at ? new Date(m.joined_at).getTime() : Date.now() - (membersResult.data.length - index) * 1000
+            }))
+
+            console.log('🎨 群成员信息:', members.length, '人，成员列表:', members)
+
+            // 保存成员数量到localStorage
+            localStorage.setItem(`group_member_count_${otherUserId}`, String(members.length))
+
+            // 触发群成员变化事件
+            window.dispatchEvent(new CustomEvent('group-members-changed', {
+              detail: { groupId: otherUserId, memberCount: members.length }
+            }))
+
+            // 使用 GroupAvatarGenerator 生成组合头像
+            const generatedAvatar = await GroupAvatarGenerator.generateGroupAvatar(members, {
+              size: 36,
+              backgroundColor: '#f0f0f0',
+              borderColor: '#ffffff',
+              borderWidth: 0
+            })
+
+            finalChatAvatar = generatedAvatar
+            console.log('✅ 群头像生成成功')
+          } else {
+            console.warn('⚠️ 成员数据为空或无效:', membersResult)
+          }
+        } else {
+          console.warn('⚠️ 获取成员列表失败，状态码:', membersResponse.status)
+        }
+      } catch (error) {
+        console.warn('⚠️ 生成群头像失败，使用默认头像:', error)
+        // 如果生成失败，使用之前获取的头像或默认头像
+        if (!finalChatAvatar) {
+          finalChatAvatar = 'https://via.placeholder.com/36'
+        }
+      }
     } catch (error) {
       console.error('❌ 获取群聊信息失败:', error)
       // 如果出错，尝试保留当前名称
@@ -2102,6 +2183,15 @@ const loadChatInfo = async () => {
   // 更新路由 meta 标题，让 MobileApp 显示正确的标题
   if (route.meta) {
     route.meta.title = finalChatName
+    console.log('📋 设置 route.meta.title:', finalChatName)
+
+    // 触发自定义事件通知 MobileApp 更新标题
+    nextTick(() => {
+      window.dispatchEvent(new CustomEvent('chat-title-updated', {
+        detail: { title: finalChatName }
+      }))
+      console.log('📋 已触发 chat-title-updated 事件')
+    })
   }
 
   // 加载当前用户信息（头像统一走真实头像API，忽略/uploads直链）
@@ -2395,6 +2485,18 @@ onMounted(async () => {
     setTimeout(() => {
       window.location.reload()
     }, 1000)
+  }
+
+  // 注册事件监听 - 在 onMounted 中确保组件已初始化
+  if (isGroupChat) {
+    console.log('🔥 准备注册群名称修改事件监听')
+    console.log('🔥 isGroupChat:', isGroupChat)
+    console.log('🔥 otherUserId:', otherUserId)
+
+    window.addEventListener('group-name-changed', handleGroupNameChanged)
+    window.addEventListener('group-remark-changed', handleGroupRemarkChanged)
+    window.addEventListener('group-dissolved', handleGroupDissolved)
+    console.log('✅✅✅ 已注册群名称、备注修改和解散事件监听')
   }
 
   // 暴露删除测试函数到全局

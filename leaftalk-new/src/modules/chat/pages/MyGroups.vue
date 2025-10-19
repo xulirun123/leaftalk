@@ -44,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useChatStore } from '../stores/chatStore'
 import MobilePageContent from '../../../shared/components/mobile/MobilePageContent.vue'
@@ -52,18 +52,46 @@ import MobilePageContent from '../../../shared/components/mobile/MobilePageConte
 const router = useRouter()
 const chatStore = useChatStore()
 
-// 从聊天存储中获取群组数据
+// 用于触发computed重新计算的响应式变量
+const savedGroupsVersion = ref(0)
+
+// 从聊天存储中获取群组数据（只显示保存到通讯录的群聊）
 const myGroups = computed(() => {
-  return chatStore.sessions.filter(chat => chat.type === 'group').map(chat => ({
-    id: chat.id,
-    name: chat.name,
-    avatar: chat.avatar,
-    memberCount: chat.memberCount || 1,
-    role: chat.role || 'member',
-    lastMessage: chat.lastMessage,
-    lastMessageTime: chat.lastMessageTime
-  }))
+  // 订阅savedGroupsVersion使其成为响应依赖
+  void savedGroupsVersion.value
+
+  // 获取保存到通讯录的群聊列表
+  let savedGroups: string[] = []
+  try {
+    savedGroups = JSON.parse(localStorage.getItem('saved_to_contacts_groups') || '[]')
+  } catch (e) {
+    console.warn('读取保存到通讯录的群聊列表失败:', e)
+  }
+
+  return chatStore.sessions
+    .filter(chat => {
+      // 只显示群聊类型
+      if (chat.type !== 'group') return false
+
+      // 只显示保存到通讯录的群聊
+      return savedGroups.includes(chat.id)
+    })
+    .map(chat => ({
+      id: chat.id,
+      name: chat.name,
+      avatar: chat.avatar,
+      memberCount: chat.memberCount || 1,
+      role: chat.role || 'member',
+      lastMessage: chat.lastMessage,
+      lastMessageTime: chat.lastMessageTime
+    }))
 })
+
+// 处理保存到通讯录状态变化事件
+const handleSavedToContactsChanged = () => {
+  console.log('📇 收到保存到通讯录状态变化事件')
+  savedGroupsVersion.value++
+}
 
 // 使用真实群组数据，不创建示例数据
 const initializeGroups = () => {
@@ -87,6 +115,16 @@ const openGroupChat = (groupId: string) => {
 // 初始化
 onMounted(() => {
   initializeGroups()
+
+  // 监听保存到通讯录状态变化事件
+  window.addEventListener('saved-to-contacts-changed', handleSavedToContactsChanged)
+  console.log('✅ 已注册保存到通讯录状态变化事件监听')
+})
+
+onUnmounted(() => {
+  // 移除事件监听
+  window.removeEventListener('saved-to-contacts-changed', handleSavedToContactsChanged)
+  console.log('✅ 已移除保存到通讯录状态变化事件监听')
 })
 
 
@@ -170,12 +208,12 @@ onMounted(() => {
 
 .empty-state p {
   margin: 16px 0 8px;
-  color: #666;
-  font-size: 16px;
+  color: #999; /* 改为灰色 */
+  font-size: 13px; /* 改为13px */
 }
 
 .empty-tip {
-  font-size: 14px;
+  font-size: 13px; /* 改为13px */
   color: #999;
 }
 

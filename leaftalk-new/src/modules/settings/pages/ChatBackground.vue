@@ -81,8 +81,8 @@ const selectFromAlbum = () => {
           console.log('📢 已触发 chatBackground:updated 事件')
         }
 
-        // 跳转到聊天页面（返回两级，从聊天背景页 -> 聊天详情页 -> 聊天页面）
-        router.go(-2)
+        // 跳转到聊天页面
+        router.push(`/chat/${chatId}`)
       }
       reader.onerror = () => {
         alert('图片读取失败，请重试')

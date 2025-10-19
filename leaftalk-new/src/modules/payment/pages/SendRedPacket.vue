@@ -73,7 +73,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAppStore } from '@/stores/app'
+import { useAppStore } from '@/shared/stores/appStore'
 import MobileTopBar from '@/components/MobileTopBar.vue'
 
 const router = useRouter()

@@ -187,20 +187,22 @@ const openChat = (chat: Chat) => {
     // 系统通知聊天，跳转到通知详情页面
     router.push(`/system-notifications/${chat.id}`)
   } else {
-    // 普通聊天，需要通过用户ID生成统一的URL
-    // 注意：ChatList组件需要传入当前用户ID和对方用户ID
-    // 这里暂时使用简化逻辑，实际应该从props或store获取用户信息
+    console.log('🚀 ChatList跳转到聊天页面:', chat.id, 'type:', chat.type)
 
-    console.warn('⚠️ ChatList.vue需要重构以支持统一的URL生成')
-    console.log('🚀 ChatList跳转到聊天页面 (临时方案):', chat.id)
-
-    // 临时方案：直接使用chat.id，但这可能导致URL不一致
-    let urlChatId = chat.id
-    if (chat.id.startsWith('chat_')) {
-      urlChatId = chat.id.replace('chat_', '')
+    // 判断是群聊还是私聊
+    if (chat.id.startsWith('group_') || chat.type === 'group') {
+      // 群聊：跳转到 /group/:id
+      console.log('✅ 跳转到群聊页面:', `/group/${chat.id}`)
+      router.push(`/group/${chat.id}`)
+    } else {
+      // 私聊：跳转到 /chat/:id
+      let urlChatId = chat.id
+      if (chat.id.startsWith('chat_')) {
+        urlChatId = chat.id.replace('chat_', '')
+      }
+      console.log('✅ 跳转到私聊页面:', `/chat/${urlChatId}`)
+      router.push(`/chat/${urlChatId}`)
     }
-
-    router.push(`/chat/${urlChatId}`)
   }
   emit('chat-click', chat)
 }
