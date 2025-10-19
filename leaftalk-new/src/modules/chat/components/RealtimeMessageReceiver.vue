@@ -366,6 +366,25 @@ const setupEventListeners = () => {
     }
   })
 
+  // 用户被踢出群聊事件
+  socket.value.on('removed_from_group', (payload: any) => {
+    try {
+      console.log('🚫 收到 removed_from_group:', payload)
+      const { groupId, operatorName } = payload || {}
+
+      if (groupId) {
+        // 删除本地群聊项
+        chatStore.deleteChatItem(groupId).then(() => {
+          console.log('✅ 被踢出群聊，已删除本地群聊项:', groupId)
+        }).catch(err => {
+          console.warn('⚠️ 删除群聊项失败:', err)
+        })
+      }
+    } catch (error) {
+      console.error('❌ 处理 removed_from_group 事件失败:', error)
+    }
+  })
+
   // 群名称更新事件
   socket.value.on('group_name_updated', (payload: any) => {
     try {

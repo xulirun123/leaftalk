@@ -277,6 +277,25 @@ export const useChatStore = defineStore('chat', () => {
     // 验证participants不是自聊天
     ChatGuard.validateParticipants(participants, '添加会话')
 
+    // 检查会话是否已存在
+    const existingSession = sessions.value.find(s => s.id === sessionData.id)
+    if (existingSession) {
+      // 会话已存在，更新它而不是添加新的
+      console.log('🔄 会话已存在，更新会话:', sessionData.id)
+      existingSession.name = sessionData.name
+      existingSession.avatar = sessionData.avatar
+      existingSession.lastMessage = sessionData.lastMessage
+      existingSession.lastMessageTime = sessionData.lastMessageTime || Date.now()
+      existingSession.updatedAt = sessionData.lastMessageTime || Date.now()
+      // 如果会话在删除列表中，从删除列表中移除
+      if (deletedSessions.value.has(sessionData.id)) {
+        console.log('🔄 会话重新激活，从删除列表中移除:', sessionData.id)
+        deletedSessions.value.delete(sessionData.id)
+        localStorage.setItem('deleted_chat_sessions', JSON.stringify(Array.from(deletedSessions.value)))
+      }
+      return
+    }
+
     const session: ChatSession = {
       id: sessionData.id,
       participants,
