@@ -62,18 +62,29 @@ const loading = ref(false)
 const loadRequests = async () => {
   loading.value = true
   try {
+    console.log('🔄 开始加载邀请申请列表，groupId:', groupId.value)
     const response = await fetch(`http://localhost:8893/api/groups/${groupId.value}/invite-requests`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
       }
     })
 
+    console.log('📡 API 响应状态:', response.status)
+
     if (response.ok) {
       const result = await response.json()
+      console.log('📦 API 返回数据:', result)
       if (result.success && result.data) {
         requests.value = result.data
-        console.log('✅ 邀请申请加载成功:', requests.value)
+        console.log('✅ 邀请申请加载成功，数量:', requests.value.length)
+      } else {
+        console.warn('⚠️ API 返回失败:', result.error)
+        appStore.showToast(result.error || '加载失败', 'error')
       }
+    } else {
+      const errorText = await response.text()
+      console.error('❌ API 返回错误:', response.status, errorText)
+      appStore.showToast('加载失败', 'error')
     }
   } catch (error) {
     console.error('❌ 加载邀请申请失败:', error)
