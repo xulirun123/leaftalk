@@ -647,6 +647,14 @@ export const useChatStore = defineStore('chat', () => {
     const existingMessage = sessionMessages.find(msg => msg.id === message.id)
     if (!existingMessage) {
       sessionMessages.push(message)
+
+      // 按时间戳排序，确保消息顺序正确
+      sessionMessages.sort((a, b) => {
+        const timeA = typeof a.timestamp === 'string' ? new Date(a.timestamp).getTime() : Number(a.timestamp)
+        const timeB = typeof b.timestamp === 'string' ? new Date(b.timestamp).getTime() : Number(b.timestamp)
+        return timeA - timeB
+      })
+
       messages.value.set(sessionId, sessionMessages)
       console.log('✅ 消息已添加到会话:', message.id)
 
