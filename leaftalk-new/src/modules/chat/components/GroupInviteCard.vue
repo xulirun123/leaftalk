@@ -23,7 +23,7 @@
         <div class="group-meta">
           <span class="member-count">{{ inviteData.memberCount }}人</span>
           <span class="divider">·</span>
-          <span v-if="isInviter" class="inviter">你邀请{{ inviteeName }}加入群聊</span>
+          <span v-if="isInviter" class="inviter">你邀请{{ inviteData.inviteeName || '好友' }}加入群聊</span>
           <span v-else class="inviter">{{ inviteData.inviterName }}邀请你加入</span>
         </div>
       </div>
