@@ -252,6 +252,13 @@ const checkIfNeedApproval = async (): Promise<boolean> => {
       headers: { 'Authorization': `Bearer ${authStore.token}` }
     })
 
+    // 如果是 404，说明邀请码不存在或已过期，静默处理
+    if (response.status === 404) {
+      console.log('ℹ️ 邀请码已过期或不存在，默认不需要审核')
+      needApprovalForJoin.value = false
+      return false
+    }
+
     const inviteLinks = await response.json()
 
     if (inviteLinks.success && inviteLinks.data) {
@@ -260,12 +267,8 @@ const checkIfNeedApproval = async (): Promise<boolean> => {
       needApprovalForJoin.value = !isInviterAdmin && requireApproval
       console.log('🔍 是否需要审核:', needApprovalForJoin.value, { isInviterAdmin, requireApproval })
       return true
-    } else if (response.status === 404) {
-      // 邀请码不存在，可能已过期，但仍然允许用户尝试加入
-      console.warn('⚠️ 邀请码不存在或已过期，将尝试直接加入')
-      needApprovalForJoin.value = false
-      return false
     }
+
     return false
   } catch (error) {
     console.error('❌ 检查审核状态失败:', error)

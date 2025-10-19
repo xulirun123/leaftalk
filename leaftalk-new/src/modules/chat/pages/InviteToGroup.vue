@@ -287,10 +287,11 @@ const confirmInvite = async () => {
     const result = await response.json()
 
     if (result.success) {
-      // 跳转后显示成功提示
-      appStore.showToast(result.message || '邀请已发送', 'success')
+      // 成功时不显示提示，静默处理
       selectedFriends.value = []
+      console.log('✅ 邀请已发送')
     } else {
+      // 失败时显示错误提示
       appStore.showToast(result.error || '邀请失败', 'error')
     }
   } catch (error) {
