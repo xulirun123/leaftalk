@@ -6378,6 +6378,8 @@ app.post('/api/groups/:groupId/remove-members', authenticateToken, async (req, r
     // 发送系统消息
     if (removedMembers.length > 0) {
       const memberNames = removedMembers.join('、')
+
+      // 创建包含操作者和被移除者信息的系统消息
       const systemMessage = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         senderId: 0,
@@ -6385,10 +6387,14 @@ app.post('/api/groups/:groupId/remove-members', authenticateToken, async (req, r
         type: 'system',
         content: `${operatorName} 将 ${memberNames} 移出了群聊`,
         timestamp: new Date().toISOString(),
-        groupId: groupId
+        groupId: groupId,
+        operatorId: operatorId,  // 操作者ID
+        operatorName: operatorName,  // 操作者昵称
+        removedUserIds: userIds,  // 被移除的用户ID列表
+        removedUserNames: removedMembers  // 被移除的用户昵称列表
       }
 
-      // 保存系统消息到数据库
+      // 保存系统消息到数据库（只保存基本内容）
       await pool.execute(
         'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
         [systemMessage.id, 0, groupId, systemMessage.content, 'system']

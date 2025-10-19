@@ -1303,6 +1303,25 @@ const getSystemMessageText = (message: any) => {
     // 强制响应式更新
     systemMessageVersion.value
 
+    // 检查是否是移除成员消息
+    if (message.operatorId && message.removedUserIds && message.removedUserNames) {
+      const isOperator = String(message.operatorId) === String(currentUserId)
+      const isRemoved = message.removedUserIds.some((id: number) => String(id) === String(currentUserId))
+
+      if (isOperator) {
+        // 操作者看到的：你把B移出了群聊
+        const memberNames = message.removedUserNames.join('、')
+        return `你把${memberNames}移出了群聊`
+      } else if (isRemoved) {
+        // 被移除者看到的：你被移出了群聊
+        return '你被移出了群聊'
+      } else {
+        // 其他人看到的：B被移出了群聊
+        const memberNames = message.removedUserNames.join('、')
+        return `${memberNames}被移出了群聊`
+      }
+    }
+
     // 检查是否是群名称修改消息
     if (message.operatorId && message.newGroupName) {
       // 判断当前用户是否是操作者
