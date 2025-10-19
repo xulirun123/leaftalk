@@ -1,10 +1,5 @@
 <template>
   <div class="page">
-    <MobileTopBar
-      title="群聊邀请申请"
-      :showBack="true"
-      @back="goBack"
-    />
     <div class="body scroll-container">
       <!-- 申请列表 -->
       <div v-if="requests.length > 0" class="requests-list">
@@ -51,24 +46,17 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/shared/stores/appStore'
-import MobileTopBar from '@/shared/components/mobile/MobileTopBar.vue'
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
 const groupId = ref(route.params.groupId as string)
 const requests = ref<any[]>([])
 const loading = ref(false)
-
-// 返回
-const goBack = () => {
-  router.back()
-}
 
 // 加载邀请申请列表
 const loadRequests = async () => {
@@ -163,7 +151,6 @@ onMounted(() => {
 .body {
   flex: 1;
   overflow-y: auto;
-  margin-top: 75px;
 }
 
 .scroll-container {

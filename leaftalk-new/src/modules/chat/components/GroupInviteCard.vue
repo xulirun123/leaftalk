@@ -21,8 +21,6 @@
       <div class="group-info">
         <div class="group-name">{{ inviteData.groupName }}</div>
         <div class="group-meta">
-          <span class="member-count">{{ inviteData.memberCount }}人</span>
-          <span class="divider">·</span>
           <span v-if="isInviter" class="inviter">你邀请{{ inviteData.inviteeName || '好友' }}加入群聊</span>
           <span v-else class="inviter">{{ inviteData.inviterName }}邀请你加入</span>
         </div>
@@ -477,9 +475,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
+  height: 25px;
   color: #576b95;
   font-size: 13px;
+  margin-bottom: 0;
 }
 
 .header-icon {
@@ -565,7 +564,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  height: 30px;
+  height: 25px;
   gap: 4px;
   padding-right: 4px;
 }
