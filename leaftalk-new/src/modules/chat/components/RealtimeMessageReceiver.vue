@@ -586,6 +586,7 @@ const handleNewMessage = async (message: any) => {
       name: createdSession.name,
       avatar: createdSession.avatar,
       lastMessage: createdSession.lastMessage,
+      lastMessageType: createdSession.lastMessageType,
       unreadCount: createdSession.unreadCount
     })
   }
