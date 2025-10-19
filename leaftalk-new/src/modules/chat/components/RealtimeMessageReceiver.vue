@@ -439,7 +439,8 @@ const setupEventListeners = () => {
 // 处理新消息接收
 const handleNewMessage = async (message: any) => {
   console.log('📨 收到新消息:', message)
-  console.log('📨 消息类型:', message.type)
+  console.log('📨 消息类型 (message.type):', message.type)
+  console.log('📨 消息完整对象:', JSON.stringify(message))
   console.log('📨 发送者ID:', message.senderId)
 
   const currentUserId = authStore.user?.id
