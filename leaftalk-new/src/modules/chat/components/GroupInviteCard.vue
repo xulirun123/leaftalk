@@ -212,10 +212,8 @@ const handleCardClick = async () => {
     const groupId = inviteData.value.groupId.replace(/^group_/, '')
     router.push(`/chat/group_${groupId}`)
   } else if (cardStatus.value === 'pending') {
-    // 待处理：弹出确认对话框
-    console.log('✅ 不是群成员，弹出确认对话框')
-    // 设置默认申请理由
-    joinReason.value = defaultJoinReason.value
+    // 待处理：检查是否需要审核
+    console.log('✅ 不是群成员，检查是否需要审核')
 
     // 检查邀请码是否过期（从邀请码中提取时间戳）
     const inviteCodeTimestamp = parseInt(inviteData.value.inviteCode.split('_')[1])
@@ -223,17 +221,28 @@ const handleCardClick = async () => {
     const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000
     const isExpired = (now - inviteCodeTimestamp) > sevenDaysInMs
 
+    let needApproval = false
     if (!isExpired) {
       // 邀请码未过期，检查是否需要审核
-      await checkIfNeedApproval()
+      needApproval = await checkIfNeedApproval()
+      console.log('🔍 审核检查结果:', needApproval)
     } else {
       // 邀请码已过期，默认不需要审核
       console.log('ℹ️ 邀请码已过期，跳过审核检查')
       needApprovalForJoin.value = false
     }
 
-    // 显示对话框让用户尝试加入
-    showDialog.value = true
+    // 根据是否需要审核决定行为
+    if (needApproval) {
+      // 需要审核：显示申请对话框
+      console.log('📝 需要审核，显示申请对话框')
+      joinReason.value = defaultJoinReason.value
+      showDialog.value = true
+    } else {
+      // 不需要审核：直接加入群聊
+      console.log('✅ 不需要审核，直接加入群聊')
+      await directJoinGroup()
+    }
   } else if (cardStatus.value === 'approved') {
     // 审核通过：进入群聊
     console.log('✅ 审核通过，进入群聊')
@@ -259,6 +268,7 @@ const closeDialog = () => {
 }
 
 // 检查是否需要审核
+// 返回值：true = 需要审核，false = 不需要审核
 const checkIfNeedApproval = async (): Promise<boolean> => {
   try {
     // 获取邀请链接信息
@@ -281,11 +291,13 @@ const checkIfNeedApproval = async (): Promise<boolean> => {
     if (inviteLinks.success && inviteLinks.data) {
       const { isInviterAdmin, requireApproval } = inviteLinks.data
       // 判断是否需要审核：邀请人是普通成员 + 群需要审核
-      needApprovalForJoin.value = !isInviterAdmin && requireApproval
-      console.log('🔍 是否需要审核:', needApprovalForJoin.value, { isInviterAdmin, requireApproval })
-      return true
+      const needApproval = !isInviterAdmin && requireApproval
+      needApprovalForJoin.value = needApproval
+      console.log('🔍 审核检查结果:', { needApproval, isInviterAdmin, requireApproval })
+      return needApproval
     }
 
+    needApprovalForJoin.value = false
     return false
   } catch (error) {
     // 静默处理所有错误
@@ -294,7 +306,93 @@ const checkIfNeedApproval = async (): Promise<boolean> => {
   }
 }
 
-// 确认加入
+// 直接加入群聊（不需要审核）
+const directJoinGroup = async () => {
+  try {
+    console.log('🔑 直接加入群聊，邀请码:', inviteData.value.inviteCode)
+    appStore.showToast('正在加入群聊...', 'info')
+
+    const response = await fetch('http://localhost:8893/api/groups/join-by-invite', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authStore.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        inviteCode: inviteData.value.inviteCode,
+        reason: defaultJoinReason.value
+      })
+    })
+
+    const result = await response.json()
+    console.log('📡 加入群聊响应:', result)
+
+    if (result.success) {
+      // 直接加入成功
+      cardStatus.value = 'joined'
+      appStore.showToast('已成功加入群聊', 'success')
+
+      // 添加群聊会话到聊天列表
+      const groupId = inviteData.value.groupId.replace('group_', '')
+      const sessionId = `group_${groupId}`
+
+      const groupSession = {
+        id: sessionId,
+        participants: [authStore.user?.id || ''],
+        name: inviteData.value.groupName,
+        avatar: inviteData.value.groupAvatar || '',
+        lastMessage: '你已加入群聊',
+        lastMessageTime: Date.now(),
+        unreadCount: 0,
+        type: 'group' as const,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }
+
+      chatStore.addSession(groupSession)
+
+      // 跳转到群聊页面
+      setTimeout(() => {
+        router.push(`/chat/${sessionId}`)
+      }, 1500)
+    } else {
+      // 检查是否是"已经是群成员"的错误
+      if (result.error && result.error.includes('已经是群成员')) {
+        console.log('✅ 用户已是群成员，更新状态并进入群聊')
+        cardStatus.value = 'joined'
+
+        // 添加群聊会话到聊天列表
+        const groupId = inviteData.value.groupId.replace('group_', '')
+        const sessionId = `group_${groupId}`
+
+        const groupSession = {
+          id: sessionId,
+          participants: [authStore.user?.id || ''],
+          name: inviteData.value.groupName,
+          avatar: inviteData.value.groupAvatar || '',
+          lastMessage: '',
+          lastMessageTime: Date.now(),
+          unreadCount: 0,
+          type: 'group' as const,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+
+        chatStore.addSession(groupSession)
+
+        // 直接进入群聊
+        router.push(`/chat/${sessionId}`)
+      } else {
+        appStore.showToast(result.error || '加入失败', 'error')
+      }
+    }
+  } catch (error) {
+    console.error('❌ 加入群聊失败:', error)
+    appStore.showToast('加入失败，请稍后重试', 'error')
+  }
+}
+
+// 确认加入（需要审核）
 const confirmJoin = async () => {
   try {
     console.log('🔑 确认加入群聊，邀请码:', inviteData.value.inviteCode)
