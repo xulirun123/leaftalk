@@ -29,7 +29,7 @@
             >
               接受
             </button>
-            <span v-if="request.status === 'accepted'" class="status-text accepted">已同意</span>
+            <span v-if="request.status === 'approved'" class="status-text accepted">已同意</span>
             <span v-if="request.status === 'rejected'" class="status-text rejected">已拒绝</span>
           </div>
         </div>
@@ -109,7 +109,7 @@ const handleAccept = async (request: any) => {
       if (result.success) {
         appStore.showToast('已同意', 'success')
         // 更新本地状态
-        request.status = 'accepted'
+        request.status = 'approved'
       } else {
         appStore.showToast(result.error || '操作失败', 'error')
       }
