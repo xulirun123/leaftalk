@@ -10,9 +10,10 @@ export interface ChatMessage {
   senderId: string
   receiverId: string
   content: string
-  type: 'text' | 'image' | 'voice' | 'video' | 'file' | 'contact' | 'location'
+  type: 'text' | 'image' | 'voice' | 'video' | 'file' | 'contact' | 'location' | 'system' | 'announcement' | 'group_invite'
   timestamp: number
   status: 'sending' | 'sent' | 'delivered' | 'read'
+  senderName?: string  // 发送者昵称
 }
 
 export interface ChatSession {
@@ -334,7 +335,15 @@ export const useChatStore = defineStore('chat', () => {
 
   // 自动创建或更新聊天项（发送消息时调用）
   async function createOrUpdateChatItem(message: ChatMessage, otherUserInfo?: any) {
-    const sessionId = generateSessionId(String(message.senderId), String(message.receiverId))
+    // 🛡️ 判断是否为群聊消息
+    const isGroupMessage = String(message.receiverId).startsWith('group_')
+
+    // 群聊：直接使用群ID作为sessionId；私聊：使用generateSessionId生成
+    const sessionId = isGroupMessage
+      ? String(message.receiverId)
+      : generateSessionId(String(message.senderId), String(message.receiverId))
+
+    console.log('🔍 createOrUpdateChatItem - 消息类型:', isGroupMessage ? '群聊' : '私聊', 'sessionId:', sessionId)
 
     // 如果会话在删除列表中，说明用户重新发送消息，从删除列表中移除
     if (deletedSessions.value.has(sessionId)) {
@@ -354,46 +363,73 @@ export const useChatStore = defineStore('chat', () => {
 
     if (!session) {
       // 创建新会话
-      const participants = [String(message.senderId), String(message.receiverId)]
+      const participants = isGroupMessage
+        ? [String(message.senderId)] // 群聊只记录当前用户
+        : [String(message.senderId), String(message.receiverId)]
 
       // 确定当前用户和对方用户
       const currentUserId = String(authStore.user?.id || '')
-      const otherUserId = participants.find(p => p !== currentUserId) || message.receiverId
+      const otherUserId = isGroupMessage
+        ? String(message.receiverId) // 群聊的otherUserId就是群ID
+        : (participants.find(p => p !== currentUserId) || message.receiverId)
 
-      console.log('🔍 创建聊天项 - 当前用户:', currentUserId, '对方用户:', otherUserId)
+      console.log('🔍 创建聊天项 - 当前用户:', currentUserId, '对方用户:', otherUserId, '是否群聊:', isGroupMessage)
 
-      // 使用ChatGuard进行根本防护
-      ChatGuard.validateChatOperation(currentUserId, otherUserId, '创建聊天项')
+      // 使用ChatGuard进行根本防护（仅对私聊进行检查）
+      if (!isGroupMessage) {
+        ChatGuard.validateChatOperation(currentUserId, otherUserId, '创建聊天项')
+      }
 
-      // 获取对方用户信息
+      // 获取对方用户信息或群聊信息
       let userName = ''
       let userAvatar = null
 
-      // 优先使用传入的用户信息
-      if (otherUserInfo?.name && otherUserInfo.name.trim()) {
-        userName = otherUserInfo.name.trim()
-      } else if (otherUserInfo?.nickname && otherUserInfo.nickname.trim()) {
-        userName = otherUserInfo.nickname.trim()
-      }
+      if (isGroupMessage) {
+        // 🛡️ 群聊消息：从 otherUserInfo 中获取群聊信息
+        if (otherUserInfo?.groupName && otherUserInfo.groupName.trim()) {
+          userName = otherUserInfo.groupName.trim()
+        } else if (otherUserInfo?.name && otherUserInfo.name.trim()) {
+          userName = otherUserInfo.name.trim()
+        }
 
-      if (otherUserInfo?.avatar) {
-        userAvatar = otherUserInfo.avatar
-      }
+        if (otherUserInfo?.groupAvatar) {
+          userAvatar = otherUserInfo.groupAvatar
+        } else if (otherUserInfo?.avatar) {
+          userAvatar = otherUserInfo.avatar
+        }
 
-      // 如果没有获取到有效的用户信息，使用默认值
-      if (!userName) {
-        try {
-          console.log('🔍 获取对方用户信息:', otherUserId)
-          // 这里可以调用用户信息API获取真实信息
-          // const userInfo = await getUserInfo(otherUserId)
-          // userName = userInfo.nickname || userName
-          // userAvatar = userInfo.avatar || userAvatar
+        // 如果没有获取到群聊名称，使用默认值
+        if (!userName) {
+          userName = `群聊${otherUserId.substring(6, 16)}`
+          console.log('⚠️ 未获取到群聊名称，使用默认值:', userName)
+        }
+      } else {
+        // 私聊消息：获取对方用户信息
+        if (otherUserInfo?.name && otherUserInfo.name.trim()) {
+          userName = otherUserInfo.name.trim()
+        } else if (otherUserInfo?.nickname && otherUserInfo.nickname.trim()) {
+          userName = otherUserInfo.nickname.trim()
+        }
 
-          // 暂时使用默认值，避免生成头像
-          userName = `用户${otherUserId}`
-        } catch (error) {
-          console.warn('获取用户信息失败:', error)
-          userName = `用户${otherUserId}`
+        if (otherUserInfo?.avatar) {
+          userAvatar = otherUserInfo.avatar
+        }
+
+        // 如果没有获取到有效的用户信息，使用默认值
+        if (!userName) {
+          try {
+            console.log('🔍 获取对方用户信息:', otherUserId)
+            // 这里可以调用用户信息API获取真实信息
+            // const userInfo = await getUserInfo(otherUserId)
+            // userName = userInfo.nickname || userName
+            // userAvatar = userInfo.avatar || userAvatar
+
+            // 暂时使用默认值，避免生成头像
+            userName = `用户${otherUserId}`
+          } catch (error) {
+            console.warn('获取用户信息失败:', error)
+            userName = `用户${otherUserId}`
+          }
         }
       }
 
@@ -411,7 +447,7 @@ export const useChatStore = defineStore('chat', () => {
         lastMessageTime: message.timestamp,
         name: userName,
         avatar: userAvatar,
-        type: 'private'
+        type: isGroupMessage ? 'group' : 'private'
       }
       sessions.value.push(session)
       messages.value.set(sessionId, [])
@@ -464,52 +500,85 @@ export const useChatStore = defineStore('chat', () => {
 
   // 接收消息时创建或更新聊天项
   async function receiveMessage(message: ChatMessage, senderInfo?: any) {
-    const sessionId = generateSessionId(String(message.senderId), String(message.receiverId))
+    // 🛡️ 判断是否为群聊消息
+    const isGroupMessage = String(message.receiverId).startsWith('group_')
+
+    // 群聊：直接使用群ID作为sessionId；私聊：使用generateSessionId生成
+    const sessionId = isGroupMessage
+      ? String(message.receiverId)
+      : generateSessionId(String(message.senderId), String(message.receiverId))
+
+    console.log('🔍 receiveMessage - 消息类型:', isGroupMessage ? '群聊' : '私聊', 'sessionId:', sessionId)
 
     // 检查是否已存在会话
     let session = sessions.value.find(s => s.id === sessionId)
 
     if (!session) {
       // 创建新会话
-      const participants = [String(message.senderId), String(message.receiverId)]
+      const participants = isGroupMessage
+        ? [String(message.senderId)] // 群聊只记录发送者
+        : [String(message.senderId), String(message.receiverId)]
 
-      // 使用ChatGuard进行根本防护
-      ChatGuard.validateChatOperation(message.senderId, message.receiverId, '接收聊天消息')
-
-      // 获取发送者信息
-      let senderName = ''
-      let senderAvatar = null
-
-      // 优先使用传入的发送者信息
-      if (senderInfo?.name && senderInfo.name.trim()) {
-        senderName = senderInfo.name.trim()
-      } else if (senderInfo?.nickname && senderInfo.nickname.trim()) {
-        senderName = senderInfo.nickname.trim()
+      // 使用ChatGuard进行根本防护（仅对私聊进行检查）
+      if (!isGroupMessage) {
+        ChatGuard.validateChatOperation(message.senderId, message.receiverId, '接收聊天消息')
       }
 
-      if (senderInfo?.avatar) {
-        senderAvatar = senderInfo.avatar
-      }
+      // 获取发送者/群聊信息
+      let sessionName = ''
+      let sessionAvatar = null
 
-      // 如果没有获取到有效的发送者信息，使用默认值
-      if (!senderName) {
-        try {
-          console.log('🔍 获取发送者用户信息:', message.senderId)
-          // 这里可以调用用户信息API获取真实信息
-          // const userInfo = await getUserInfo(message.senderId)
-          // senderName = userInfo.nickname || senderName
-          // senderAvatar = userInfo.avatar || senderAvatar
+      if (isGroupMessage) {
+        // 🛡️ 群聊消息：从 senderInfo 中获取群聊信息
+        if (senderInfo?.groupName && senderInfo.groupName.trim()) {
+          sessionName = senderInfo.groupName.trim()
+        } else if (senderInfo?.name && senderInfo.name.trim()) {
+          sessionName = senderInfo.name.trim()
+        }
 
-          // 暂时使用默认值，避免生成头像
-          senderName = `用户${message.senderId}`
-        } catch (error) {
-          console.warn('获取发送者信息失败:', error)
-          senderName = `用户${message.senderId}`
+        if (senderInfo?.groupAvatar) {
+          sessionAvatar = senderInfo.groupAvatar
+        } else if (senderInfo?.avatar) {
+          sessionAvatar = senderInfo.avatar
+        }
+
+        // 如果没有获取到群聊名称，使用默认值
+        if (!sessionName) {
+          sessionName = `群聊${message.receiverId.substring(6, 16)}`
+          console.log('⚠️ 未获取到群聊名称，使用默认值:', sessionName)
+        }
+      } else {
+        // 私聊消息：获取发送者信息
+        if (senderInfo?.name && senderInfo.name.trim()) {
+          sessionName = senderInfo.name.trim()
+        } else if (senderInfo?.nickname && senderInfo.nickname.trim()) {
+          sessionName = senderInfo.nickname.trim()
+        }
+
+        if (senderInfo?.avatar) {
+          sessionAvatar = senderInfo.avatar
+        }
+
+        // 如果没有获取到有效的发送者信息，使用默认值
+        if (!sessionName) {
+          try {
+            console.log('🔍 获取发送者用户信息:', message.senderId)
+            // 这里可以调用用户信息API获取真实信息
+            // const userInfo = await getUserInfo(message.senderId)
+            // sessionName = userInfo.nickname || sessionName
+            // sessionAvatar = userInfo.avatar || sessionAvatar
+
+            // 暂时使用默认值，避免生成头像
+            sessionName = `用户${message.senderId}`
+          } catch (error) {
+            console.warn('获取发送者信息失败:', error)
+            sessionName = `用户${message.senderId}`
+          }
         }
       }
 
-      if (!senderAvatar) {
-        senderAvatar = null
+      if (!sessionAvatar) {
+        sessionAvatar = null
       }
 
       session = {
@@ -520,13 +589,13 @@ export const useChatStore = defineStore('chat', () => {
         updatedAt: message.timestamp,
         createdAt: message.timestamp,
         lastMessageTime: message.timestamp,
-        name: senderName,
-        avatar: senderAvatar,
-        type: 'private'
+        name: sessionName,
+        avatar: sessionAvatar,
+        type: isGroupMessage ? 'group' : 'private'
       }
       sessions.value.push(session)
       messages.value.set(sessionId, [])
-      console.log('✅ 收到消息，创建新聊天项:', session.name)
+      console.log('✅ 收到消息，创建新聊天项:', session.name, '类型:', isGroupMessage ? '群聊' : '私聊')
     } else {
       // 更新现有会话
       session.lastMessage = message
@@ -684,8 +753,27 @@ export const useChatStore = defineStore('chat', () => {
         console.log(`📦 找到缓存数据，年龄: ${Math.round(age/1000)}秒，数据量: ${data?.length || 0}`)
 
         if (age < CACHE_DURATION) {
+          // 🛡️ 修复错误的群聊ID格式（迁移逻辑）
+          let migratedSessions = (data || []).map((session: any) => {
+            // 检查是否为错误的群聊ID格式：userId_group_timestamp
+            if (session.id && session.id.match(/^\d+_group_\d+$/)) {
+              const parts = session.id.split('_')
+              const correctId = `group_${parts[2]}`
+              console.log('🔧 修复错误的群聊ID:', session.id, '→', correctId)
+              return { ...session, id: correctId, type: 'group' }
+            }
+            // 检查是否为错误的群聊ID格式：chat_userId_group_timestamp
+            if (session.id && session.id.match(/^chat_\d+_group_\d+$/)) {
+              const parts = session.id.split('_')
+              const correctId = `group_${parts[3]}`
+              console.log('🔧 修复错误的群聊ID:', session.id, '→', correctId)
+              return { ...session, id: correctId, type: 'group' }
+            }
+            return session
+          })
+
           // 🛡️ 验证并清理缓存数据
-          const { cleanedSessions, removedCount } = ChatGuard.cleanSelfChatSessions(data || [])
+          const { cleanedSessions, removedCount } = ChatGuard.cleanSelfChatSessions(migratedSessions)
 
           if (removedCount > 0) {
             console.log('🛡️ 从缓存中清理了', removedCount, '个自聊天会话')
@@ -1043,18 +1131,31 @@ export const useChatStore = defineStore('chat', () => {
         return
       }
 
-      // 解析sessionId获取对方用户ID
-      const parts = sessionId.replace('chat_', '').split('_')
-      if (parts.length !== 2) return
+      // 判断是否为群聊消息
+      const isGroupMessage = String(sessionId).startsWith('group_')
+      let apiUrl = ''
+      let otherUserId = ''
 
-      const currentUserId = authStore.user?.id
-      const otherUserId = parts.find(id => id !== String(currentUserId))
+      if (isGroupMessage) {
+        // 群聊消息：直接使用群ID
+        const groupId = sessionId
+        console.log('🔄 从API同步群聊消息...', { sessionId: groupId })
+        apiUrl = `http://localhost:8893/api/groups/${groupId}/messages`
+      } else {
+        // 私聊消息：解析sessionId获取对方用户ID
+        const parts = sessionId.replace('chat_', '').split('_')
+        if (parts.length !== 2) return
 
-      if (!otherUserId) return
+        const currentUserId = authStore.user?.id
+        otherUserId = parts.find(id => id !== String(currentUserId)) || ''
 
-      console.log('🔄 从API同步消息...', { sessionId, otherUserId })
+        if (!otherUserId) return
 
-      const response = await fetch(`http://localhost:8893/api/chat/messages/${otherUserId}`, {
+        console.log('🔄 从API同步私聊消息...', { sessionId, otherUserId })
+        apiUrl = `http://localhost:8893/api/chat/messages/${otherUserId}`
+      }
+
+      const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1072,6 +1173,7 @@ export const useChatStore = defineStore('chat', () => {
           const currentMessageIds = new Set(currentMessages.map(m => m.id))
 
           let newMessagesCount = 0
+          const currentUserId = authStore.user?.id
 
           // 保存到本地持久化
           for (const msg of result.data) {
@@ -1080,18 +1182,27 @@ export const useChatStore = defineStore('chat', () => {
               continue
             }
 
+            // 兼容不同的字段名（私聊和群聊可能不同）
+            const senderId = msg.sender_id || msg.senderId || msg.from_id
+            const receiverId = msg.receiver_id || msg.receiverId || msg.to_id || sessionId
+            const content = msg.content || msg.message || ''
+            const messageType = msg.message_type || msg.type || 'text'
+            const timestamp = msg.created_at ? new Date(msg.created_at).getTime() : (msg.timestamp || Date.now())
+            const status = msg.status || 'read'
+
             const storedMessage = {
               id: msg.id,
               sessionId: sessionId,
-              senderId: String(msg.sender_id),
-              receiverId: String(msg.receiver_id),
-              content: msg.content,
-              type: msg.message_type || 'text', // 注意字段名是 message_type
-              timestamp: new Date(msg.created_at).getTime(),
-              status: msg.status || 'read' as const,
-              isOwn: String(msg.sender_id) === String(currentUserId)
+              senderId: String(senderId),
+              receiverId: String(receiverId),
+              content: String(content),
+              type: messageType as any,
+              timestamp: Number(timestamp),
+              status: status as const,
+              isOwn: String(senderId) === String(currentUserId)
             }
 
+            console.log('💾 保存离线消息:', { id: msg.id, content: content.substring(0, 20), senderId, receiverId })
             await messagePersistenceService.saveMessage(storedMessage)
 
             // 添加到内存中的消息列表
@@ -1149,7 +1260,7 @@ export const useChatStore = defineStore('chat', () => {
             senderId: String(session.lastMessage.senderId || ''),
             receiverId: String(session.lastMessage.receiverId || ''),
             content: String(session.lastMessage.content || ''),
-            type: (['text', 'image', 'voice', 'video', 'file', 'contact'].includes(session.lastMessage.type as any))
+            type: (['text', 'image', 'voice', 'video', 'file', 'contact', 'location', 'system', 'announcement', 'group_invite'].includes(session.lastMessage.type as any))
               ? session.lastMessage.type as any
               : 'text',
             timestamp: Number(session.lastMessage.timestamp) || Date.now(),

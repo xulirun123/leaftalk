@@ -13,9 +13,10 @@ export interface RealtimeMessage {
   senderId: string
   receiverId: string
   content: string
-  type: 'text' | 'image' | 'voice' | 'video' | 'file'
+  type: 'text' | 'image' | 'voice' | 'video' | 'file' | 'group_invite'
   timestamp: number
   status: 'sent' | 'delivered' | 'read'
+  isOwn?: boolean
 }
 
 export interface UserStatus {
@@ -133,17 +134,25 @@ class RealtimeMessageService {
     const authStore = useAuthStore()
     const currentUserId = authStore.user?.id
 
-    // 确保不是自己发送的消息
-    if (message.senderId === currentUserId) {
+    // 确保不是自己发送的普通消息（但保留服务器为邀请方回推的消息）
+    const isOwn = String(message.senderId) === String(currentUserId)
+    const isOwnEcho = (message as any).isOwn === true
+    if (isOwn && !isOwnEcho) {
       return
     }
 
     // 添加消息到聊天记录
     chatStore.receiveMessage(message)
 
-    // 更新未读计数
-    const sessionId = chatStore.generateSessionId(message.senderId, message.receiverId)
-    unreadStore.incrementUnread(sessionId)
+    // 更新未读计数（自己的回推消息不计入未读）
+    // 🛡️ 判断是否为群聊消息
+    const isGroupMessage = String(message.receiverId).startsWith('group_')
+    const sessionId = isGroupMessage
+      ? String(message.receiverId)
+      : chatStore.generateSessionId(message.senderId, message.receiverId)
+    if (!(message as any).isOwn) {
+      unreadStore.incrementUnread(sessionId)
+    }
 
     // 发送消息已送达确认
     this.sendMessageDelivered(message.id)

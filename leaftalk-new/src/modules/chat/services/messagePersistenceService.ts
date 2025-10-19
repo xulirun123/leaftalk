@@ -12,7 +12,7 @@ export interface StoredMessage {
   senderId: string
   receiverId: string
   content: string
-  type: 'text' | 'image' | 'voice' | 'video' | 'file' | 'contact'
+  type: 'text' | 'image' | 'voice' | 'video' | 'file' | 'contact' | 'location' | 'system' | 'announcement' | 'group_invite'
   timestamp: number
   status: 'sent' | 'delivered' | 'read'
   isOwn: boolean
@@ -330,7 +330,7 @@ class MessagePersistenceService {
       senderId: String(message.senderId || ''),
       receiverId: String(message.receiverId || ''),
       content: String(message.content || ''),
-      type: ['text', 'image', 'voice', 'video', 'file', 'contact'].includes(message.type)
+      type: ['text', 'image', 'voice', 'video', 'file', 'contact', 'location', 'system', 'announcement', 'group_invite'].includes(message.type)
         ? message.type
         : 'text',
       timestamp: Number(message.timestamp) || Date.now(),
