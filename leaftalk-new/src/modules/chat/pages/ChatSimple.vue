@@ -102,7 +102,7 @@
 
               <!-- 群邀请卡片消息 -->
               <GroupInviteCard
-                v-else-if="message.type === 'group_invite' || (message.content && typeof message.content === 'string' && message.content.includes('group_invite'))"
+                v-else-if="isGroupInviteMessage(message)"
                 :content="message.content"
                 :senderId="message.senderId"
                 :receiverId="message.receiverId"
@@ -1116,6 +1116,35 @@ const checkLocationSelection = () => {
   } catch (error) {
     console.error('处理位置选择结果失败:', error)
   }
+}
+
+
+// 检测是否为群邀请消息（兼容多种payload形态）
+const isGroupInviteMessage = (message: any): boolean => {
+  try {
+    if (String(message?.type) === 'group_invite') return true
+    const c = (message || {}).content
+    if (!c) return false
+    if (typeof c === 'object') {
+      // 对象内容：优先检查显式类型或关键字段
+      if ((c as any).type === 'group_invite') return true
+      if ('groupId' in (c as any) && 'inviteCode' in (c as any)) return true
+      return false
+    }
+    if (typeof c === 'string') {
+      // 字符串内容：快速判断 + 尝试解析JSON
+      if (c.includes('group_invite')) return true
+      try {
+        const obj = JSON.parse(c)
+        return obj?.type === 'group_invite' || (obj && 'groupId' in obj && 'inviteCode' in obj)
+      } catch {
+        return false
+      }
+    }
+  } catch {
+    // 忽略
+  }
+  return false
 }
 
 // 位置消息相关方法

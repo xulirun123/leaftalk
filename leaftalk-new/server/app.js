@@ -801,7 +801,7 @@ io.on('connection', (socket) => {
                     }
 
                     await db.execute(`
-                        INSERT INTO messages (id, sender_id, receiver_id, content, message_type, created_at, status)
+                        INSERT INTO messages (id, sender_id, receiver_id, content, type, created_at, status)
                         VALUES (?, ?, ?, ?, ?, NOW(), ?)
                     `, [
                         message.id,
@@ -5327,7 +5327,7 @@ app.post('/api/groups/create', async (req, res) => {
 
       // 2. 插入群成员记录
       for (const member of members) {
-        const role = member.id === creatorId ? 'owner' : 'member'
+        const role = member.id === creatorId ? 'creator' : 'member'
         await connection.execute(
           'INSERT INTO `group_members` (group_id, user_id, role) VALUES (?, ?, ?)',
           [id, member.id, role]

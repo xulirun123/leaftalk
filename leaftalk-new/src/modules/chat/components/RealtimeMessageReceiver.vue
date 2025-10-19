@@ -425,9 +425,10 @@ const handleNewMessage = async (message: any) => {
 
   const currentUserId = authStore.user?.id
 
-  // 确保不是自己发送的消息（公告消息和系统消息除外）
-  if (message.senderId === currentUserId && message.type !== 'announcement' && message.type !== 'system') {
-    console.log('⚠️ 过滤掉自己发送的消息')
+  // 确保不是自己发送的消息（公告消息和系统消息除外）；允许服务端自回显 isOwn=true
+  const isOwnEcho = (message as any).isOwn === true
+  if (message.senderId === currentUserId && !isOwnEcho && message.type !== 'announcement' && message.type !== 'system') {
+    console.log('⚠️ 过滤掉自己发送的消息（非自回显）')
     return
   }
 
@@ -440,6 +441,7 @@ const handleNewMessage = async (message: any) => {
     type: message.type || 'text',
     timestamp: message.timestamp || Date.now(),
     status: 'delivered',
+    isOwn: isOwnEcho === true,
     senderName: message.senderName || null  // 添加发送者昵称
   }
 
