@@ -2,7 +2,7 @@
   <div class="red-packet-page">
     <!-- 金额输入区域 -->
     <div class="amount-section">
-      <div class="amount-input-wrapper" @click="showAmountKeyboard = true">
+      <div class="amount-input-wrapper">
         <div class="amount-label">金额</div>
         <div class="amount-value">
           <span class="currency-symbol">¥</span>
@@ -40,17 +40,26 @@
       </button>
     </div>
 
-    <!-- 数字键盘 -->
-    <NumericKeyboard
-      v-model="packetAmount"
-      :visible="showAmountKeyboard"
-      :max-length="10"
-      :max-decimal-places="2"
-      :allow-decimal="true"
-      confirm-text="确认"
-      @confirm="showAmountKeyboard = false"
-      @close="showAmountKeyboard = false"
-    />
+    <!-- 数字键盘（固定在页面底部） -->
+    <div class="keyboard-section">
+      <div class="keyboard-grid">
+        <button
+          v-for="(key, index) in keyboardKeys"
+          :key="index"
+          class="keyboard-key"
+          :class="{
+            'key-delete': key === 'delete',
+            'key-dot': key === '.',
+            'key-confirm': key === 'confirm'
+          }"
+          @click="handleKeyPress(key)"
+        >
+          <iconify-icon v-if="key === 'delete'" icon="heroicons:backspace" width="24"></iconify-icon>
+          <span v-else-if="key === 'confirm'">确认</span>
+          <span v-else>{{ key }}</span>
+        </button>
+      </div>
+    </div>
 
     <!-- 支付密码弹窗 -->
     <PaymentPasswordModal
@@ -79,7 +88,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePaymentStore } from '../stores/paymentStore'
 import ConfirmDialog from '../../../shared/components/common/ConfirmDialog.vue'
-import NumericKeyboard from '../../../shared/components/common/NumericKeyboard.vue'
 import PaymentPasswordModal from '../components/PaymentPasswordModal.vue'
 
 const router = useRouter()
@@ -88,10 +96,51 @@ const paymentStore = usePaymentStore()
 // 响应式数据
 const packetAmount = ref('')
 const blessing = ref('')
-const showAmountKeyboard = ref(false)
 const showPasswordModal = ref(false)
 const showResultDialog = ref(false)
 const sendResult = ref<any>({})
+
+// 数字键盘按键 (4行4列)
+const keyboardKeys = [
+  '1', '2', '3', 'delete',
+  '4', '5', '6', 'confirm',
+  '7', '8', '9',
+  '0', '.'
+]
+
+// 处理按键
+const handleKeyPress = (key: string) => {
+  if (key === 'confirm') {
+    // 确认按钮：不做任何操作，金额已经输入完成
+    return
+  } else if (key === 'delete') {
+    // 删除按钮
+    if (packetAmount.value.length > 0) {
+      packetAmount.value = packetAmount.value.slice(0, -1)
+    }
+  } else if (key === '.') {
+    // 小数点
+    if (!packetAmount.value.includes('.')) {
+      packetAmount.value += key
+    }
+  } else {
+    // 数字键
+    // 限制最多10位数字
+    if (packetAmount.value.replace('.', '').length >= 10) {
+      return
+    }
+
+    // 限制小数点后最多2位
+    if (packetAmount.value.includes('.')) {
+      const parts = packetAmount.value.split('.')
+      if (parts[1] && parts[1].length >= 2) {
+        return
+      }
+    }
+
+    packetAmount.value += key
+  }
+}
 
 // 计算属性
 const canSend = computed(() => {
@@ -159,7 +208,7 @@ onMounted(async () => {
 .red-packet-page {
   min-height: 100vh;
   background: #EDEDED;
-  padding: 20px;
+  padding: 20px 20px 0 20px;
   display: flex;
   flex-direction: column;
 }
@@ -269,5 +318,81 @@ onMounted(async () => {
   }
 }
 
-// 键盘样式已移至 NumericKeyboard 组件
+/* 数字键盘 */
+.keyboard-section {
+  margin-top: auto;
+  padding: 16px 0 0 0;
+  background: #EDEDED;
+}
+
+.keyboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 56px);
+  gap: 10px;
+}
+
+.keyboard-key {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+  border: none;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:active {
+    transform: translateY(2px);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+  }
+}
+
+.key-delete {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  color: white;
+  box-shadow:
+    0 2px 4px rgba(238, 90, 82, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+  &:active {
+    background: linear-gradient(135deg, #ee5a52 0%, #dc4a41 100%);
+    box-shadow:
+      0 1px 2px rgba(238, 90, 82, 0.3),
+      inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.key-dot {
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.key-confirm {
+  grid-column: 4;
+  grid-row: 2 / 5;
+  background: linear-gradient(135deg, #07C160 0%, #06AD56 100%);
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow:
+    0 2px 4px rgba(7, 193, 96, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+  &:active {
+    background: linear-gradient(135deg, #06AD56 0%, #059A4C 100%);
+    box-shadow:
+      0 1px 2px rgba(7, 193, 96, 0.3),
+      inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
 </style>
