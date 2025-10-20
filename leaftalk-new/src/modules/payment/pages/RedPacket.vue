@@ -40,11 +40,6 @@
       </button>
     </div>
 
-    <!-- 余额信息 -->
-    <div class="balance-info">
-      <div class="balance-text">可用余额 ¥{{ paymentStore.availableBalance.toFixed(2) }}</div>
-    </div>
-
     <!-- 数字键盘 -->
     <NumericKeyboard
       v-model="packetAmount"
@@ -160,7 +155,7 @@ onMounted(async () => {
 <style scoped lang="scss">
 .red-packet-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5515f 0%, #e73827 100%);
+  background: #EDEDED;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -172,20 +167,21 @@ onMounted(async () => {
 }
 
 .amount-input-wrapper {
-  background: rgba(255, 255, 255, 0.15);
+  background: #fff;
   border-radius: 12px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
   &:active {
-    background: rgba(255, 255, 255, 0.2);
+    background: #f8f8f8;
   }
 }
 
 .amount-label {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
+  color: #999;
   margin-bottom: 12px;
   font-weight: 500;
 }
@@ -197,7 +193,7 @@ onMounted(async () => {
 
 .currency-symbol {
   font-size: 48px;
-  color: #fff;
+  color: #333;
   font-weight: 300;
   margin-right: 8px;
 }
@@ -205,7 +201,7 @@ onMounted(async () => {
 .amount-input {
   flex: 1;
   font-size: 48px;
-  color: #fff;
+  color: #333;
   background: transparent;
   border: none;
   outline: none;
@@ -213,7 +209,7 @@ onMounted(async () => {
   cursor: pointer;
 
   &::placeholder {
-    color: rgba(255, 255, 255, 0.5);
+    color: #ccc;
   }
 }
 
@@ -224,15 +220,20 @@ onMounted(async () => {
 .blessing-input {
   width: 100%;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #fff;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  color: #fff;
+  color: #333;
   font-size: 16px;
   outline: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
   &::placeholder {
-    color: rgba(255, 255, 255, 0.7);
+    color: #ccc;
+  }
+
+  &:focus {
+    border-color: #07C160;
   }
 }
 
@@ -243,32 +244,26 @@ onMounted(async () => {
 .send-btn {
   width: 100%;
   padding: 16px;
-  background: #fff;
-  color: #e73827;
+  background: linear-gradient(135deg, #f5515f 0%, #e73827 100%);
+  color: #fff;
   border: none;
   border-radius: 8px;
   font-size: 18px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(231, 56, 39, 0.3);
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    box-shadow: none;
   }
 
   &:not(:disabled):active {
     transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(231, 56, 39, 0.3);
   }
-}
-
-.balance-info {
-  text-align: center;
-}
-
-.balance-text {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
 }
 
 // 键盘样式已移至 NumericKeyboard 组件
