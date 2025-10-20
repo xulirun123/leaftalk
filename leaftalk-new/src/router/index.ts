@@ -823,6 +823,17 @@ const routes = [
     }
   },
   {
+    path: '/payment/add-bank-card',
+    name: 'AddBankCard',
+    component: () => import('../modules/payment/pages/AddBankCard.vue'),
+    meta: {
+      title: '添加银行卡',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
     path: '/send-red-packet',
     name: 'SendRedPacket',
     component: () => import('../modules/payment/pages/RedPacket.vue'),

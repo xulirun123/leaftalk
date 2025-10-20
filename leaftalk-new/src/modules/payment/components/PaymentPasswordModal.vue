@@ -40,50 +40,6 @@
               </div>
             </div>
           </div>
-
-          <!-- 付款方式下拉菜单 -->
-          <transition name="dropdown">
-            <div v-if="showPaymentMethods" class="payment-methods-dropdown" @click.stop>
-              <!-- 付款方式列表 -->
-              <div class="payment-methods-list">
-                <div
-                  v-for="method in paymentMethods"
-                  :key="method.id"
-                  class="payment-method-item"
-                  :class="{ active: selectedMethod.id === method.id }"
-                  @click="selectPaymentMethod(method)"
-                >
-                  <div class="method-icon">
-                    <iconify-icon
-                      :icon="method.icon"
-                      width="24"
-                      :style="{ color: method.color }"
-                    ></iconify-icon>
-                  </div>
-                  <div class="method-info">
-                    <div class="method-name">{{ method.name }}</div>
-                    <div v-if="method.cardNumber" class="method-detail">
-                      {{ method.cardNumber }}
-                    </div>
-                  </div>
-                  <iconify-icon
-                    v-if="selectedMethod.id === method.id"
-                    icon="heroicons:check-circle-solid"
-                    width="20"
-                    style="color: #07C160;"
-                  ></iconify-icon>
-                </div>
-              </div>
-
-              <!-- 添加银行卡按钮 -->
-              <div class="add-card-section">
-                <button class="add-card-btn" @click="handleAddCard">
-                  <iconify-icon icon="heroicons:plus-circle" width="20"></iconify-icon>
-                  <span>添加银行卡</span>
-                </button>
-              </div>
-            </div>
-          </transition>
         </div>
 
         <!-- 密码输入框 -->
@@ -130,13 +86,79 @@
       </div>
     </div>
 
-    <!-- 遮罩层：点击关闭下拉菜单 -->
-    <div v-if="showPaymentMethods" class="dropdown-overlay" @click="showPaymentMethods = false"></div>
+    <!-- 选择付款方式弹窗 -->
+    <transition name="slide-up">
+      <div v-if="showPaymentMethods" class="payment-method-modal">
+        <div class="payment-modal-overlay" @click="showPaymentMethods = false"></div>
+        <div class="payment-modal-content">
+          <!-- 头部 -->
+          <div class="payment-modal-header">
+            <button class="back-btn" @click="showPaymentMethods = false">
+              <iconify-icon icon="heroicons:chevron-down" width="24"></iconify-icon>
+            </button>
+            <h3 class="payment-modal-title">选择付款方式</h3>
+          </div>
+
+          <!-- 内容 -->
+          <div class="payment-modal-body">
+            <!-- 零钱 -->
+            <div class="balance-item" @click="selectPaymentMethod(paymentMethods[0])">
+              <div class="balance-left">
+                <iconify-icon icon="heroicons:wallet" width="24" style="color: #07C160;"></iconify-icon>
+                <span class="balance-text">零钱</span>
+              </div>
+              <div class="balance-right">
+                <span class="balance-amount">¥{{ walletBalance }}</span>
+                <iconify-icon
+                  v-if="selectedMethod.id === 'balance'"
+                  icon="heroicons:check-circle-solid"
+                  width="20"
+                  style="color: #07C160;"
+                ></iconify-icon>
+              </div>
+            </div>
+
+            <!-- 银行卡标题 -->
+            <div class="bank-card-title">银行卡</div>
+
+            <!-- 银行卡列表 -->
+            <div class="bank-card-list">
+              <div
+                v-for="method in bankCards"
+                :key="method.id"
+                class="bank-card-item"
+                @click="selectPaymentMethod(method)"
+              >
+                <div class="card-left">
+                  <iconify-icon icon="heroicons:credit-card" width="24" :style="{ color: method.color }"></iconify-icon>
+                  <div class="card-info">
+                    <div class="card-name">{{ method.name }}</div>
+                    <div class="card-number">{{ method.cardNumber }}</div>
+                  </div>
+                </div>
+                <iconify-icon
+                  v-if="selectedMethod.id === method.id"
+                  icon="heroicons:check-circle-solid"
+                  width="20"
+                  style="color: #07C160;"
+                ></iconify-icon>
+              </div>
+            </div>
+
+            <!-- 添加银行卡 -->
+            <div class="add-bank-card-item" @click="handleAddCard">
+              <iconify-icon icon="heroicons:plus-circle" width="24" style="color: #07C160;"></iconify-icon>
+              <span class="add-card-text">添加银行卡</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 interface PaymentMethod {
   id: string
@@ -198,6 +220,12 @@ const paymentMethods = ref<PaymentMethod[]>([
 // 当前选择的付款方式
 const selectedMethod = ref<PaymentMethod>(paymentMethods.value[0])
 
+// 钱包余额
+const walletBalance = ref('1580.50')
+
+// 银行卡列表（不包括零钱）
+const bankCards = computed(() => paymentMethods.value.filter(m => m.id !== 'balance'))
+
 // 选择付款方式
 const selectPaymentMethod = (method: PaymentMethod) => {
   selectedMethod.value = method
@@ -207,8 +235,8 @@ const selectPaymentMethod = (method: PaymentMethod) => {
 // 添加银行卡
 const handleAddCard = () => {
   showPaymentMethods.value = false
-  // TODO: 跳转到添加银行卡页面
-  console.log('添加银行卡')
+  // 跳转到添加银行卡页面
+  window.location.href = '/#/payment/add-bank-card'
 }
 
 // 数字键盘按键 (4行4列)
@@ -420,66 +448,209 @@ watch(() => props.visible, (newVal) => {
   border-radius: 8px;
 }
 
-/* 下拉菜单遮罩 */
-.dropdown-overlay {
+/* 选择付款方式弹窗 */
+.payment-method-modal {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 9998;
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
 }
 
-/* 付款方式下拉菜单 */
-.payment-methods-dropdown {
+.payment-modal-overlay {
   position: absolute;
-  top: 100%;
+  top: 0;
   left: 0;
   right: 0;
-  margin-top: 8px;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.payment-modal-content {
+  position: relative;
+  width: 100%;
+  max-height: 80vh;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 9999;
-  max-height: 400px;
-  overflow-y: auto;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 下拉动画 */
-.dropdown-enter-active,
-.dropdown-leave-active {
-  transition: all 0.2s ease;
-}
-
-.dropdown-enter-from {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.dropdown-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.payment-methods-list {
-  padding: 8px 0;
-}
-
-.payment-method-item {
+.payment-modal-header {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: background 0.2s;
+  justify-content: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
 }
 
-.payment-method-item:hover {
+.back-btn {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.payment-modal-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.payment-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* 零钱项 */
+.balance-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 8px;
+}
+
+.balance-item:active {
   background: #f8f8f8;
 }
 
-.payment-method-item.active {
-  background: #f0f9f4;
+.balance-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.balance-text {
+  font-size: 15px;
+  color: #333;
+}
+
+.balance-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.balance-amount {
+  font-size: 14px;
+  color: #999;
+}
+
+/* 银行卡标题 */
+.bank-card-title {
+  height: 25px;
+  line-height: 25px;
+  padding: 0 20px;
+  font-size: 13px;
+  color: #999;
+  background: #f5f5f5;
+  margin-top: 8px;
+}
+
+/* 银行卡列表 */
+.bank-card-list {
+  padding: 0;
+}
+
+.bank-card-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.bank-card-item:last-child {
+  border-bottom: none;
+}
+
+.bank-card-item:active {
+  background: #f8f8f8;
+}
+
+.card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-name {
+  font-size: 15px;
+  color: #333;
+}
+
+.card-number {
+  font-size: 13px;
+  color: #999;
+}
+
+/* 添加银行卡 */
+.add-bank-card-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-top: 8px solid #f5f5f5;
+}
+
+.add-bank-card-item:active {
+  background: #f8f8f8;
+}
+
+.add-card-text {
+  font-size: 15px;
+  color: #07C160;
+  font-weight: 500;
+}
+
+/* 滑入动画 */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-up-enter-active .payment-modal-content,
+.slide-up-leave-active .payment-modal-content {
+  transition: transform 0.3s ease;
+}
+
+.slide-up-enter-from .payment-modal-overlay,
+.slide-up-leave-to .payment-modal-overlay {
+  opacity: 0;
+}
+
+.slide-up-enter-from .payment-modal-content,
+.slide-up-leave-to .payment-modal-content {
+  transform: translateY(100%);
 }
 
 .method-icon {
@@ -507,37 +678,6 @@ watch(() => props.visible, (newVal) => {
   font-size: 12px;
   color: #999;
   margin-top: 2px;
-}
-
-/* 添加银行卡 */
-.add-card-section {
-  padding: 8px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.add-card-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: #fff;
-  border: none;
-  border-radius: 8px;
-  color: #07C160;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.add-card-btn:hover {
-  background: #f8f8f8;
-}
-
-.add-card-btn:active {
-  transform: scale(0.98);
 }
 
 /* 密码输入 */
