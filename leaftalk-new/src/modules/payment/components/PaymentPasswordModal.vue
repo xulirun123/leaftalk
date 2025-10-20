@@ -1,19 +1,14 @@
 <template>
   <div v-if="visible" class="payment-password-modal" @click="handleBackdropClick">
     <div class="modal-content" @click.stop>
-      <!-- 顶部标题 -->
-      <div class="modal-header">
-        <h3 class="modal-title">叶语红包</h3>
-        <button class="close-btn" @click="close">
-          <iconify-icon icon="heroicons:x-mark" width="20"></iconify-icon>
-        </button>
-      </div>
-
       <div class="modal-body">
         <!-- 红包金额显示 -->
         <div class="redpacket-amount">
-          <div class="amount-label">塞进红包的金额</div>
+          <div class="amount-label">叶语红包</div>
           <div class="amount-value">¥{{ amount }}</div>
+          <button class="close-btn" @click="close">
+            <iconify-icon icon="heroicons:x-mark" width="20"></iconify-icon>
+          </button>
         </div>
 
         <!-- 付款方式 -->
@@ -82,12 +77,11 @@
         <div class="password-section">
           <div class="password-label">请输入支付密码</div>
           <div class="password-input-container">
-            <div class="password-dots">
+            <div class="password-boxes">
               <div
                 v-for="i in 6"
                 :key="i"
-                class="password-dot"
-                :class="{ filled: password.length >= i }"
+                class="password-box"
               >
                 <div v-if="password.length >= i" class="dot"></div>
               </div>
@@ -110,11 +104,10 @@
             class="keyboard-key"
             :class="{
               'key-delete': key === 'delete',
-              'key-confirm': key === 'confirm',
-              'key-empty': key === ''
+              'key-dot': key === '.',
+              'key-confirm': key === 'confirm'
             }"
-            @click="key && handleKeyPress(key)"
-            :disabled="!key"
+            @click="handleKeyPress(key)"
           >
             <iconify-icon v-if="key === 'delete'" icon="heroicons:backspace" width="24"></iconify-icon>
             <span v-else-if="key === 'confirm'">确认</span>
@@ -200,7 +193,7 @@ const keyboardKeys = [
   '1', '2', '3', 'delete',
   '4', '5', '6', 'confirm',
   '7', '8', '9',
-  '0', ''
+  '0', '.'
 ]
 
 // 处理按键
@@ -320,70 +313,60 @@ watch(() => props.visible, (newVal) => {
   }
 }
 
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 20px 0 20px;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 16px;
-  margin-bottom: 20px;
+.modal-body {
+  padding: 0;
 }
 
-.modal-title {
-  font-size: 18px;
+/* 红包金额显示 */
+.redpacket-amount {
+  position: relative;
+  text-align: center;
+  padding: 20px 20px 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.amount-label {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.amount-value {
+  font-size: 32px;
   font-weight: 600;
   color: #333;
-  margin: 0;
 }
 
 .close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
   background: none;
   border: none;
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
-  color: #666;
+  color: #999;
+  transition: all 0.2s;
 }
 
 .close-btn:hover {
   background: #f0f0f0;
-}
-
-.modal-body {
-  padding: 0 20px 20px 20px;
-}
-
-/* 红包金额显示 */
-.redpacket-amount {
-  text-align: center;
-  padding: 24px 0;
-  border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 20px;
-}
-
-.amount-label {
-  font-size: 14px;
-  color: #999;
-  margin-bottom: 8px;
-}
-
-.amount-value {
-  font-size: 36px;
-  font-weight: 600;
   color: #333;
 }
 
 /* 付款方式 */
 .payment-method-section {
-  margin-bottom: 24px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .payment-method-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .method-label {
@@ -488,7 +471,7 @@ watch(() => props.visible, (newVal) => {
 
 /* 密码输入 */
 .password-section {
-  margin-bottom: 20px;
+  padding: 16px 20px;
 }
 
 .password-label {
@@ -501,47 +484,36 @@ watch(() => props.visible, (newVal) => {
 .password-input-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
-.password-dots {
+.password-boxes {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
-.password-dot {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #e0e0e0;
-  border-radius: 50%;
+.password-box {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #fff;
   transition: all 0.2s ease;
 }
 
-.password-dot.filled {
+.password-box:has(.dot) {
   border-color: #07C160;
-  animation: fillDot 0.2s ease-out;
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
-  background: #07C160;
+  width: 10px;
+  height: 10px;
+  background: #333;
   border-radius: 50%;
   animation: showDot 0.2s ease-out;
-}
-
-@keyframes fillDot {
-  from {
-    transform: scale(0.8);
-    border-color: #e0e0e0;
-  }
-  to {
-    transform: scale(1);
-    border-color: #07C160;
-  }
 }
 
 @keyframes showDot {
@@ -570,16 +542,15 @@ watch(() => props.visible, (newVal) => {
 
 /* 数字键盘 */
 .keyboard-section {
-  padding: 20px;
-  background: #f8f8f8;
-  border-top: 1px solid #e0e0e0;
+  padding: 16px;
+  background: #f5f5f5;
 }
 
 .keyboard-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(4, 60px);
-  gap: 12px;
+  grid-template-rows: repeat(4, 56px);
+  gap: 10px;
 }
 
 .keyboard-key {
@@ -626,12 +597,17 @@ watch(() => props.visible, (newVal) => {
     }
   }
 
+  &.key-dot {
+    font-size: 32px;
+    font-weight: 700;
+  }
+
   &.key-confirm {
     grid-row: span 3;
     background: linear-gradient(180deg, #09d66f 0%, #07C160 100%);
     border-color: #06ad56;
     color: #fff;
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     box-shadow:
       0 3px 6px rgba(7, 193, 96, 0.3),
@@ -643,19 +619,6 @@ watch(() => props.visible, (newVal) => {
       box-shadow:
         0 1px 3px rgba(7, 193, 96, 0.2),
         inset 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-  }
-
-  &.key-empty {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    cursor: default;
-
-    &:active {
-      background: transparent;
-      box-shadow: none;
-      transform: none;
     }
   }
 }
