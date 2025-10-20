@@ -73,13 +73,11 @@
             class="keyboard-key"
             :class="{
               'key-delete': key === 'delete',
-              'key-dot': key === '.',
-              'key-confirm': key === 'confirm'
+              'key-dot': key === '.'
             }"
             @click="handleKeyPress(key)"
           >
             <iconify-icon v-if="key === 'delete'" icon="heroicons:backspace" width="24"></iconify-icon>
-            <span v-else-if="key === 'confirm'">确认</span>
             <span v-else>{{ key }}</span>
           </button>
         </div>
@@ -194,28 +192,28 @@ const paymentMethods = ref<PaymentMethod[]>([
   {
     id: 'icbc',
     name: '工商银行储蓄卡',
-    icon: 'simple-icons:icbc',
+    icon: 'mdi:bank',
     color: '#C8102E',
     cardNumber: '(1484)'
   },
   {
     id: 'boc',
     name: '中国银行储蓄卡',
-    icon: 'simple-icons:bankofchina',
+    icon: 'mdi:bank',
     color: '#B8292F',
     cardNumber: '(5678)'
   },
   {
     id: 'ccb',
     name: '建设银行储蓄卡',
-    icon: 'simple-icons:chinaconstruction',
+    icon: 'mdi:bank',
     color: '#0066B3',
     cardNumber: '(9012)'
   },
   {
     id: 'abc',
     name: '农业银行储蓄卡',
-    icon: 'simple-icons:agricultural',
+    icon: 'mdi:bank',
     color: '#00854A',
     cardNumber: '(3456)'
   }
@@ -243,23 +241,23 @@ const handleAddCard = () => {
   window.location.href = '/#/payment/add-bank-card'
 }
 
-// 数字键盘按键 (4行4列)
+// 数字键盘按键 (3行4列)
 const keyboardKeys = [
   '1', '2', '3', 'delete',
-  '4', '5', '6', 'confirm',
-  '7', '8', '9',
-  '0', '.'
+  '4', '5', '6', '0',
+  '7', '8', '9', '.'
 ]
 
 // 处理按键
 const handleKeyPress = (key: string) => {
-  if (key === 'confirm') {
-    verifyPassword()
-  } else if (key === 'delete') {
+  if (key === 'delete') {
     if (password.value.length > 0) {
       password.value = password.value.slice(0, -1)
       errorMessage.value = ''
     }
+  } else if (key === '.') {
+    // 密码输入不需要小数点，忽略
+    return
   } else {
     // 数字键
     if (password.value.length < 6) {
@@ -409,15 +407,16 @@ watch(() => props.visible, (newVal) => {
 /* 付款方式 */
 .payment-method-section {
   position: relative;
-  padding: 16px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid #f0f0f0;
+  background: #fff;
 }
 
 .payment-method-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  height: 42px;
 }
 
 .method-label {
@@ -447,8 +446,9 @@ watch(() => props.visible, (newVal) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
-  background: #f8f8f8;
+  height: 42px;
+  padding: 0 12px;
+  background: #f7f7f7;
   border-radius: 8px;
 }
 
@@ -526,15 +526,15 @@ watch(() => props.visible, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 30px;
+  height: 42px;
   padding: 0 20px;
   cursor: pointer;
   transition: background 0.2s;
-  margin-top: 8px;
+  background: #fff;
 }
 
 .balance-item:active {
-  background: #f8f8f8;
+  background: #f7f7f7;
 }
 
 .balance-left {
@@ -566,27 +566,28 @@ watch(() => props.visible, (newVal) => {
   padding: 0 20px;
   font-size: 13px;
   color: #999;
-  background: #f5f5f5;
-  margin-top: 8px;
+  background: #f7f7f7;
 }
 
 /* 银行卡列表 */
 .bank-card-list {
   padding: 0;
+  background: #fff;
 }
 
 .bank-card-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 30px;
+  height: 42px;
   padding: 0 20px;
   cursor: pointer;
   transition: background 0.2s;
+  background: #fff;
 }
 
 .bank-card-item:active {
-  background: #f8f8f8;
+  background: #f7f7f7;
 }
 
 .card-left {
@@ -749,7 +750,7 @@ watch(() => props.visible, (newVal) => {
 .keyboard-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(4, 56px);
+  grid-template-rows: repeat(3, 56px);
   gap: 10px;
 }
 
@@ -800,26 +801,6 @@ watch(() => props.visible, (newVal) => {
   &.key-dot {
     font-size: 32px;
     font-weight: 700;
-  }
-
-  &.key-confirm {
-    grid-row: span 3;
-    background: linear-gradient(180deg, #09d66f 0%, #07C160 100%);
-    border-color: #06ad56;
-    color: #fff;
-    font-size: 17px;
-    font-weight: 700;
-    box-shadow:
-      0 3px 6px rgba(7, 193, 96, 0.3),
-      0 1px 3px rgba(0, 0, 0, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
-
-    &:active {
-      background: linear-gradient(180deg, #07C160 0%, #06ad56 100%);
-      box-shadow:
-        0 1px 3px rgba(7, 193, 96, 0.2),
-        inset 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
   }
 }
 </style>
