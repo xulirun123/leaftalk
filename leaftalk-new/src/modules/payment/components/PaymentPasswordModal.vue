@@ -346,7 +346,7 @@ watch(() => props.visible, (newVal) => {
 })
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .payment-password-modal {
   position: fixed;
   top: 0;
