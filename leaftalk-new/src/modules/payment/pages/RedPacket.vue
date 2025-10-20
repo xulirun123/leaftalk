@@ -55,8 +55,7 @@
     <!-- 支付密码弹窗 -->
     <PaymentPasswordModal
       :visible="showPasswordModal"
-      title="请输入支付密码"
-      description="为了您的账户安全，请输入6位支付密码"
+      :amount="packetAmount"
       @update:visible="showPasswordModal = $event"
       @confirm="handlePasswordConfirm"
       @cancel="showPasswordModal = false"
@@ -108,8 +107,10 @@ const handleSendRedPacket = async () => {
 }
 
 // 支付密码确认后发送红包
-const handlePasswordConfirm = async (password: string) => {
+const handlePasswordConfirm = async (password: string, paymentMethodId: string) => {
   try {
+    console.log('使用付款方式:', paymentMethodId)
+
     const result = await paymentStore.sendRedPacket(
       'normal',
       parseFloat(packetAmount.value),

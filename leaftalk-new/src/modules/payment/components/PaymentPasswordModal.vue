@@ -1,33 +1,103 @@
 <template>
   <div v-if="visible" class="payment-password-modal" @click="handleBackdropClick">
     <div class="modal-content" @click.stop>
+      <!-- 顶部标题 -->
       <div class="modal-header">
-        <h3 class="modal-title">{{ title }}</h3>
+        <h3 class="modal-title">叶语红包</h3>
         <button class="close-btn" @click="close">
           <iconify-icon icon="heroicons:x-mark" width="20"></iconify-icon>
         </button>
       </div>
-      
+
       <div class="modal-body">
-        <p class="modal-description">{{ description }}</p>
-        
-        <!-- 密码输入框 -->
-        <div class="password-input-container">
-          <div class="password-dots">
-            <div 
-              v-for="i in 6" 
-              :key="i" 
-              class="password-dot"
-              :class="{ filled: password.length >= i }"
+        <!-- 红包金额显示 -->
+        <div class="redpacket-amount">
+          <div class="amount-label">塞进红包的金额</div>
+          <div class="amount-value">¥{{ amount }}</div>
+        </div>
+
+        <!-- 付款方式 -->
+        <div class="payment-method-section">
+          <div class="payment-method-header">
+            <span class="method-label">付款方式</span>
+            <button class="change-method-btn" @click="showPaymentMethods = !showPaymentMethods">
+              更改
+              <iconify-icon
+                :icon="showPaymentMethods ? 'heroicons:chevron-up' : 'heroicons:chevron-down'"
+                width="16"
+              ></iconify-icon>
+            </button>
+          </div>
+
+          <!-- 当前选择的付款方式 -->
+          <div class="current-payment-method">
+            <div class="method-icon">
+              <iconify-icon
+                :icon="selectedMethod.icon"
+                width="24"
+                :style="{ color: selectedMethod.color }"
+              ></iconify-icon>
+            </div>
+            <div class="method-info">
+              <div class="method-name">{{ selectedMethod.name }}</div>
+              <div v-if="selectedMethod.cardNumber" class="method-detail">
+                {{ selectedMethod.cardNumber }}
+              </div>
+            </div>
+          </div>
+
+          <!-- 付款方式下拉列表 -->
+          <div v-if="showPaymentMethods" class="payment-methods-list">
+            <div
+              v-for="method in paymentMethods"
+              :key="method.id"
+              class="payment-method-item"
+              :class="{ active: selectedMethod.id === method.id }"
+              @click="selectPaymentMethod(method)"
             >
-              <div v-if="password.length >= i" class="dot"></div>
+              <div class="method-icon">
+                <iconify-icon
+                  :icon="method.icon"
+                  width="24"
+                  :style="{ color: method.color }"
+                ></iconify-icon>
+              </div>
+              <div class="method-info">
+                <div class="method-name">{{ method.name }}</div>
+                <div v-if="method.cardNumber" class="method-detail">
+                  {{ method.cardNumber }}
+                </div>
+              </div>
+              <iconify-icon
+                v-if="selectedMethod.id === method.id"
+                icon="heroicons:check-circle-solid"
+                width="20"
+                style="color: #07C160;"
+              ></iconify-icon>
             </div>
           </div>
         </div>
-        
-        <!-- 错误提示 -->
-        <div v-if="errorMessage" class="error-message">
-          {{ errorMessage }}
+
+        <!-- 密码输入框 -->
+        <div class="password-section">
+          <div class="password-label">请输入支付密码</div>
+          <div class="password-input-container">
+            <div class="password-dots">
+              <div
+                v-for="i in 6"
+                :key="i"
+                class="password-dot"
+                :class="{ filled: password.length >= i }"
+              >
+                <div v-if="password.length >= i" class="dot"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 错误提示 -->
+          <div v-if="errorMessage" class="error-message">
+            {{ errorMessage }}
+          </div>
         </div>
       </div>
     </div>
@@ -50,27 +120,71 @@
 import { ref, watch } from 'vue'
 import NumericKeyboard from '../../../shared/components/common/NumericKeyboard.vue'
 
+interface PaymentMethod {
+  id: string
+  name: string
+  icon: string
+  color: string
+  cardNumber?: string
+}
+
 interface Props {
   visible: boolean
-  title?: string
-  description?: string
+  amount: string
 }
 
 interface Emits {
   (e: 'update:visible', value: boolean): void
-  (e: 'confirm', password: string): void
+  (e: 'confirm', password: string, paymentMethodId: string): void
   (e: 'cancel'): void
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  title: '请输入支付密码',
-  description: '为了您的账户安全，请输入6位支付密码'
-})
-
+const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const password = ref('')
 const errorMessage = ref('')
+const showPaymentMethods = ref(false)
+
+// 付款方式列表
+const paymentMethods = ref<PaymentMethod[]>([
+  {
+    id: 'balance',
+    name: '零钱',
+    icon: 'heroicons:wallet',
+    color: '#07C160'
+  },
+  {
+    id: 'icbc',
+    name: '工商银行储蓄卡',
+    icon: 'heroicons:credit-card',
+    color: '#C8102E',
+    cardNumber: '(1234)'
+  },
+  {
+    id: 'ccb',
+    name: '建设银行储蓄卡',
+    icon: 'heroicons:credit-card',
+    color: '#003399',
+    cardNumber: '(5678)'
+  },
+  {
+    id: 'abc',
+    name: '农业银行储蓄卡',
+    icon: 'heroicons:credit-card',
+    color: '#00A550',
+    cardNumber: '(9012)'
+  }
+])
+
+// 当前选择的付款方式
+const selectedMethod = ref<PaymentMethod>(paymentMethods.value[0])
+
+// 选择付款方式
+const selectPaymentMethod = (method: PaymentMethod) => {
+  selectedMethod.value = method
+  showPaymentMethods.value = false
+}
 
 // 验证密码
 const verifyPassword = async () => {
@@ -87,7 +201,7 @@ const verifyPassword = async () => {
     // 这里应该调用API验证密码
     // 暂时用localStorage存储的密码或固定密码模拟
     if (password.value === savedPassword || password.value === '123456') {
-      emit('confirm', password.value)
+      emit('confirm', password.value, selectedMethod.value.id)
       close()
     } else {
       errorMessage.value = '支付密码错误，请重新输入'
@@ -111,6 +225,7 @@ const verifyPassword = async () => {
 const close = () => {
   password.value = ''
   errorMessage.value = ''
+  showPaymentMethods.value = false
   emit('update:visible', false)
   emit('cancel')
 }
@@ -125,6 +240,7 @@ watch(() => props.visible, (newVal) => {
   if (newVal) {
     password.value = ''
     errorMessage.value = ''
+    showPaymentMethods.value = false
   }
 })
 </script>
@@ -195,17 +311,154 @@ watch(() => props.visible, (newVal) => {
   padding: 0 20px 20px 20px;
 }
 
-.modal-description {
+/* 红包金额显示 */
+.redpacket-amount {
   text-align: center;
-  color: #666;
+  padding: 24px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 20px;
+}
+
+.amount-label {
   font-size: 14px;
-  margin: 0 0 24px 0;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.amount-value {
+  font-size: 36px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 付款方式 */
+.payment-method-section {
+  margin-bottom: 24px;
+}
+
+.payment-method-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.method-label {
+  font-size: 14px;
+  color: #666;
+}
+
+.change-method-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #07C160;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.change-method-btn:hover {
+  background: #f0f0f0;
+}
+
+.current-payment-method {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f8f8;
+  border-radius: 8px;
+}
+
+.payment-methods-list {
+  margin-top: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.payment-method-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.payment-method-item:last-child {
+  border-bottom: none;
+}
+
+.payment-method-item:hover {
+  background: #f8f8f8;
+}
+
+.payment-method-item.active {
+  background: #f0f9f4;
+}
+
+.method-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-radius: 6px;
+}
+
+.method-info {
+  flex: 1;
+}
+
+.method-name {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.method-detail {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+/* 密码输入 */
+.password-section {
+  margin-bottom: 20px;
+}
+
+.password-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 12px;
+  text-align: center;
 }
 
 .password-input-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .password-dots {
