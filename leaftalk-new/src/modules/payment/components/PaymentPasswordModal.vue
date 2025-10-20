@@ -434,8 +434,8 @@ watch(() => props.visible, (newVal) => {
 .payment-methods-dropdown {
   position: absolute;
   top: 100%;
-  left: 20px;
-  right: 20px;
+  left: 0;
+  right: 0;
   margin-top: 8px;
   background: white;
   border-radius: 12px;
