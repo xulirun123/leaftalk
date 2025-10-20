@@ -100,25 +100,34 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 数字键盘 -->
-    <NumericKeyboard
-      v-model="password"
-      :visible="visible"
-      :max-length="6"
-      :allow-decimal="false"
-      confirm-text="确认"
-      :close-on-overlay="false"
-      @confirm="verifyPassword"
-      @close="close"
-    />
+      <!-- 数字键盘 -->
+      <div class="keyboard-section">
+        <div class="keyboard-grid">
+          <button
+            v-for="(key, index) in keyboardKeys"
+            :key="index"
+            class="keyboard-key"
+            :class="{
+              'key-delete': key === 'delete',
+              'key-confirm': key === 'confirm',
+              'key-empty': key === ''
+            }"
+            @click="key && handleKeyPress(key)"
+            :disabled="!key"
+          >
+            <iconify-icon v-if="key === 'delete'" icon="heroicons:backspace" width="24"></iconify-icon>
+            <span v-else-if="key === 'confirm'">确认</span>
+            <span v-else>{{ key }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import NumericKeyboard from '../../../shared/components/common/NumericKeyboard.vue'
 
 interface PaymentMethod {
   id: string
@@ -184,6 +193,39 @@ const selectedMethod = ref<PaymentMethod>(paymentMethods.value[0])
 const selectPaymentMethod = (method: PaymentMethod) => {
   selectedMethod.value = method
   showPaymentMethods.value = false
+}
+
+// 数字键盘按键 (4行4列)
+const keyboardKeys = [
+  '1', '2', '3', 'delete',
+  '4', '5', '6', 'confirm',
+  '7', '8', '9',
+  '0', ''
+]
+
+// 处理按键
+const handleKeyPress = (key: string) => {
+  if (key === 'confirm') {
+    verifyPassword()
+  } else if (key === 'delete') {
+    if (password.value.length > 0) {
+      password.value = password.value.slice(0, -1)
+      errorMessage.value = ''
+    }
+  } else {
+    // 数字键
+    if (password.value.length < 6) {
+      password.value += key
+      errorMessage.value = ''
+
+      // 如果输入满6位，自动验证
+      if (password.value.length === 6) {
+        setTimeout(() => {
+          verifyPassword()
+        }, 200)
+      }
+    }
+  }
 }
 
 // 验证密码
@@ -263,9 +305,10 @@ watch(() => props.visible, (newVal) => {
   background: white;
   border-radius: 16px 16px 0 0;
   width: 100%;
-  max-width: 400px;
   padding: 0;
   animation: slideUp 0.3s ease-out;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 @keyframes slideUp {
@@ -525,5 +568,95 @@ watch(() => props.visible, (newVal) => {
   75% { transform: translateX(5px); }
 }
 
-/* 键盘样式已移至 NumericKeyboard 组件 */
+/* 数字键盘 */
+.keyboard-section {
+  padding: 20px;
+  background: #f8f8f8;
+  border-top: 1px solid #e0e0e0;
+}
+
+.keyboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 60px);
+  gap: 12px;
+}
+
+.keyboard-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+
+  &:active {
+    background: linear-gradient(180deg, #e8e8e8 0%, #d8d8d8 100%);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      inset 0 1px 3px rgba(0, 0, 0, 0.15);
+    transform: translateY(1px);
+  }
+
+  &.key-delete {
+    background: linear-gradient(180deg, #ff7b7b 0%, #ff5252 100%);
+    border-color: #ff4444;
+    color: #fff;
+    box-shadow:
+      0 2px 4px rgba(255, 82, 82, 0.3),
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+    &:active {
+      background: linear-gradient(180deg, #ff5252 0%, #ff3838 100%);
+      box-shadow:
+        0 1px 2px rgba(255, 82, 82, 0.2),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  &.key-confirm {
+    grid-row: span 3;
+    background: linear-gradient(180deg, #09d66f 0%, #07C160 100%);
+    border-color: #06ad56;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    box-shadow:
+      0 3px 6px rgba(7, 193, 96, 0.3),
+      0 1px 3px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+    &:active {
+      background: linear-gradient(180deg, #07C160 0%, #06ad56 100%);
+      box-shadow:
+        0 1px 3px rgba(7, 193, 96, 0.2),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  &.key-empty {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    cursor: default;
+
+    &:active {
+      background: transparent;
+      box-shadow: none;
+      transform: none;
+    }
+  }
+}
 </style>
