@@ -130,11 +130,8 @@
                 @click="selectPaymentMethod(method)"
               >
                 <div class="card-left">
-                  <iconify-icon icon="heroicons:credit-card" width="24" :style="{ color: method.color }"></iconify-icon>
-                  <div class="card-info">
-                    <div class="card-name">{{ method.name }}</div>
-                    <div class="card-number">{{ method.cardNumber }}</div>
-                  </div>
+                  <iconify-icon :icon="method.icon" width="24" :style="{ color: method.color }"></iconify-icon>
+                  <span class="card-text">{{ method.name }}{{ method.cardNumber }}</span>
                 </div>
                 <iconify-icon
                   v-if="selectedMethod.id === method.id"
@@ -197,23 +194,30 @@ const paymentMethods = ref<PaymentMethod[]>([
   {
     id: 'icbc',
     name: '工商银行储蓄卡',
-    icon: 'heroicons:credit-card',
+    icon: 'simple-icons:icbc',
     color: '#C8102E',
-    cardNumber: '(1234)'
+    cardNumber: '(1484)'
+  },
+  {
+    id: 'boc',
+    name: '中国银行储蓄卡',
+    icon: 'simple-icons:bankofchina',
+    color: '#B8292F',
+    cardNumber: '(5678)'
   },
   {
     id: 'ccb',
     name: '建设银行储蓄卡',
-    icon: 'heroicons:credit-card',
-    color: '#003399',
-    cardNumber: '(5678)'
+    icon: 'simple-icons:chinaconstruction',
+    color: '#0066B3',
+    cardNumber: '(9012)'
   },
   {
     id: 'abc',
     name: '农业银行储蓄卡',
-    icon: 'heroicons:credit-card',
-    color: '#00A550',
-    cardNumber: '(9012)'
+    icon: 'simple-icons:agricultural',
+    color: '#00854A',
+    cardNumber: '(3456)'
   }
 ])
 
@@ -472,7 +476,7 @@ watch(() => props.visible, (newVal) => {
 .payment-modal-content {
   position: relative;
   width: 100%;
-  max-height: 80vh;
+  max-height: 90vh;
   background: white;
   border-radius: 16px 16px 0 0;
   display: flex;
@@ -575,14 +579,10 @@ watch(() => props.visible, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  height: 30px;
+  padding: 0 20px;
   cursor: pointer;
   transition: background 0.2s;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.bank-card-item:last-child {
-  border-bottom: none;
 }
 
 .bank-card-item:active {
@@ -595,20 +595,9 @@ watch(() => props.visible, (newVal) => {
   gap: 12px;
 }
 
-.card-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.card-name {
+.card-text {
   font-size: 15px;
   color: #333;
-}
-
-.card-number {
-  font-size: 13px;
-  color: #999;
 }
 
 /* 添加银行卡 */
