@@ -2,17 +2,19 @@
   <div class="red-packet-page">
     <!-- 金额输入区域 -->
     <div class="amount-section">
-      <div class="amount-label">金额</div>
       <div class="amount-input-wrapper" @click="showAmountKeyboard = true">
-        <span class="currency-symbol">¥</span>
-        <input
-          v-model="packetAmount"
-          type="text"
-          placeholder="0.00"
-          class="amount-input"
-          readonly
-          inputmode="none"
-        >
+        <div class="amount-label">金额</div>
+        <div class="amount-value">
+          <span class="currency-symbol">¥</span>
+          <input
+            v-model="packetAmount"
+            type="text"
+            placeholder="0.00"
+            class="amount-input"
+            readonly
+            inputmode="none"
+          >
+        </div>
       </div>
     </div>
 
@@ -25,12 +27,6 @@
         class="blessing-input"
         maxlength="50"
       >
-    </div>
-
-    <!-- 红包金额显示 -->
-    <div class="amount-display">
-      <div class="amount-display-label">红包金额</div>
-      <div class="amount-display-value">¥{{ displayAmount }}</div>
     </div>
 
     <!-- 塞钱进红包按钮 -->
@@ -105,10 +101,6 @@ const showResultDialog = ref(false)
 const sendResult = ref<any>({})
 
 // 计算属性
-const displayAmount = computed(() => {
-  return packetAmount.value || '0.00'
-})
-
 const canSend = computed(() => {
   const amount = parseFloat(packetAmount.value)
   return amount > 0 && amount <= paymentStore.availableBalance
@@ -179,20 +171,28 @@ onMounted(async () => {
   margin-bottom: 32px;
 }
 
+.amount-input-wrapper {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
 .amount-label {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
   margin-bottom: 12px;
   font-weight: 500;
 }
 
-.amount-input-wrapper {
+.amount-value {
   display: flex;
   align-items: center;
-  background: transparent;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.5);
-  padding: 8px 0;
-  cursor: pointer;
 }
 
 .currency-symbol {
@@ -234,23 +234,6 @@ onMounted(async () => {
   &::placeholder {
     color: rgba(255, 255, 255, 0.7);
   }
-}
-
-.amount-display {
-  margin-bottom: 32px;
-  text-align: center;
-}
-
-.amount-display-label {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 8px;
-}
-
-.amount-display-value {
-  font-size: 32px;
-  color: #fff;
-  font-weight: 500;
 }
 
 .action-section {
