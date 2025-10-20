@@ -29,54 +29,26 @@
         <div v-if="errorMessage" class="error-message">
           {{ errorMessage }}
         </div>
-        
-        <!-- 数字键盘 -->
-        <div class="number-keyboard">
-          <div class="keyboard-row">
-            <button 
-              v-for="num in [1, 2, 3]" 
-              :key="num" 
-              class="keyboard-btn number-btn"
-              @click="inputNumber(num)"
-            >
-              {{ num }}
-            </button>
-          </div>
-          <div class="keyboard-row">
-            <button 
-              v-for="num in [4, 5, 6]" 
-              :key="num" 
-              class="keyboard-btn number-btn"
-              @click="inputNumber(num)"
-            >
-              {{ num }}
-            </button>
-          </div>
-          <div class="keyboard-row">
-            <button 
-              v-for="num in [7, 8, 9]" 
-              :key="num" 
-              class="keyboard-btn number-btn"
-              @click="inputNumber(num)"
-            >
-              {{ num }}
-            </button>
-          </div>
-          <div class="keyboard-row">
-            <div class="keyboard-btn empty"></div>
-            <button class="keyboard-btn number-btn" @click="inputNumber(0)">0</button>
-            <button class="keyboard-btn delete-btn" @click="deleteNumber">
-              <iconify-icon icon="heroicons:backspace" width="20"></iconify-icon>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
+
+    <!-- 数字键盘 -->
+    <NumericKeyboard
+      v-model="password"
+      :visible="visible"
+      :max-length="6"
+      :allow-decimal="false"
+      confirm-text="确认"
+      :close-on-overlay="false"
+      @confirm="verifyPassword"
+      @close="close"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import NumericKeyboard from '../../../shared/components/common/NumericKeyboard.vue'
 
 interface Props {
   visible: boolean
@@ -100,31 +72,14 @@ const emit = defineEmits<Emits>()
 const password = ref('')
 const errorMessage = ref('')
 
-// 输入数字
-const inputNumber = (num: number) => {
-  if (password.value.length < 6) {
-    password.value += num.toString()
-    errorMessage.value = ''
-    
-    // 如果输入满6位，自动验证
-    if (password.value.length === 6) {
-      setTimeout(() => {
-        verifyPassword()
-      }, 200)
-    }
-  }
-}
-
-// 删除数字
-const deleteNumber = () => {
-  if (password.value.length > 0) {
-    password.value = password.value.slice(0, -1)
-    errorMessage.value = ''
-  }
-}
-
 // 验证密码
 const verifyPassword = async () => {
+  // 检查密码长度
+  if (password.value.length !== 6) {
+    errorMessage.value = '请输入6位支付密码'
+    return
+  }
+
   try {
     // 获取已设置的支付密码
     const savedPassword = localStorage.getItem('yeyu_payment_password')
@@ -317,53 +272,5 @@ watch(() => props.visible, (newVal) => {
   75% { transform: translateX(5px); }
 }
 
-.number-keyboard {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.keyboard-row {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.keyboard-btn {
-  width: 60px;
-  height: 60px;
-  border: none;
-  border-radius: 50%;
-  background: #f8f8f8;
-  color: #333;
-  font-size: 20px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.keyboard-btn:hover {
-  background: #e8e8e8;
-}
-
-.keyboard-btn:active {
-  background: #d8d8d8;
-  transform: scale(0.95);
-}
-
-.keyboard-btn.empty {
-  background: transparent;
-  cursor: default;
-}
-
-.keyboard-btn.empty:hover {
-  background: transparent;
-}
-
-.delete-btn {
-  color: #666;
-}
+/* 键盘样式已移至 NumericKeyboard 组件 */
 </style>

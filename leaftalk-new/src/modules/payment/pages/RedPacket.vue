@@ -52,16 +52,14 @@
       @close="showAmountKeyboard = false"
     />
 
-    <!-- 确认对话框 -->
-    <ConfirmDialog
-      v-if="showConfirmDialog"
-      :visible="showConfirmDialog"
-      title="确认发送红包"
-      :message="`确定要发送 ¥${packetAmount} 的红包吗？`"
-      confirm-text="确定"
-      cancel-text="取消"
-      @confirm="confirmSend"
-      @cancel="showConfirmDialog = false"
+    <!-- 支付密码弹窗 -->
+    <PaymentPasswordModal
+      :visible="showPasswordModal"
+      title="请输入支付密码"
+      description="为了您的账户安全，请输入6位支付密码"
+      @update:visible="showPasswordModal = $event"
+      @confirm="handlePasswordConfirm"
+      @cancel="showPasswordModal = false"
     />
 
     <!-- 结果对话框 -->
@@ -83,6 +81,7 @@ import { useRouter } from 'vue-router'
 import { usePaymentStore } from '../stores/paymentStore'
 import ConfirmDialog from '../../../shared/components/common/ConfirmDialog.vue'
 import NumericKeyboard from '../../../shared/components/common/NumericKeyboard.vue'
+import PaymentPasswordModal from '../components/PaymentPasswordModal.vue'
 
 const router = useRouter()
 const paymentStore = usePaymentStore()
@@ -91,7 +90,7 @@ const paymentStore = usePaymentStore()
 const packetAmount = ref('')
 const blessing = ref('')
 const showAmountKeyboard = ref(false)
-const showConfirmDialog = ref(false)
+const showPasswordModal = ref(false)
 const showResultDialog = ref(false)
 const sendResult = ref<any>({})
 
@@ -101,12 +100,15 @@ const canSend = computed(() => {
   return amount > 0 && amount <= paymentStore.availableBalance
 })
 
+// 点击塞钱进红包按钮
 const handleSendRedPacket = async () => {
   if (!canSend.value) return
-  showConfirmDialog.value = true
+  // 直接弹出支付密码弹窗
+  showPasswordModal.value = true
 }
 
-const confirmSend = async () => {
+// 支付密码确认后发送红包
+const handlePasswordConfirm = async (password: string) => {
   try {
     const result = await paymentStore.sendRedPacket(
       'normal',
@@ -115,7 +117,7 @@ const confirmSend = async () => {
       blessing.value || '恭喜发财，大吉大利',
       'target_user',
       undefined,
-      '123456' // 默认密码
+      password
     )
 
     sendResult.value = {
@@ -124,7 +126,7 @@ const confirmSend = async () => {
       message: '红包发送成功'
     }
 
-    showConfirmDialog.value = false
+    showPasswordModal.value = false
     showResultDialog.value = true
 
   } catch (error) {
@@ -133,7 +135,7 @@ const confirmSend = async () => {
       message: error instanceof Error ? error.message : '红包发送失败'
     }
 
-    showConfirmDialog.value = false
+    showPasswordModal.value = false
     showResultDialog.value = true
   }
 }
