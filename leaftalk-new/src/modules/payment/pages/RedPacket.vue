@@ -380,26 +380,45 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
   color: #333;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s ease;
+  position: relative;
 
+  // 立体感阴影
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+
+  // 按下效果
   &:active {
-    background: #e0e0e0;
-    transform: scale(0.95);
+    background: linear-gradient(180deg, #e8e8e8 0%, #d8d8d8 100%);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      inset 0 1px 3px rgba(0, 0, 0, 0.15);
+    transform: translateY(1px);
   }
 
   &.key-delete {
-    background: #ff6b6b;
+    background: linear-gradient(180deg, #ff7b7b 0%, #ff5252 100%);
+    border-color: #ff4444;
     color: #fff;
+    box-shadow:
+      0 2px 4px rgba(255, 82, 82, 0.3),
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
 
     &:active {
-      background: #ff5252;
+      background: linear-gradient(180deg, #ff5252 0%, #ff3838 100%);
+      box-shadow:
+        0 1px 2px rgba(255, 82, 82, 0.2),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2);
     }
   }
 
@@ -413,22 +432,33 @@ onMounted(async () => {
 
   &.key-confirm {
     grid-row: span 3;  // 竖着占3行
-    background: #07C160;
+    background: linear-gradient(180deg, #09d66f 0%, #07C160 100%);
+    border-color: #06ad56;
     color: #fff;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 700;
+    box-shadow:
+      0 3px 6px rgba(7, 193, 96, 0.3),
+      0 1px 3px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
 
     &:active {
-      background: #06ad56;
+      background: linear-gradient(180deg, #07C160 0%, #06ad56 100%);
+      box-shadow:
+        0 1px 3px rgba(7, 193, 96, 0.2),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2);
     }
   }
 
   &.key-empty {
     background: transparent;
+    border: none;
+    box-shadow: none;
     cursor: default;
 
     &:active {
       background: transparent;
+      box-shadow: none;
       transform: none;
     }
   }
