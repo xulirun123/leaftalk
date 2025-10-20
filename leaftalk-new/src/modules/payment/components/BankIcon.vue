@@ -1,116 +1,52 @@
 <template>
   <div class="bank-icon" :style="{ width: size + 'px', height: size + 'px' }">
-    <!-- 工商银行 ICBC - 两个工字组成 -->
-    <svg v-if="bank === 'icbc'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <!-- 外圆 -->
-      <circle cx="50" cy="50" r="48" fill="none" stroke="#C8102E" stroke-width="3"/>
-      <!-- 内圆 -->
-      <circle cx="50" cy="50" r="38" fill="none" stroke="#C8102E" stroke-width="2"/>
-
-      <!-- 左边的"工"字 -->
-      <g transform="translate(30, 50)">
-        <!-- 上横 -->
-        <rect x="0" y="-15" width="18" height="3" fill="#C8102E"/>
-        <!-- 中竖 -->
-        <rect x="7.5" y="-12" width="3" height="24" fill="#C8102E"/>
-        <!-- 下横 -->
-        <rect x="0" y="9" width="18" height="3" fill="#C8102E"/>
-      </g>
-
-      <!-- 右边的"工"字 -->
-      <g transform="translate(52, 50)">
-        <!-- 上横 -->
-        <rect x="0" y="-15" width="18" height="3" fill="#C8102E"/>
-        <!-- 中竖 -->
-        <rect x="7.5" y="-12" width="3" height="24" fill="#C8102E"/>
-        <!-- 下横 -->
-        <rect x="0" y="9" width="18" height="3" fill="#C8102E"/>
-      </g>
-    </svg>
-
-    <!-- 中国银行 BOC - 古钱币造型 -->
-    <svg v-else-if="bank === 'boc'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <!-- 外圆 -->
-      <circle cx="50" cy="50" r="48" fill="none" stroke="#B8292F" stroke-width="3"/>
-      <!-- 内圆 -->
-      <circle cx="50" cy="50" r="32" fill="none" stroke="#B8292F" stroke-width="2.5"/>
-
-      <!-- 内方孔 -->
-      <rect x="38" y="38" width="24" height="24" fill="none" stroke="#B8292F" stroke-width="2.5"/>
-
-      <!-- 四个角的装饰 -->
-      <circle cx="38" cy="38" r="2" fill="#B8292F"/>
-      <circle cx="62" cy="38" r="2" fill="#B8292F"/>
-      <circle cx="38" cy="62" r="2" fill="#B8292F"/>
-      <circle cx="62" cy="62" r="2" fill="#B8292F"/>
-    </svg>
-
-    <!-- 建设银行 CCB - 古钱币+两个C -->
-    <svg v-else-if="bank === 'ccb'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <!-- 外圆 -->
-      <circle cx="50" cy="50" r="48" fill="none" stroke="#0066B3" stroke-width="3"/>
-
-      <!-- 内方 -->
-      <rect x="32" y="32" width="36" height="36" fill="none" stroke="#0066B3" stroke-width="2.5"/>
-
-      <!-- 第一个C（左下） -->
-      <path d="M 42 58 Q 35 58 35 50 Q 35 42 42 42"
-            fill="none" stroke="#0066B3" stroke-width="3" stroke-linecap="round"/>
-
-      <!-- 第二个C（右上，重叠） -->
-      <path d="M 58 42 Q 65 42 65 50 Q 65 58 58 58"
-            fill="none" stroke="#0066B3" stroke-width="3" stroke-linecap="round"/>
-
-      <!-- 立体效果的阴影C -->
-      <path d="M 60 40 Q 68 40 68 50 Q 68 60 60 60"
-            fill="none" stroke="#0066B3" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-    </svg>
-
-    <!-- 农业银行 ABC - 麦穗图案 -->
-    <svg v-else-if="bank === 'abc'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <!-- 外圆 -->
-      <circle cx="50" cy="50" r="48" fill="none" stroke="#00854A" stroke-width="3"/>
-
-      <!-- 中间的麦穗主干 -->
-      <line x1="50" y1="25" x2="50" y2="75" stroke="#00854A" stroke-width="2.5"/>
-
-      <!-- 左侧麦穗 -->
-      <ellipse cx="38" cy="35" rx="6" ry="10" fill="#00854A" opacity="0.8"/>
-      <ellipse cx="36" cy="45" rx="7" ry="11" fill="#00854A" opacity="0.8"/>
-      <ellipse cx="38" cy="55" rx="6" ry="10" fill="#00854A" opacity="0.8"/>
-      <ellipse cx="40" cy="65" rx="5" ry="8" fill="#00854A" opacity="0.8"/>
-
-      <!-- 右侧麦穗 -->
-      <ellipse cx="62" cy="35" rx="6" ry="10" fill="#00854A" opacity="0.8"/>
-      <ellipse cx="64" cy="45" rx="7" ry="11" fill="#00854A" opacity="0.8"/>
-      <ellipse cx="62" cy="55" rx="6" ry="10" fill="#00854A" opacity="0.8"/>
-      <ellipse cx="60" cy="65" rx="5" ry="8" fill="#00854A" opacity="0.8"/>
-
-      <!-- 麦穗顶部 -->
-      <path d="M 50 25 L 45 30 L 50 28 L 55 30 Z" fill="#00854A"/>
-    </svg>
-
-    <!-- 默认银行图标 -->
-    <svg v-else viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" :fill="color"/>
-      <rect x="25" y="40" width="50" height="30" fill="white" rx="2"/>
-      <rect x="25" y="50" width="50" height="3" :fill="color"/>
-      <circle cx="70" cy="60" r="4" fill="white"/>
-    </svg>
+    <img
+      :src="bankLogoUrl"
+      :alt="bank"
+      class="bank-logo"
+      @error="handleImageError"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+
 interface Props {
   bank: 'icbc' | 'boc' | 'ccb' | 'abc' | string
   size?: number
   color?: string
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   size: 24,
   color: '#666'
 })
+
+const imageError = ref(false)
+
+// 银行图标LOGO（仅图标，不含文字）
+const bankLogos: Record<string, string> = {
+  // 工商银行 - 使用base64编码的SVG图标
+  icbc: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQzgxMDJFIiBzdHJva2Utd2lkdGg9IjMiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQzgxMDJFIiBzdHJva2Utd2lkdGg9IjIiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMCwgNTApIj48cmVjdCB4PSIwIiB5PSItMTUiIHdpZHRoPSIxOCIgaGVpZ2h0PSIzIiBmaWxsPSIjQzgxMDJFIi8+PHJlY3QgeD0iNy41IiB5PSItMTIiIHdpZHRoPSIzIiBoZWlnaHQ9IjI0IiBmaWxsPSIjQzgxMDJFIi8+PHJlY3QgeD0iMCIgeT0iOSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjMiIGZpbGw9IiNDODEwMkUiLz48L2c+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNTIsIDUwKSI+PHJlY3QgeD0iMCIgeT0iLTE1IiB3aWR0aD0iMTgiIGhlaWdodD0iMyIgZmlsbD0iI0M4MTAyRSIvPjxyZWN0IHg9IjcuNSIgeT0iLTEyIiB3aWR0aD0iMyIgaGVpZ2h0PSIyNCIgZmlsbD0iI0M4MTAyRSIvPjxyZWN0IHg9IjAiIHk9IjkiIHdpZHRoPSIxOCIgaGVpZ2h0PSIzIiBmaWxsPSIjQzgxMDJFIi8+PC9nPjwvc3ZnPg==',
+
+  // 中国银行 - 古钱币图标
+  boc: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQjgyOTJGIiBzdHJva2Utd2lkdGg9IjMiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzMiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQjgyOTJGIiBzdHJva2Utd2lkdGg9IjIuNSIvPjxyZWN0IHg9IjM4IiB5PSIzOCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNCODI5MkYiIHN0cm9rZS13aWR0aD0iMi41Ii8+PGNpcmNsZSBjeD0iMzgiIGN5PSIzOCIgcj0iMiIgZmlsbD0iI0I4MjkyRiIvPjxjaXJjbGUgY3g9IjYyIiBjeT0iMzgiIHI9IjIiIGZpbGw9IiNCODI5MkYiLz48Y2lyY2xlIGN4PSIzOCIgY3k9IjYyIiByPSIyIiBmaWxsPSIjQjgyOTJGIi8+PGNpcmNsZSBjeD0iNjIiIGN5PSI2MiIgcj0iMiIgZmlsbD0iI0I4MjkyRiIvPjwvc3ZnPg==',
+
+  // 建设银行 - 蓝色C图标
+  ccb: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0iIzAwNjZCMyIvPjxwYXRoIGQ9Ik0gNzAgMzAgQSAyNSAyNSAwIDAgMSA3MCA3MCBMIDYwIDcwIEEgMTUgMTUgMCAwIDAgNjAgMzAgWiIgZmlsbD0id2hpdGUiLz48cGF0aCBkPSJNIDY1IDM1IEEgMjAgMjAgMCAwIDEgNjUgNjUgTCA1OCA2NSBBIDEzIDEzIDAgMCAwIDU4IDM1IFoiIGZpbGw9IiMwMDY2QjMiLz48cmVjdCB4PSIyNSIgeT0iNDIiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0id2hpdGUiIHJ4PSIxIi8+PHJlY3QgeD0iMjgiIHk9IjQ1IiB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMwMDY2QjMiIHJ4PSIwLjUiLz48L3N2Zz4=',
+
+  // 农业银行 - 麦穗图标
+  abc: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDA4NTRBIiBzdHJva2Utd2lkdGg9IjMiLz48bGluZSB4MT0iNTAiIHkxPSIyNSIgeDI9IjUwIiB5Mj0iNzUiIHN0cm9rZT0iIzAwODU0QSIgc3Ryb2tlLXdpZHRoPSIyLjUiLz48ZWxsaXBzZSBjeD0iMzgiIGN5PSIzNSIgcng9IjYiIHJ5PSIxMCIgZmlsbD0iIzAwODU0QSIgb3BhY2l0eT0iMC44Ii8+PGVsbGlwc2UgY3g9IjM2IiBjeT0iNDUiIHJ4PSI3IiByeT0iMTEiIGZpbGw9IiMwMDg1NEEiIG9wYWNpdHk9IjAuOCIvPjxlbGxpcHNlIGN4PSIzOCIgY3k9IjU1IiByeD0iNiIgcnk9IjEwIiBmaWxsPSIjMDA4NTRBIiBvcGFjaXR5PSIwLjgiLz48ZWxsaXBzZSBjeD0iNDAiIGN5PSI2NSIgcng9IjUiIHJ5PSI4IiBmaWxsPSIjMDA4NTRBIiBvcGFjaXR5PSIwLjgiLz48ZWxsaXBzZSBjeD0iNjIiIGN5PSIzNSIgcng9IjYiIHJ5PSIxMCIgZmlsbD0iIzAwODU0QSIgb3BhY2l0eT0iMC44Ii8+PGVsbGlwc2UgY3g9IjY0IiBjeT0iNDUiIHJ4PSI3IiByeT0iMTEiIGZpbGw9IiMwMDg1NEEiIG9wYWNpdHk9IjAuOCIvPjxlbGxpcHNlIGN4PSI2MiIgY3k9IjU1IiByeD0iNiIgcnk9IjEwIiBmaWxsPSIjMDA4NTRBIiBvcGFjaXR5PSIwLjgiLz48ZWxsaXBzZSBjeD0iNjAiIGN5PSI2NSIgcng9IjUiIHJ5PSI4IiBmaWxsPSIjMDA4NTRBIiBvcGFjaXR5PSIwLjgiLz48cGF0aCBkPSJNIDUwIDI1IEwgNDUgMzAgTCA1MCAyOCBMIDU1IDMwIFoiIGZpbGw9IiMwMDg1NEEiLz48L3N2Zz4='
+}
+
+const bankLogoUrl = computed(() => {
+  return bankLogos[props.bank] || bankLogos.icbc
+})
+
+const handleImageError = () => {
+  console.error('Bank icon failed to load:', props.bank)
+}
 </script>
 
 <style scoped lang="scss">
@@ -119,11 +55,14 @@ withDefaults(defineProps<Props>(), {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 4px;
 }
 
-svg {
+.bank-logo {
   width: 100%;
   height: 100%;
+  object-fit: contain;
 }
 </style>
 
