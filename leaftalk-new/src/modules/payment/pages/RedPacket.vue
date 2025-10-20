@@ -1,63 +1,70 @@
 <template>
-  <div class="red-packet-page">
-    <!-- 金额输入区域 -->
-    <div class="amount-section">
-      <div class="amount-input-wrapper">
-        <div class="amount-label">金额</div>
-        <div class="amount-value">
-          <span class="currency-symbol">¥</span>
-          <input
-            v-model="packetAmount"
-            type="text"
-            placeholder="0.00"
-            class="amount-input"
-            readonly
-            inputmode="none"
-          >
+  <div class="red-packet-page" :class="{ 'keyboard-open': showKeyboard }">
+    <div class="page-content">
+      <!-- 金额输入区域 -->
+      <div class="amount-section">
+        <div class="amount-input-wrapper" @click="showKeyboard = true">
+          <div class="amount-label">金额</div>
+          <div class="amount-value">
+            <span class="currency-symbol">¥</span>
+            <input
+              v-model="packetAmount"
+              type="text"
+              placeholder="0.00"
+              class="amount-input"
+              readonly
+              inputmode="none"
+            >
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 祝福语输入区域 -->
-    <div class="blessing-section">
-      <input
-        v-model="blessing"
-        type="text"
-        placeholder="恭喜发财，大吉大利"
-        class="blessing-input"
-        maxlength="50"
-      >
-    </div>
-
-    <!-- 塞钱进红包按钮 -->
-    <div class="action-section">
-      <button
-        class="send-btn"
-        :disabled="!canSend"
-        @click="handleSendRedPacket"
-      >
-        塞钱进红包
-      </button>
-    </div>
-
-    <!-- 数字键盘（固定在页面底部） -->
-    <div class="keyboard-section">
-      <div class="keyboard-grid">
-        <button
-          v-for="(key, index) in keyboardKeys"
-          :key="index"
-          class="keyboard-key"
-          :class="{
-            'key-delete': key === 'delete',
-            'key-dot': key === '.'
-          }"
-          @click="handleKeyPress(key)"
+      <!-- 祝福语输入区域 -->
+      <div class="blessing-section">
+        <input
+          v-model="blessing"
+          type="text"
+          placeholder="恭喜发财，大吉大利"
+          class="blessing-input"
+          maxlength="50"
         >
-          <iconify-icon v-if="key === 'delete'" icon="heroicons:backspace" width="24"></iconify-icon>
-          <span v-else>{{ key }}</span>
+      </div>
+
+      <!-- 塞钱进红包按钮 -->
+      <div class="action-section">
+        <button
+          class="send-btn"
+          :disabled="!canSend"
+          @click="handleSendRedPacket"
+        >
+          塞钱进红包
         </button>
       </div>
     </div>
+
+    <!-- 数字键盘（从底部弹出） -->
+    <transition name="slide-up">
+      <div v-if="showKeyboard" class="keyboard-panel">
+        <div class="keyboard-header">
+          <button class="keyboard-close" @click="showKeyboard = false">完成</button>
+        </div>
+        <div class="keyboard-grid">
+          <button
+            v-for="(key, index) in keyboardKeys"
+            :key="index"
+            class="keyboard-key"
+            :class="{
+              'key-delete': key === 'delete',
+              'key-dot': key === '.'
+            }"
+            @click="handleKeyPress(key)"
+          >
+            <iconify-icon v-if="key === 'delete'" icon="heroicons:backspace" width="24"></iconify-icon>
+            <span v-else>{{ key }}</span>
+          </button>
+        </div>
+      </div>
+    </transition>
 
     <!-- 支付密码弹窗 -->
     <PaymentPasswordModal
@@ -94,6 +101,7 @@ const paymentStore = usePaymentStore()
 // 响应式数据
 const packetAmount = ref('')
 const blessing = ref('')
+const showKeyboard = ref(false)
 const showPasswordModal = ref(false)
 const showResultDialog = ref(false)
 const sendResult = ref<any>({})
@@ -202,9 +210,18 @@ onMounted(async () => {
 .red-packet-page {
   min-height: 100vh;
   background: #EDEDED;
-  padding: 20px 20px 0 20px;
   display: flex;
   flex-direction: column;
+  transition: padding-bottom 0.3s ease;
+
+  &.keyboard-open {
+    padding-bottom: 240px; // 键盘高度
+  }
+}
+
+.page-content {
+  padding: 20px;
+  flex: 1;
 }
 
 .amount-section {
@@ -217,11 +234,12 @@ onMounted(async () => {
   border-radius: 12px;
   padding: 20px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
   &:active {
     background: #f8f8f8;
+    transform: scale(0.98);
   }
 }
 
@@ -312,11 +330,34 @@ onMounted(async () => {
   }
 }
 
-/* 数字键盘 */
-.keyboard-section {
-  margin-top: auto;
-  padding: 16px 0 20px 0;
-  background: #EDEDED;
+/* 数字键盘面板 */
+.keyboard-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #f5f5f5;
+  border-top: 1px solid #e0e0e0;
+  z-index: 1000;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.keyboard-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.keyboard-close {
+  background: none;
+  border: none;
+  color: #07C160;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
 }
 
 .keyboard-grid {
@@ -324,6 +365,19 @@ onMounted(async () => {
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(3, 56px);
   gap: 10px;
+  padding: 16px;
+  background: #f5f5f5;
+}
+
+/* 滑入动画 */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
 }
 
 .keyboard-key {
