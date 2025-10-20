@@ -28,10 +28,16 @@
           <div class="current-payment-method">
             <div class="method-icon">
               <iconify-icon
+                v-if="selectedMethod.id === 'balance'"
                 :icon="selectedMethod.icon"
                 width="24"
                 :style="{ color: selectedMethod.color }"
               ></iconify-icon>
+              <BankIcon
+                v-else
+                :bank="selectedMethod.id"
+                :size="24"
+              />
             </div>
             <div class="method-info">
               <div class="method-name">{{ selectedMethod.name }}</div>
@@ -128,7 +134,7 @@
                 @click="selectPaymentMethod(method)"
               >
                 <div class="card-left">
-                  <iconify-icon :icon="method.icon" width="24" :style="{ color: method.color }"></iconify-icon>
+                  <BankIcon :bank="method.id" :size="24" />
                   <span class="card-text">{{ method.name }}{{ method.cardNumber }}</span>
                 </div>
                 <iconify-icon
@@ -154,12 +160,13 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import BankIcon from './BankIcon.vue'
 
 interface PaymentMethod {
   id: string
   name: string
-  icon: string
-  color: string
+  icon?: string
+  color?: string
   cardNumber?: string
 }
 
@@ -192,29 +199,21 @@ const paymentMethods = ref<PaymentMethod[]>([
   {
     id: 'icbc',
     name: '工商银行储蓄卡',
-    icon: 'mdi:bank',
-    color: '#C8102E',
     cardNumber: '(1484)'
   },
   {
     id: 'boc',
     name: '中国银行储蓄卡',
-    icon: 'mdi:bank',
-    color: '#B8292F',
     cardNumber: '(5678)'
   },
   {
     id: 'ccb',
     name: '建设银行储蓄卡',
-    icon: 'mdi:bank',
-    color: '#0066B3',
     cardNumber: '(9012)'
   },
   {
     id: 'abc',
     name: '农业银行储蓄卡',
-    icon: 'mdi:bank',
-    color: '#00854A',
     cardNumber: '(3456)'
   }
 ])
@@ -369,19 +368,19 @@ watch(() => props.visible, (newVal) => {
 .redpacket-amount {
   position: relative;
   text-align: center;
-  padding: 20px 20px 16px 20px;
+  padding: 16px 20px 12px 20px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .amount-label {
-  font-size: 16px;
+  font-size: 15px;
   color: #333;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-weight: 500;
 }
 
 .amount-value {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 600;
   color: #333;
 }
@@ -407,7 +406,7 @@ watch(() => props.visible, (newVal) => {
 /* 付款方式 */
 .payment-method-section {
   position: relative;
-  padding: 12px 20px;
+  padding: 10px 20px;
   border-bottom: 1px solid #f0f0f0;
   background: #fff;
 }
@@ -416,7 +415,7 @@ watch(() => props.visible, (newVal) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 42px;
+  height: 38px;
 }
 
 .method-label {
@@ -446,10 +445,10 @@ watch(() => props.visible, (newVal) => {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 42px;
+  height: 38px;
   padding: 0 12px;
   background: #f7f7f7;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 /* 选择付款方式弹窗 */
@@ -530,11 +529,11 @@ watch(() => props.visible, (newVal) => {
   padding: 0 20px;
   cursor: pointer;
   transition: background 0.2s;
-  background: #fff;
+  background: #fffbe8;
 }
 
 .balance-item:active {
-  background: #f7f7f7;
+  background: #fff9d6;
 }
 
 .balance-left {
@@ -572,7 +571,10 @@ watch(() => props.visible, (newVal) => {
 /* 银行卡列表 */
 .bank-card-list {
   padding: 0;
-  background: #fff;
+  background: #f7f7f7;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .bank-card-item {
@@ -672,13 +674,13 @@ watch(() => props.visible, (newVal) => {
 
 /* 密码输入 */
 .password-section {
-  padding: 16px 20px;
+  padding: 12px 20px;
 }
 
 .password-label {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   text-align: center;
 }
 
@@ -743,7 +745,7 @@ watch(() => props.visible, (newVal) => {
 
 /* 数字键盘 */
 .keyboard-section {
-  padding: 16px;
+  padding: 12px 16px 16px 16px;
   background: #f5f5f5;
 }
 
