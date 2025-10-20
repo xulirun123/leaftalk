@@ -180,9 +180,16 @@ const handleCardClick = async () => {
 
   // 被邀请方点击：先检查是否已经是群成员
   console.log('👥 被邀请方点击，检查成员状态...')
+  console.log('📋 原始 groupId:', inviteData.value.groupId)
 
   try {
-    const groupId = inviteData.value.groupId.replace(/^group_/, '')
+    // 确保 groupId 格式正确（移除所有 group_ 前缀，然后添加一个）
+    let groupId = inviteData.value.groupId
+    groupId = groupId.replace(/^group_+/, '') // 移除所有前缀
+    groupId = `group_${groupId}` // 添加单个前缀
+
+    console.log('📋 处理后的 groupId:', groupId)
+
     const response = await fetch(`http://localhost:8893/api/groups/${groupId}/check-membership`, {
       headers: {
         'Authorization': `Bearer ${authStore.token}`
@@ -196,7 +203,7 @@ const handleCardClick = async () => {
       // 已经是群成员，直接进入群聊
       console.log('✅ 已是群成员，直接进入群聊')
       cardStatus.value = 'joined'
-      router.push(`/chat/group_${groupId}`)
+      router.push(`/chat/${groupId}`)
       return
     }
   } catch (error) {

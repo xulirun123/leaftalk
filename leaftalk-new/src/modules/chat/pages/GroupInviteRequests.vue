@@ -178,7 +178,8 @@ onMounted(() => {
 .request-item {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  height: 48px;
+  padding: 0 16px;
   border-bottom: 0.5px solid #E5E5E5;
   gap: 12px;
 }
@@ -189,8 +190,8 @@ onMounted(() => {
 
 /* 头像 */
 .request-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 4px;
   object-fit: cover;
   flex-shrink: 0;
@@ -212,7 +213,7 @@ onMounted(() => {
 }
 
 .request-reason {
-  font-size: 14px;
+  font-size: 11px;
   color: #999;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -230,7 +231,7 @@ onMounted(() => {
 .btn-accept {
   padding: 6px 16px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   border: none;
   cursor: pointer;
   transition: all 0.2s;
@@ -264,7 +265,7 @@ onMounted(() => {
 
 .status-text {
   padding: 6px 16px;
-  font-size: 14px;
+  font-size: 12px;
   border-radius: 4px;
 }
 

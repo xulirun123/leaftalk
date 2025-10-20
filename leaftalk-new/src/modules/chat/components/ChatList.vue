@@ -253,7 +253,7 @@ const chatList = computed(() => {
 
 /* 置顶聊天样式 */
 .chat-item.pinned {
-  background: #f8f9fa;
+  background: #E5E5E5 !important;
 }
 
 .chat-item.pinned::before {

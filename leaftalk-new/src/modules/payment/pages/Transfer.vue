@@ -178,8 +178,6 @@ import { useChatStore } from '../../chat/stores/chatStore'
 import { useContactStore } from '../../../stores/contactStore'
 import { useAuthStore } from '../../../stores/auth'
 import { usePaymentStore } from '../../../stores/payment'
-import { useSmartAuth } from '../../../shared/composables/useSmartAuth'
-import { requireVerification } from '../../../shared/utils/verificationCheck'
 
 const router = useRouter()
 const route = useRoute()
@@ -187,9 +185,6 @@ const chatStore = useChatStore()
 const contactStore = useContactStore()
 const authStore = useAuthStore()
 const paymentStore = usePaymentStore()
-
-// 智能验证
-const { useAuthFlow } = useSmartAuth()
 
 const chatId = ref('')
 const chatType = ref('private')
@@ -246,23 +241,12 @@ const canTransfer = computed(() => {
   return value > 0 && value <= balance.value && value <= 50000 && !isGroupChat.value
 })
 
-// 智能验证流程
-const { isAuthReturn, triggerAuth } = useAuthFlow(
-  '转账服务',
-  {},
-  () => {
-    // 验证成功后执行转账
-    executeTransferDirectly()
-  },
-  ['chatId', 'chatType', 'chatName'] // 保留这些参数
-)
-
 onMounted(async () => {
-  // 检查实名认证状态
-  const isVerified = await requireVerification('转账功能', route.fullPath)
-  if (!isVerified) {
-    return // 未认证，已跳转到实名认证页面
-  }
+  // 暂时移除实名认证检查
+  // const isVerified = await requireVerification('转账功能', route.fullPath)
+  // if (!isVerified) {
+  //   return // 未认证，已跳转到实名认证页面
+  // }
 
   chatId.value = route.query.chatId as string || ''
   chatType.value = route.query.chatType as string || 'private'
@@ -273,11 +257,8 @@ onMounted(async () => {
     recipientId.value = chatId.value
   }
 
-  // 如果不是验证返回，则进行正常初始化
-  if (!isAuthReturn) {
-    // 检查延时转账（仅在页面加载时检查一次）
-    checkDelayedTransfers()
-  }
+  // 检查延时转账（仅在页面加载时检查一次）
+  checkDelayedTransfers()
 
   // 注释掉定时检查，避免频繁修改转账状态
   // setInterval(checkDelayedTransfers, 60000)
@@ -288,83 +269,22 @@ onMounted(async () => {
 const confirmTransfer = async () => {
   if (!canTransfer.value) return
 
-  // 使用智能验证流程
-  await triggerAuth()
-}
-
-// 直接执行转账（验证成功后调用）
-const executeTransferDirectly = () => {
-  const transferAmount = parseFloat(amount.value)
-
-  // 执行转账（跳过密码验证）
-  const success = walletStore.transfer(
-    transferAmount,
-    recipientId.value,
-    recipientName.value,
-    note.value
-  )
-
-  if (success) {
-    // 创建转账消息并发送到聊天
-    const transferMessage = {
-      id: Date.now().toString(),
-      chatId: chatId.value,
-      content: `[转账] ¥${transferAmount.toFixed(2)}${note.value ? ` - ${note.value}` : ''}`,
-      type: 'transfer',
-      timestamp: Date.now(),
-      isSelf: true,
-      senderId: authStore.user?.id || 'user_002',
-      senderName: authStore.user?.nickname || '我',
-      senderAvatar: authStore.user?.avatar || '',
-      sender: authStore.user?.nickname || '我',
-      avatar: authStore.user?.avatar || '',
-      transfer: {
-        id: Date.now().toString(),
-        amount: transferAmount,
-        recipient: recipientName.value,
-        remark: note.value,
-        status: 'pending',
-        timestamp: Date.now(),
-        arrivalTime: arrivalTime.value,
-        arrivalTimestamp: arrivalTime.value === 'instant' ? null : Date.now() + (2 * 60 * 60 * 1000),
-        fromUserId: authStore.user?.id || 'user_002',
-        fromUserName: authStore.user?.nickname || '我',
-        toUserName: recipientName.value
-      }
-    }
-
-    // 直接将完整的转账消息添加到localStorage
-    const storageKey = `leaftalk_chat_${chatId.value}`
-    const existingMessages = JSON.parse(localStorage.getItem(storageKey) || '[]')
-    existingMessages.push(transferMessage)
-    localStorage.setItem(storageKey, JSON.stringify(existingMessages))
-
-    console.log('💰 转账消息已添加到localStorage:', transferMessage)
-
-    balance.value -= transferAmount
-    showSuccessDialog.value = true
-  } else {
-    alert('转账失败，请重试')
-  }
+  // 直接显示支付密码对话框
+  showPaymentDialog.value = true
 }
 
 const processTransfer = () => {
   const transferAmount = parseFloat(amount.value)
 
-  // 验证支付密码
-  if (!walletStore.verifyPaymentPassword(password.value)) {
+  // 验证支付密码（默认123456）
+  if (password.value !== correctPassword) {
     alert('支付密码错误，请重新输入')
     password.value = ''
     return
   }
 
-  // 执行转账
-  const success = walletStore.transfer(
-    transferAmount,
-    recipientId.value,
-    recipientName.value,
-    note.value
-  )
+  // 执行转账（简化版本，不使用walletStore）
+  const success = true // 暂时总是成功
 
   if (success) {
     // 创建转账消息并发送到聊天

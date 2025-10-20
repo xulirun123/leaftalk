@@ -552,6 +552,18 @@ const handleTopBarClick = (payload: any) => {
 const handleBack = () => {
   console.log('🔙 处理返回按钮，当前路径:', route.path)
 
+  // 实名认证页面：检查是否有返回路径
+  if (route.path === '/identity-verification') {
+    const returnPath = sessionStorage.getItem('verification_return_path')
+    if (returnPath) {
+      sessionStorage.removeItem('verification_return_path')
+      router.push(returnPath)
+    } else {
+      router.push('/')
+    }
+    return
+  }
+
   // 选择联系人页（通话邀请）返回到通话页面
   if (route.path === '/select-contact' && route.query.from === 'callInvite') {
     router.push({ name: 'Call', query: { action: 'active' } })

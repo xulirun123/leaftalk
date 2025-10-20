@@ -233,14 +233,31 @@ onMounted(() => {
   overflow: hidden;
   background: #f5f5f5;
   transition: all 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
 }
 
 /* 尺寸 */
-.size-xs { border-radius: 4px; }
-.size-sm { border-radius: 6px; }
-.size-md { border-radius: 8px; }
-.size-lg { border-radius: 10px; }
-.size-xl { border-radius: 12px; }
+.size-xs {
+  border-radius: 4px;
+  border-width: 0.5px;
+}
+.size-sm {
+  border-radius: 6px;
+  border-width: 1px;
+}
+.size-md {
+  border-radius: 8px;
+  border-width: 1px;
+}
+.size-lg {
+  border-radius: 10px;
+  border-width: 1.5px;
+}
+.size-xl {
+  border-radius: 12px;
+  border-width: 2px;
+}
 
 /* 形状 */
 .shape-circle {
@@ -271,7 +288,8 @@ onMounted(() => {
 
 /* 在线状态 */
 .online {
-  box-shadow: 0 0 0 2px #07c160;
+  border-color: #07c160;
+  border-width: 2px;
 }
 
 /* 头像图片 */

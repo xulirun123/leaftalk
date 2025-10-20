@@ -816,15 +816,16 @@ const routes = [
     name: 'RedPacket',
     component: () => import('../modules/payment/pages/RedPacket.vue'),
     meta: {
-      title: '红包',
+      title: '发红包',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTabBar: true
     }
   },
   {
     path: '/send-red-packet',
     name: 'SendRedPacket',
-    component: () => import('../modules/payment/pages/SendRedPacket.vue'),
+    component: () => import('../modules/payment/pages/RedPacket.vue'),
     meta: {
       title: '发红包',
       requiresAuth: true,
@@ -1158,7 +1159,7 @@ const routes = [
   {
     path: '/invite-with-reason/:groupId',
     name: 'InviteWithReason',
-    component: () => import('../modules/chat/pages/InviteWithReason.vue'),
+    component: () => import('../modules/chat/pages/SendGroupInvite.vue'),
     meta: {
       requiresAuth: true
     }
@@ -1892,11 +1893,23 @@ const routes = [
   {
     path: '/lucky-redpacket-detail',
     name: 'LuckyRedPacketDetail',
-    component: () => import('../modules/payment/pages/LuckyRedPacketDetail.vue'),
+    component: () => import('../modules/payment/pages/RedPacketDetailPage.vue'),
     meta: {
       title: '红包详情',
       requiresAuth: true,
-      keepAlive: false
+      keepAlive: false,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/redpacket-detail',
+    name: 'RedPacketDetail',
+    component: () => import('../modules/payment/pages/RedPacketDetailPage.vue'),
+    meta: {
+      title: '红包详情',
+      requiresAuth: true,
+      keepAlive: false,
+      hideTabBar: true
     }
   },
   {

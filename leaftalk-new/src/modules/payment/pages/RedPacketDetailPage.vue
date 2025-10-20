@@ -90,8 +90,8 @@ import {
   formatRedPacketTime,
   getLuckyKing
 } from '../utils/redpacketUtils'
-import MobileTopBar from '../../../shared/components/MobileTopBar.vue'
-import OptimizedAvatar from '../../../shared/components/OptimizedAvatar.vue'
+import MobileTopBar from '../../../shared/components/mobile/MobileTopBar.vue'
+import OptimizedAvatar from '../../../shared/components/common/OptimizedAvatar.vue'
 import type { RedPacket } from '../types/redpacket'
 
 const router = useRouter()

@@ -157,19 +157,27 @@ export const usePaymentStore = defineStore('payment', () => {
       loading.value = true
       error.value = null
 
-      const response = await fetch('/api/wallet')
-      
-      if (!response.ok) {
-        throw new Error('获取钱包信息失败')
-      }
+      // 暂时直接使用模拟数据，不调用API
+      wallet.value = getMockWallet()
 
-      const data = await response.json()
-      wallet.value = data.wallet || getMockWallet()
+      // TODO: 等待后端钱包API实现后启用
+      // const response = await fetch('http://localhost:8893/api/wallet', {
+      //   headers: {
+      //     'Authorization': `Bearer ${localStorage.getItem('yeyu_auth_token')}`
+      //   }
+      // })
+      //
+      // if (!response.ok) {
+      //   throw new Error('获取钱包信息失败')
+      // }
+      //
+      // const data = await response.json()
+      // wallet.value = data.wallet || getMockWallet()
 
     } catch (err) {
       console.error('加载钱包失败:', err)
       error.value = err instanceof Error ? err.message : '加载失败'
-      
+
       // 使用模拟数据
       wallet.value = getMockWallet()
     } finally {

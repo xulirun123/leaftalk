@@ -201,6 +201,24 @@ onMounted(() => {
   overflow: hidden;
   background-color: #f5f5f5;
   transition: all 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+
+.unified-avatar.size-small {
+  border-width: 1px;
+}
+
+.unified-avatar.size-medium {
+  border-width: 1px;
+}
+
+.unified-avatar.size-large {
+  border-width: 1.5px;
+}
+
+.unified-avatar.size-xlarge {
+  border-width: 2px;
 }
 
 .unified-avatar.clickable {

@@ -9,6 +9,9 @@
         <p class="empty-tip">开始你的第一个对话吧</p>
       </div>
 
+      <!-- 置顶聊天项顶部间距（仅当有置顶项时显示） -->
+      <div v-if="hasPinnedChats" class="pinned-section-spacer"></div>
+
       <!-- 聊天项列表 -->
       <div
         v-for="(chat, index) in chats"
@@ -127,6 +130,30 @@
 
     <!-- 底部导航栏 -->
     <MobileTabBar :unread-count="totalUnreadCount" />
+
+    <!-- 清空聊天记录确认对话框 -->
+    <ConfirmDialog
+      v-if="showClearHistoryDialog"
+      :visible="showClearHistoryDialog"
+      title="清空聊天记录"
+      message="确定要清空聊天记录吗？&#10;&#10;• 只会清空您本地的聊天记录&#10;• 不会影响对方的聊天记录&#10;• 会话仍会保留，可以继续聊天&#10;• 清空后无法恢复"
+      confirm-text="清空"
+      cancel-text="取消"
+      @confirm="handleClearHistoryConfirm"
+      @cancel="showClearHistoryDialog = false"
+    />
+
+    <!-- 删除聊天确认对话框 -->
+    <ConfirmDialog
+      v-if="showDeleteChatDialog"
+      :visible="showDeleteChatDialog"
+      title="删除聊天"
+      message="确定要删除聊天吗？&#10;&#10;• 只会删除您本地的聊天记录和会话&#10;• 不会影响对方的聊天记录&#10;• 删除后需要重新创建会话才能聊天&#10;• 删除后无法恢复"
+      confirm-text="删除"
+      cancel-text="取消"
+      @confirm="handleDeleteChatConfirm"
+      @cancel="showDeleteChatDialog = false"
+    />
   </div>
 </template>
 
@@ -135,6 +162,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch, inject } from '
 import { useRouter } from 'vue-router'
 import MobileTabBar from '../../../shared/components/mobile/MobileTabBar.vue'
 import OptimizedAvatar from '../../../shared/components/common/OptimizedAvatar.vue'
+import ConfirmDialog from '../../../shared/components/common/ConfirmDialog.vue'
 import { useUnreadStore } from '../stores/unread'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../../../stores/auth'
@@ -157,6 +185,8 @@ const selectedChat = ref<any>(null)
 const menuPosition = ref({ x: 0, y: 0 })
 const isLongPressing = ref(false)
 const longPressTimer = ref<any>(null)
+const showClearHistoryDialog = ref(false)
+const showDeleteChatDialog = ref(false)
 
 // 聊天数据 - 使用chatStore，确保数据完整性，过滤自聊天
 const chats = computed(() => {
@@ -187,6 +217,18 @@ const chats = computed(() => {
       // 确保 lastMessageType 有默认值
       if (!session.lastMessageType) {
         session.lastMessageType = 'text'
+      }
+
+      // 从 localStorage 读取置顶状态
+      try {
+        const pinnedChats = JSON.parse(localStorage.getItem('pinned_chats') || '[]')
+        session.isPinned = pinnedChats.includes(session.id)
+        if (session.isPinned) {
+          console.log('📌 置顶聊天:', session.id, session.name)
+        }
+      } catch (e) {
+        console.warn('读取置顶状态失败:', e)
+        session.isPinned = session.isPinned || false
       }
 
       // 处理群聊备注和名称
@@ -230,6 +272,11 @@ const chats = computed(() => {
       const timeB = b.lastMessageTime || b.updatedAt || 0
       return timeB - timeA
     })
+})
+
+// 检查是否有置顶聊天
+const hasPinnedChats = computed(() => {
+  return chats.value.some(chat => chat.isPinned)
 })
 
 // 计算总未读消息数
@@ -578,9 +625,45 @@ const openChat = (chatId: string) => {
 // 菜单操作
 const pinChat = () => {
   if (selectedChat.value) {
-    // TODO: 实现置顶功能
-    console.log('置顶聊天:', selectedChat.value.id)
-    appStore.showToast(selectedChat.value.isPinned ? '已取消置顶' : '已置顶', 'success')
+    const chatId = selectedChat.value.id
+    const currentPinned = selectedChat.value.isPinned || false
+
+    console.log('📌 置顶聊天:', chatId, '当前状态:', currentPinned)
+
+    // 切换置顶状态
+    const newPinned = !currentPinned
+
+    // 更新 chatStore 中的会话置顶状态
+    const session = chatStore.sessions.find(s => s.id === chatId)
+    if (session) {
+      session.isPinned = newPinned
+      chatStore.saveToCache()
+      console.log('✅ 会话置顶状态已更新:', chatId, newPinned)
+    }
+
+    // 更新 selectedChat 的状态（用于菜单显示）
+    selectedChat.value.isPinned = newPinned
+
+    // 保存到 localStorage（用于群聊）
+    try {
+      const pinnedChats = JSON.parse(localStorage.getItem('pinned_chats') || '[]')
+      if (newPinned) {
+        // 添加到置顶列表
+        if (!pinnedChats.includes(chatId)) {
+          pinnedChats.push(chatId)
+        }
+      } else {
+        // 从置顶列表移除
+        const index = pinnedChats.indexOf(chatId)
+        if (index > -1) {
+          pinnedChats.splice(index, 1)
+        }
+      }
+      localStorage.setItem('pinned_chats', JSON.stringify(pinnedChats))
+      console.log('📌 置顶状态已保存到 localStorage:', chatId, newPinned)
+    } catch (error) {
+      console.error('❌ 保存置顶状态失败:', error)
+    }
   }
   closeChatMenu()
 }
@@ -592,26 +675,26 @@ const markUnread = () => {
 
     if (currentUnread > 0) {
       unreadStore.markAsRead(chatId)
-      appStore.showToast('已标为已读', 'success')
     } else {
       unreadStore.setUnreadCount(chatId, 1)
-      appStore.showToast('已标为未读', 'success')
     }
   }
   closeChatMenu()
 }
 
-const clearChatHistory = async () => {
+// 清空聊天记录
+const clearChatHistory = () => {
+  if (selectedChat.value) {
+    closeChatMenu()
+    showClearHistoryDialog.value = true
+  }
+}
+
+// 确认清空聊天记录
+const handleClearHistoryConfirm = async () => {
   if (selectedChat.value) {
     try {
       console.log('🧹 清空聊天记录:', selectedChat.value.id)
-
-      // 确认对话框
-      const confirmed = confirm('确定要清空聊天记录吗？\n\n• 只会清空您本地的聊天记录\n• 不会影响对方的聊天记录\n• 会话仍会保留，可以继续聊天\n• 清空后无法恢复')
-      if (!confirmed) {
-        closeChatMenu()
-        return
-      }
 
       // 清除聊天记录
       await chatStore.clearChatHistory(selectedChat.value.id)
@@ -619,28 +702,29 @@ const clearChatHistory = async () => {
       // 清除未读消息
       unreadStore.markAsRead(selectedChat.value.id)
 
-      appStore.showToast('聊天记录已清空', 'success')
       console.log('✅ 聊天记录清空完成')
+      showClearHistoryDialog.value = false
     } catch (error) {
       console.error('❌ 清空聊天记录失败:', error)
-      appStore.showToast('清空失败，请重试', 'error')
+      showClearHistoryDialog.value = false
     }
   }
-  closeChatMenu()
 }
 
-const deleteChat = async () => {
+// 删除聊天
+const deleteChat = () => {
+  if (selectedChat.value) {
+    closeChatMenu()
+    showDeleteChatDialog.value = true
+  }
+}
+
+// 确认删除聊天
+const handleDeleteChatConfirm = async () => {
   if (selectedChat.value) {
     try {
       const chatId = selectedChat.value.id
       console.log('🗑️ 删除聊天会话:', chatId)
-
-      // 确认对话框
-      const confirmed = confirm('确定要删除聊天吗？\n\n• 只会删除您本地的聊天记录和会话\n• 不会影响对方的聊天记录\n• 删除后需要重新创建会话才能聊天\n• 删除后无法恢复')
-      if (!confirmed) {
-        closeChatMenu()
-        return
-      }
 
       // 删除聊天项（包括会话和所有消息）
       await chatStore.deleteChatItem(chatId)
@@ -648,14 +732,13 @@ const deleteChat = async () => {
       // 清除未读消息
       unreadStore.markAsRead(chatId)
 
-      appStore.showToast('聊天已删除', 'success')
-      console.log('✅ 聊天删除完成，当前会话数量:', chatStore.sessions.length)
+      console.log('✅ �天删除完成，当前会话数量:', chatStore.sessions.length)
+      showDeleteChatDialog.value = false
     } catch (error) {
       console.error('❌ 删除聊天失败:', error)
-      appStore.showToast('删除失败，请重试', 'error')
+      showDeleteChatDialog.value = false
     }
   }
-  closeChatMenu()
 }
 
 // 添加菜单相关方法
@@ -816,6 +899,12 @@ const cleanupSelfChatData = async () => {
   background: #e5e5e5;
 }
 
+/* 置顶聊天区域顶部间距 */
+.pinned-section-spacer {
+  height: 4px;
+  background: white;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -867,15 +956,15 @@ const cleanupSelfChatData = async () => {
 }
 
 .chat-item.pinned {
-  background: #f8f8f8;
+  background: #E5E5E5 !important;
 }
 
 .chat-item.pinned:hover {
-  background: #f0f0f0;
+  background: #DFDFDF !important;
 }
 
 .chat-item.pinned:active {
-  background: #e8e8e8;
+  background: #D5D5D5 !important;
 }
 
 .chat-user-info {

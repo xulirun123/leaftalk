@@ -27,7 +27,7 @@
   display: flex !important;
   align-items: center !important;
   padding: 6px 16px !important;
-  background: white !important;
+  background: white;
   cursor: pointer !important;
   height: 56px !important;
   border-bottom: 1px solid #e0e0e0 !important;
@@ -35,7 +35,19 @@
 }
 
 .chat-item:hover {
-  background: #f8f9fa !important;
+  background: #f8f9fa;
+}
+
+.chat-item.pinned {
+  background: #E5E5E5 !important;
+}
+
+.chat-item.pinned:hover {
+  background: #DFDFDF !important;
+}
+
+.chat-item.pinned:active {
+  background: #D5D5D5 !important;
 }
 
 .chat-user-info {

@@ -6454,54 +6454,103 @@ app.post('/api/groups/:groupId/remove-members', authenticateToken, async (req, r
       console.log(`✅ 用户 ${userId} 已被移除`)
     }
 
-    // 发送系统消息
+    // 发送系统消息（个性化消息内容）
     if (removedMembers.length > 0) {
       const memberNames = removedMembers.join('、')
+      const now = Date.now()
+      const messageId = `msg_${now}_${Math.random().toString(36).substr(2, 9)}`
 
-      // 创建包含操作者和被移除者信息的系统消息
-      const systemMessage = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        senderId: 0,
-        receiverId: groupId,
-        type: 'system',
-        content: `${operatorName} 将 ${memberNames} 移出了群聊`,
-        timestamp: new Date().toISOString(),
-        groupId: groupId,
-        operatorId: operatorId,  // 操作者ID
-        operatorName: operatorName,  // 操作者昵称
-        removedUserIds: userIds,  // 被移除的用户ID列表
-        removedUserNames: removedMembers  // 被移除的用户昵称列表
-      }
-
-      // 保存系统消息到数据库（只保存基本内容）
+      // 保存系统消息到数据库（保存默认内容：XXX 被移出了群聊）
+      const defaultContent = `${memberNames} 被移出了群聊`
       await pool.execute(
-        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-        [systemMessage.id, 0, groupId, systemMessage.content, 'system']
+        'INSERT INTO `messages` (id, sender_id, receiver_id, content, type, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [messageId, 0, groupId, defaultContent, 'system', new Date(now)]
       )
 
-      // 通过WebSocket发送系统消息给所有群成员（包括被移除的成员，让他们知道）
+      console.log(`📝 [移除成员] 系统消息已保存: ${messageId}, timestamp: ${now}`)
+
+      // 获取所有群成员
       const [members] = await pool.execute(
         'SELECT user_id FROM `group_members` WHERE group_id = ?',
         [groupId]
       )
 
-      // 发送给当前群成员
+      // 给不同的人发送不同的消息内容
+      // 1. 给操作者发送："你把 XXX 移出了群聊"
+      const operatorSocketId = userSockets.get(operatorId)
+      if (operatorSocketId) {
+        const operatorMessage = {
+          id: messageId,
+          senderId: 0,
+          receiverId: groupId,
+          type: 'system',
+          content: `你把 ${memberNames} 移出了群聊`,
+          timestamp: now,
+          timestampISO: new Date(now).toISOString(),
+          groupId: groupId,
+          metadata: {
+            operatorId: operatorId,
+            removedUserIds: userIds,
+            removedUserNames: removedMembers
+          }
+        }
+        io.to(operatorSocketId).emit('new_message', operatorMessage)
+        console.log(`📤 [移除成员] 发送给操作者 ${operatorId}: 你把 ${memberNames} 移出了群聊`)
+      }
+
+      // 2. 给其他群成员发送："XXX 被移出了群聊"
       members.forEach(member => {
         const memberId = member.user_id
+        // 跳过操作者（已经发送过了）
+        if (memberId === operatorId) {
+          return
+        }
+
         const userSocketId = userSockets.get(memberId)
         if (userSocketId) {
-          io.to(userSocketId).emit('new_message', systemMessage)
-          console.log(`📤 移除系统消息已发送给用户 ${memberId}`)
+          const otherMessage = {
+            id: messageId,
+            senderId: 0,
+            receiverId: groupId,
+            type: 'system',
+            content: `${memberNames} 被移出了群聊`,
+            timestamp: now,
+            timestampISO: new Date(now).toISOString(),
+            groupId: groupId,
+            metadata: {
+              operatorId: operatorId,
+              removedUserIds: userIds,
+              removedUserNames: removedMembers
+            }
+          }
+          io.to(userSocketId).emit('new_message', otherMessage)
+          console.log(`📤 [移除成员] 发送给群成员 ${memberId}: ${memberNames} 被移出了群聊`)
         }
       })
 
-      // 也发送给被移除的成员
+      // 3. 给被移除的成员发送："你被移出了群聊"
       userIds.forEach(userId => {
         const userSocketId = userSockets.get(userId)
         if (userSocketId) {
-          io.to(userSocketId).emit('new_message', systemMessage)
+          const removedMessage = {
+            id: messageId,
+            senderId: 0,
+            receiverId: groupId,
+            type: 'system',
+            content: '你被移出了群聊',
+            timestamp: now,
+            timestampISO: new Date(now).toISOString(),
+            groupId: groupId,
+            metadata: {
+              operatorId: operatorId,
+              operatorName: operatorName,
+              removedUserIds: userIds,
+              removedUserNames: removedMembers
+            }
+          }
+          io.to(userSocketId).emit('new_message', removedMessage)
           io.to(userSocketId).emit('removed_from_group', { groupId, operatorName })
-          console.log(`📤 移除通知已发送给被移除用户 ${userId}`)
+          console.log(`📤 [移除成员] 发送给被移除用户 ${userId}: 你被移出了群聊`)
         }
       })
     }

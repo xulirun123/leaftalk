@@ -39,7 +39,7 @@
 
 /* 置顶聊天样式 */
 .chat-item.pinned {
-  background: #f8f9fa;
+  background: #E5E5E5 !important;
   position: relative;
 }
 
@@ -54,11 +54,11 @@
 }
 
 .chat-item.pinned:hover {
-  background: #f0f0f0;
+  background: #DFDFDF !important;
 }
 
 .chat-item.pinned:active {
-  background: #e8e8e8;
+  background: #D5D5D5 !important;
 }
 
 /* 静音聊天样式 */

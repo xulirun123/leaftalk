@@ -1,206 +1,40 @@
 <template>
-  <div class="red-packet">
-    <!-- 顶部导航 -->
-    <div class="red-packet-header">
-      <button class="back-btn" @click="goBack">
-        <iconify-icon icon="heroicons:arrow-left" width="24"></iconify-icon>
-      </button>
-      <h1>发红包</h1>
-    </div>
-
-    <!-- 红包类型选择 -->
-    <div class="packet-type-section">
-      <div class="type-tabs">
-        <button 
-          v-for="type in packetTypes" 
-          :key="type.key"
-          :class="['type-tab', { active: selectedType === type.key }]"
-          @click="selectedType = type.key"
+  <div class="red-packet-page">
+    <!-- 金额输入区域 -->
+    <div class="amount-section">
+      <div class="amount-label">金额</div>
+      <div class="amount-input-wrapper" @click="showAmountKeyboard = true">
+        <span class="currency-symbol">¥</span>
+        <input
+          v-model="packetAmount"
+          type="text"
+          placeholder="0.00"
+          class="amount-input"
+          readonly
+          inputmode="none"
         >
-          <iconify-icon :icon="type.icon" width="24"></iconify-icon>
-          <span>{{ type.label }}</span>
-        </button>
       </div>
     </div>
 
-    <!-- 红包配置 -->
-    <div class="packet-config">
-      <!-- 普通红包 -->
-      <div v-if="selectedType === 'normal'" class="normal-packet">
-        <div class="config-item">
-          <label>红包金额</label>
-          <div class="amount-input-container">
-            <span class="currency">¥</span>
-            <input 
-              v-model="packetAmount"
-              type="number" 
-              placeholder="0.00"
-              class="amount-input"
-              step="0.01"
-              min="0.01"
-              :max="paymentStore.availableBalance"
-              @input="validateAmount"
-            >
-          </div>
-          <div v-if="amountError" class="error-text">{{ amountError }}</div>
-        </div>
-
-        <div class="config-item">
-          <label>祝福语</label>
-          <textarea 
-            v-model="blessing"
-            placeholder="恭喜发财，大吉大利"
-            class="blessing-input"
-            maxlength="50"
-            rows="2"
-          ></textarea>
-          <div class="char-count">{{ blessing.length }}/50</div>
-        </div>
-      </div>
-
-      <!-- 拼手气红包 -->
-      <div v-else-if="selectedType === 'lucky'" class="lucky-packet">
-        <div class="config-item">
-          <label>红包总金额</label>
-          <div class="amount-input-container">
-            <span class="currency">¥</span>
-            <input 
-              v-model="packetAmount"
-              type="number" 
-              placeholder="0.00"
-              class="amount-input"
-              step="0.01"
-              min="0.01"
-              :max="paymentStore.availableBalance"
-              @input="validateAmount"
-            >
-          </div>
-          <div v-if="amountError" class="error-text">{{ amountError }}</div>
-        </div>
-
-        <div class="config-item">
-          <label>红包个数</label>
-          <div class="count-input-container">
-            <button class="count-btn" @click="decreaseCount" :disabled="packetCount <= 1">
-              <iconify-icon icon="heroicons:minus" width="16"></iconify-icon>
-            </button>
-            <input 
-              v-model.number="packetCount"
-              type="number" 
-              class="count-input"
-              min="1"
-              max="100"
-              @input="validateCount"
-            >
-            <button class="count-btn" @click="increaseCount" :disabled="packetCount >= 100">
-              <iconify-icon icon="heroicons:plus" width="16"></iconify-icon>
-            </button>
-          </div>
-          <div class="count-info">
-            <span>平均每个红包: ¥{{ averageAmount.toFixed(2) }}</span>
-          </div>
-        </div>
-
-        <div class="config-item">
-          <label>祝福语</label>
-          <textarea 
-            v-model="blessing"
-            placeholder="恭喜发财，大吉大利"
-            class="blessing-input"
-            maxlength="50"
-            rows="2"
-          ></textarea>
-          <div class="char-count">{{ blessing.length }}/50</div>
-        </div>
-      </div>
-
-      <!-- 群红包 -->
-      <div v-else-if="selectedType === 'group'" class="group-packet">
-        <div class="config-item">
-          <label>选择群聊</label>
-          <div class="group-selector" @click="showGroupSelector = true">
-            <div v-if="selectedGroup" class="selected-group">
-              <img :src="selectedGroup.avatar" :alt="selectedGroup.name" class="group-avatar">
-              <span class="group-name">{{ selectedGroup.name }}</span>
-            </div>
-            <div v-else class="placeholder">
-              <iconify-icon icon="heroicons:users" width="20"></iconify-icon>
-              <span>选择群聊</span>
-            </div>
-            <iconify-icon icon="heroicons:chevron-right" width="20"></iconify-icon>
-          </div>
-        </div>
-
-        <div v-if="selectedGroup" class="config-item">
-          <label>红包总金额</label>
-          <div class="amount-input-container">
-            <span class="currency">¥</span>
-            <input 
-              v-model="packetAmount"
-              type="number" 
-              placeholder="0.00"
-              class="amount-input"
-              step="0.01"
-              min="0.01"
-              :max="paymentStore.availableBalance"
-              @input="validateAmount"
-            >
-          </div>
-          <div v-if="amountError" class="error-text">{{ amountError }}</div>
-        </div>
-
-        <div v-if="selectedGroup" class="config-item">
-          <label>红包个数</label>
-          <div class="count-input-container">
-            <button class="count-btn" @click="decreaseCount" :disabled="packetCount <= 1">
-              <iconify-icon icon="heroicons:minus" width="16"></iconify-icon>
-            </button>
-            <input 
-              v-model.number="packetCount"
-              type="number" 
-              class="count-input"
-              min="1"
-              :max="selectedGroup.memberCount"
-              @input="validateCount"
-            >
-            <button class="count-btn" @click="increaseCount" :disabled="packetCount >= selectedGroup.memberCount">
-              <iconify-icon icon="heroicons:plus" width="16"></iconify-icon>
-            </button>
-          </div>
-          <div class="count-info">
-            <span>群成员: {{ selectedGroup.memberCount }}人</span>
-            <span>平均每个红包: ¥{{ averageAmount.toFixed(2) }}</span>
-          </div>
-        </div>
-
-        <div v-if="selectedGroup" class="config-item">
-          <label>祝福语</label>
-          <textarea 
-            v-model="blessing"
-            placeholder="恭喜发财，大吉大利"
-            class="blessing-input"
-            maxlength="50"
-            rows="2"
-          ></textarea>
-          <div class="char-count">{{ blessing.length }}/50</div>
-        </div>
-      </div>
+    <!-- 祝福语输入区域 -->
+    <div class="blessing-section">
+      <input
+        v-model="blessing"
+        type="text"
+        placeholder="恭喜发财，大吉大利"
+        class="blessing-input"
+        maxlength="50"
+      >
     </div>
 
-    <!-- 余额信息 -->
-    <div class="balance-info">
-      <div class="balance-item">
-        <span class="label">可用余额:</span>
-        <span class="value">¥{{ paymentStore.availableBalance.toFixed(2) }}</span>
-      </div>
-      <div class="balance-item">
-        <span class="label">叶语币:</span>
-        <span class="value">{{ paymentStore.yeyuCoinBalance }}</span>
-      </div>
+    <!-- 红包金额显示 -->
+    <div class="amount-display">
+      <div class="amount-display-label">红包金额</div>
+      <div class="amount-display-value">¥{{ displayAmount }}</div>
     </div>
 
-    <!-- 发送按钮 -->
-    <div class="send-actions">
+    <!-- 塞钱进红包按钮 -->
+    <div class="action-section">
       <button
         class="send-btn"
         :disabled="!canSend"
@@ -208,314 +42,150 @@
       >
         塞钱进红包
       </button>
-      
-      <div class="send-tips">
-        <iconify-icon icon="heroicons:information-circle" width="16"></iconify-icon>
-        <span>红包24小时内有效，过期自动退回</span>
-      </div>
     </div>
 
-    <!-- 群聊选择器 -->
-    <div v-if="showGroupSelector" class="group-selector-modal" @click="showGroupSelector = false">
-      <div class="selector-content" @click.stop>
-        <div class="selector-header">
-          <h3>选择群聊</h3>
-          <button class="close-btn" @click="showGroupSelector = false">
-            <iconify-icon icon="heroicons:x-mark" width="20"></iconify-icon>
-          </button>
-        </div>
-        
-        <div class="group-list">
-          <div 
-            v-for="group in groups" 
-            :key="group.id"
-            class="group-item"
-            @click="selectGroup(group)"
+    <!-- 余额信息 -->
+    <div class="balance-info">
+      <div class="balance-text">可用余额 ¥{{ paymentStore.availableBalance.toFixed(2) }}</div>
+    </div>
+
+    <!-- 数字键盘 -->
+    <div v-if="showAmountKeyboard" class="keyboard-overlay" @click="showAmountKeyboard = false">
+      <div class="keyboard-panel" @click.stop>
+        <div class="keyboard-grid">
+          <button
+            v-for="(key, index) in keyboardKeys"
+            :key="index"
+            class="keyboard-key"
+            :class="{
+              'key-delete': key === 'delete',
+              'key-dot': key === '.',
+              'key-zero': key === '0',
+              'key-confirm': key === 'confirm',
+              'key-empty': key === ''
+            }"
+            @click="key && handleKeyPress(key)"
+            :disabled="!key"
           >
-            <img :src="group.avatar" :alt="group.name" class="group-avatar">
-            <div class="group-info">
-              <div class="group-name">{{ group.name }}</div>
-              <div class="group-members">{{ group.memberCount }}人</div>
-            </div>
-            <iconify-icon icon="heroicons:chevron-right" width="20"></iconify-icon>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 确认发送对话框 -->
-    <div v-if="showConfirmDialog" class="confirm-dialog" @click="showConfirmDialog = false">
-      <div class="dialog-content" @click.stop>
-        <div class="dialog-header">
-          <h3>确认发红包</h3>
-          <button class="dialog-close" @click="showConfirmDialog = false">
-            <iconify-icon icon="heroicons:x-mark" width="20"></iconify-icon>
-          </button>
-        </div>
-
-        <div class="dialog-body">
-          <div class="packet-preview">
-            <div class="preview-cover">
-              <div class="cover-content">
-                <iconify-icon icon="heroicons:gift" width="48" style="color: #fff;"></iconify-icon>
-                <div class="cover-text">
-                  <div class="cover-title">{{ getPacketTypeText() }}</div>
-                  <div class="cover-amount">¥{{ parseFloat(packetAmount).toFixed(2) }}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="preview-info">
-              <div class="info-item">
-                <span class="label">类型:</span>
-                <span class="value">{{ getPacketTypeText() }}</span>
-              </div>
-              <div v-if="selectedType !== 'normal'" class="info-item">
-                <span class="label">个数:</span>
-                <span class="value">{{ packetCount }}个</span>
-              </div>
-              <div class="info-item">
-                <span class="label">祝福语:</span>
-                <span class="value">{{ blessing || '恭喜发财，大吉大利' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 支付密码输入 -->
-          <div v-if="paymentStore.settings.requirePasswordForRedPacket" class="password-section">
-            <label>请输入支付密码:</label>
-            <input 
-              v-model="paymentPassword"
-              type="password" 
-              placeholder="6位支付密码"
-              class="password-input"
-              maxlength="6"
-            >
-          </div>
-        </div>
-
-        <div class="dialog-actions">
-          <button class="cancel-btn" @click="showConfirmDialog = false">取消</button>
-          <button 
-            class="confirm-btn" 
-            :disabled="!canConfirmSend"
-            @click="confirmSend"
-          >
-            {{ paymentStore.loading ? '发送中...' : '确认发送' }}
+            <iconify-icon v-if="key === 'delete'" icon="heroicons:backspace" width="24"></iconify-icon>
+            <span v-else-if="key === 'confirm'">确认</span>
+            <span v-else>{{ key }}</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 发送结果对话框 -->
-    <div v-if="showResultDialog" class="result-dialog" @click="showResultDialog = false">
-      <div class="dialog-content" @click.stop>
-        <div class="result-content">
-          <div :class="['result-icon', sendResult.success ? 'success' : 'error']">
-            <iconify-icon 
-              :icon="sendResult.success ? 'heroicons:check-circle' : 'heroicons:x-circle'" 
-              width="64"
-            ></iconify-icon>
-          </div>
-          
-          <h3>{{ sendResult.success ? '红包发送成功' : '红包发送失败' }}</h3>
-          
-          <div v-if="sendResult.success" class="success-details">
-            <p>已成功发送 {{ getPacketTypeText() }} ¥{{ parseFloat(packetAmount).toFixed(2) }}</p>
-            <div class="packet-info">
-              <div class="info-item">
-                <span>发送时间:</span>
-                <span>{{ formatTime(Date.now()) }}</span>
-              </div>
-              <div class="info-item">
-                <span>红包编号:</span>
-                <span>{{ sendResult.packetId }}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div v-else class="error-details">
-            <p>{{ sendResult.message }}</p>
-          </div>
-        </div>
+    <!-- 确认对话框 -->
+    <ConfirmDialog
+      v-if="showConfirmDialog"
+      :visible="showConfirmDialog"
+      title="确认发送红包"
+      :message="`确定要发送 ¥${packetAmount} 的红包吗？`"
+      confirm-text="确定"
+      cancel-text="取消"
+      @confirm="confirmSend"
+      @cancel="showConfirmDialog = false"
+    />
 
-        <div class="result-actions">
-          <button class="primary-btn" @click="handleResultClose">
-            {{ sendResult.success ? '完成' : '重试' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- 结果对话框 -->
+    <ConfirmDialog
+      v-if="showResultDialog"
+      :visible="showResultDialog"
+      :title="sendResult.success ? '发送成功' : '发送失败'"
+      :message="sendResult.message"
+      :confirm-text="sendResult.success ? '完成' : '重试'"
+      :show-cancel="false"
+      @confirm="handleResultClose"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { usePaymentStore } from '../../../stores/payment'
-import { useSmartAuth } from '../../../shared/composables/useSmartAuth'
-import { requireVerification } from '../../../shared/utils/verificationCheck'
+import { useRouter } from 'vue-router'
+import { usePaymentStore } from '../stores/paymentStore'
+import ConfirmDialog from '../../../shared/components/common/ConfirmDialog.vue'
 
 const router = useRouter()
-const route = useRoute()
 const paymentStore = usePaymentStore()
 
-// 智能验证
-const { useAuthFlow } = useSmartAuth()
-
 // 响应式数据
-const selectedType = ref('normal')
 const packetAmount = ref('')
-const packetCount = ref(1)
 const blessing = ref('')
-const amountError = ref('')
-const selectedGroup = ref<any>(null)
-const showGroupSelector = ref(false)
+const showAmountKeyboard = ref(false)
 const showConfirmDialog = ref(false)
 const showResultDialog = ref(false)
-const paymentPassword = ref('')
 const sendResult = ref<any>({})
 
-// 智能验证流程
-const { isAuthReturn, triggerAuth } = useAuthFlow(
-  '红包服务',
-  {},
-  () => {
-    // 验证成功后直接发送红包
-    sendRedPacketDirectly()
-  }
-)
-
-// 红包类型
-const packetTypes = [
-  { key: 'normal', label: '普通红包', icon: 'heroicons:gift' },
-  { key: 'lucky', label: '拼手气红包', icon: 'heroicons:sparkles' },
-  { key: 'group', label: '群红包', icon: 'heroicons:users' }
+// 数字键盘按键 (4行4列)
+// 布局:
+// 第1行: [1] [2] [3] [删除]
+// 第2行: [4] [5] [6] [确认(开始,占3行)]
+// 第3行: [7] [8] [9] [确认(继续)]
+// 第4行: [0(占2列)] [.] [确认(结束)]
+// 确认键使用 grid-row: span 3 从第2行开始占3行
+const keyboardKeys = [
+  '1', '2', '3', 'delete',
+  '4', '5', '6', 'confirm',  // confirm 从这里开始占3行
+  '7', '8', '9',              // 第3行只有3个按键，第4列被confirm占用
+  '0', '.'                    // 第4行只有2个按键（0占2列，.占1列），第4列被confirm占用
 ]
 
-// 模拟群聊数据
-const groups = ref([
-  {
-    id: 'group_001',
-    name: '家庭群',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=family',
-    memberCount: 8
-  },
-  {
-    id: 'group_002',
-    name: '同事群',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=work',
-    memberCount: 15
-  }
-])
-
 // 计算属性
-const averageAmount = computed(() => {
-  const amount = parseFloat(packetAmount.value) || 0
-  return packetCount.value > 0 ? amount / packetCount.value : 0
+const displayAmount = computed(() => {
+  return packetAmount.value || '0.00'
 })
 
 const canSend = computed(() => {
   const amount = parseFloat(packetAmount.value)
-  const hasValidAmount = amount > 0 && amount <= paymentStore.availableBalance && !amountError.value
-  const hasValidCount = packetCount.value > 0
-  const hasValidGroup = selectedType.value !== 'group' || selectedGroup.value
-  
-  return hasValidAmount && hasValidCount && hasValidGroup
-})
-
-const canConfirmSend = computed(() => {
-  if (!paymentStore.settings.requirePasswordForRedPacket) return true
-  return paymentPassword.value.length === 6
+  return amount > 0 && amount <= paymentStore.availableBalance
 })
 
 // 方法
-const goBack = () => {
-  router.back()
-}
-
-const validateAmount = () => {
-  const amount = parseFloat(packetAmount.value)
-  
-  if (isNaN(amount) || amount <= 0) {
-    amountError.value = '请输入有效金额'
-    return
-  }
-  
-  if (amount > paymentStore.availableBalance) {
-    amountError.value = '余额不足'
-    return
-  }
-  
-  if (selectedType.value !== 'normal' && amount < packetCount.value * 0.01) {
-    amountError.value = '每个红包至少0.01元'
-    return
-  }
-  
-  amountError.value = ''
-}
-
-const validateCount = () => {
-  if (packetCount.value < 1) packetCount.value = 1
-  if (selectedType.value === 'group' && selectedGroup.value) {
-    if (packetCount.value > selectedGroup.value.memberCount) {
-      packetCount.value = selectedGroup.value.memberCount
+const handleKeyPress = (key: string) => {
+  if (key === 'confirm') {
+    // 确认按钮，关闭键盘
+    showAmountKeyboard.value = false
+  } else if (key === 'delete') {
+    packetAmount.value = packetAmount.value.slice(0, -1)
+  } else if (key === '.') {
+    // 只允许一个小数点
+    if (!packetAmount.value.includes('.')) {
+      packetAmount.value += key
     }
-  } else if (packetCount.value > 100) {
-    packetCount.value = 100
+  } else {
+    // 限制小数点后两位
+    if (packetAmount.value.includes('.')) {
+      const parts = packetAmount.value.split('.')
+      if (parts[1] && parts[1].length < 2) {
+        packetAmount.value += key
+      }
+    } else {
+      packetAmount.value += key
+    }
   }
 }
 
-const decreaseCount = () => {
-  if (packetCount.value > 1) {
-    packetCount.value--
-  }
-}
-
-const increaseCount = () => {
-  const maxCount = selectedType.value === 'group' && selectedGroup.value 
-    ? selectedGroup.value.memberCount 
-    : 100
-  
-  if (packetCount.value < maxCount) {
-    packetCount.value++
-  }
-}
-
-const selectGroup = (group: any) => {
-  selectedGroup.value = group
-  showGroupSelector.value = false
-  
-  // 调整红包个数不超过群成员数
-  if (packetCount.value > group.memberCount) {
-    packetCount.value = group.memberCount
-  }
-}
-
-const getPacketTypeText = () => {
-  switch (selectedType.value) {
-    case 'normal': return '普通红包'
-    case 'lucky': return '拼手气红包'
-    case 'group': return '群红包'
-    default: return '红包'
-  }
+const handleSendRedPacket = async () => {
+  if (!canSend.value) return
+  showConfirmDialog.value = true
 }
 
 const confirmSend = async () => {
   try {
     const result = await paymentStore.sendRedPacket(
-      selectedType.value as any,
+      'normal',
       parseFloat(packetAmount.value),
-      selectedType.value === 'normal' ? 1 : packetCount.value,
+      1,
       blessing.value || '恭喜发财，大吉大利',
-      selectedType.value === 'normal' ? 'target_user' : undefined,
-      selectedType.value === 'group' ? selectedGroup.value?.id : undefined,
-      paymentPassword.value
+      'target_user',
+      undefined,
+      '123456' // 默认密码
     )
 
     sendResult.value = {
       success: true,
-      packetId: result.redPacket.id,
+      packetId: result.redPacket?.id || 'unknown',
       message: '红包发送成功'
     }
 
@@ -529,44 +199,6 @@ const confirmSend = async () => {
     }
 
     showConfirmDialog.value = false
-    showResultDialog.value = true
-  }
-}
-
-// 处理发送红包（智能验证入口）
-const handleSendRedPacket = async () => {
-  if (!canSend.value) return
-
-  // 使用智能验证
-  await triggerAuth()
-}
-
-// 直接发送红包（验证成功后调用）
-const sendRedPacketDirectly = async () => {
-  try {
-    const result = await paymentStore.sendRedPacket(
-      selectedType.value as any,
-      parseFloat(packetAmount.value),
-      selectedType.value === 'normal' ? 1 : packetCount.value,
-      blessing.value,
-      selectedGroup.value,
-      '' // 不需要密码，已经验证过了
-    )
-
-    sendResult.value = {
-      success: true,
-      packetId: result.redPacket.id,
-      message: '红包发送成功'
-    }
-
-    showResultDialog.value = true
-
-  } catch (error) {
-    sendResult.value = {
-      success: false,
-      message: error instanceof Error ? error.message : '红包发送失败'
-    }
-
     showResultDialog.value = true
   }
 }
@@ -575,26 +207,230 @@ const handleResultClose = () => {
   showResultDialog.value = false
 
   if (sendResult.value.success) {
-    // 发送成功，返回聊天页面或钱包页面
     router.back()
-  } else {
-    // 发送失败，重置密码
-    paymentPassword.value = ''
   }
-}
-
-const formatTime = (timestamp: number) => {
-  return new Date(timestamp).toLocaleString('zh-CN')
 }
 
 // 生命周期
 onMounted(async () => {
-  // 检查实名认证状态
-  const isVerified = await requireVerification('红包功能', route.fullPath)
-  if (!isVerified) {
-    return // 未认证，已跳转到实名认证页面
-  }
-
   paymentStore.loadWallet()
 })
 </script>
+
+<style scoped lang="scss">
+.red-packet-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5515f 0%, #e73827 100%);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.amount-section {
+  margin-top: 60px;
+  margin-bottom: 32px;
+}
+
+.amount-label {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.amount-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.5);
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.currency-symbol {
+  font-size: 48px;
+  color: #fff;
+  font-weight: 300;
+  margin-right: 8px;
+}
+
+.amount-input {
+  flex: 1;
+  font-size: 48px;
+  color: #fff;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-weight: 300;
+  cursor: pointer;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.blessing-section {
+  margin-bottom: 32px;
+}
+
+.blessing-input {
+  width: 100%;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+.amount-display {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.amount-display-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 8px;
+}
+
+.amount-display-value {
+  font-size: 32px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.action-section {
+  margin-bottom: 24px;
+}
+
+.send-btn {
+  width: 100%;
+  padding: 16px;
+  background: #fff;
+  color: #e73827;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:not(:disabled):active {
+    transform: scale(0.98);
+  }
+}
+
+.balance-info {
+  text-align: center;
+}
+
+.balance-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.keyboard-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.keyboard-panel {
+  width: 100%;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.keyboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 60px);
+  gap: 12px;
+}
+
+.keyboard-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: 500;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:active {
+    background: #e0e0e0;
+    transform: scale(0.95);
+  }
+
+  &.key-delete {
+    background: #ff6b6b;
+    color: #fff;
+
+    &:active {
+      background: #ff5252;
+    }
+  }
+
+  &.key-dot {
+    font-size: 32px;
+  }
+
+  &.key-zero {
+    grid-column: span 2;  // 横着占2列
+  }
+
+  &.key-confirm {
+    grid-row: span 3;  // 竖着占3行
+    background: #07C160;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+
+    &:active {
+      background: #06ad56;
+    }
+  }
+
+  &.key-empty {
+    background: transparent;
+    cursor: default;
+
+    &:active {
+      background: transparent;
+      transform: none;
+    }
+  }
+}
+</style>
