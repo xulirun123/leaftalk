@@ -25,28 +25,22 @@ const props = withDefaults(defineProps<Props>(), {
 
 const imageError = ref(false)
 
-// 银行图标LOGO（使用本地图片路径）
-// 请将真实的银行LOGO图片放在 public/images/banks/ 目录下
-// 文件名：icbc.png, boc.png, ccb.png, abc.png
+// 银行图标LOGO（使用本地SVG文件）
 const bankLogos: Record<string, string> = {
-  // 工商银行
-  icbc: '/images/banks/icbc.png',
+  // 工商银行 - 双圆双工字
+  icbc: '/images/banks/icbc.svg',
 
-  // 中国银行
-  boc: '/images/banks/boc.png',
+  // 中国银行 - 古钱币
+  boc: '/images/banks/boc.svg',
 
-  // 建设银行
-  ccb: '/images/banks/ccb.png',
+  // 建设银行 - 蓝色C
+  ccb: '/images/banks/ccb.svg',
 
-  // 农业银行
-  abc: '/images/banks/abc.png'
+  // 农业银行 - 麦穗
+  abc: '/images/banks/abc.svg'
 }
 
 const bankLogoUrl = computed(() => {
-  if (imageError.value) {
-    // 如果图片加载失败，返回占位图标
-    return `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzY2NiIvPjx0ZXh0IHg9IjUwIiB5PSI2MCIgZm9udC1zaXplPSIyMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPiR7cHJvcHMuYmFuay50b1VwcGVyQ2FzZSgpfTwvdGV4dD48L3N2Zz4=`
-  }
   return bankLogos[props.bank] || bankLogos.icbc
 })
 
