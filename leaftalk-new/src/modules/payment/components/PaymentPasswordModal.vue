@@ -40,6 +40,50 @@
               </div>
             </div>
           </div>
+
+          <!-- 付款方式下拉菜单 -->
+          <transition name="dropdown">
+            <div v-if="showPaymentMethods" class="payment-methods-dropdown" @click.stop>
+              <!-- 付款方式列表 -->
+              <div class="payment-methods-list">
+                <div
+                  v-for="method in paymentMethods"
+                  :key="method.id"
+                  class="payment-method-item"
+                  :class="{ active: selectedMethod.id === method.id }"
+                  @click="selectPaymentMethod(method)"
+                >
+                  <div class="method-icon">
+                    <iconify-icon
+                      :icon="method.icon"
+                      width="24"
+                      :style="{ color: method.color }"
+                    ></iconify-icon>
+                  </div>
+                  <div class="method-info">
+                    <div class="method-name">{{ method.name }}</div>
+                    <div v-if="method.cardNumber" class="method-detail">
+                      {{ method.cardNumber }}
+                    </div>
+                  </div>
+                  <iconify-icon
+                    v-if="selectedMethod.id === method.id"
+                    icon="heroicons:check-circle-solid"
+                    width="20"
+                    style="color: #07C160;"
+                  ></iconify-icon>
+                </div>
+              </div>
+
+              <!-- 添加银行卡按钮 -->
+              <div class="add-card-section">
+                <button class="add-card-btn" @click="handleAddCard">
+                  <iconify-icon icon="heroicons:plus-circle" width="20"></iconify-icon>
+                  <span>添加银行卡</span>
+                </button>
+              </div>
+            </div>
+          </transition>
         </div>
 
         <!-- 密码输入框 -->
@@ -86,58 +130,8 @@
       </div>
     </div>
 
-    <!-- 付款方式选择面板（独立弹出） -->
-    <div v-if="showPaymentMethods" class="payment-methods-overlay" @click="showPaymentMethods = false">
-      <div class="payment-methods-panel" @click.stop>
-        <div class="panel-header">
-          <h3 class="panel-title">选择付款方式</h3>
-          <button class="panel-close-btn" @click="showPaymentMethods = false">
-            <iconify-icon icon="heroicons:x-mark" width="20"></iconify-icon>
-          </button>
-        </div>
-
-        <div class="panel-body">
-          <!-- 付款方式列表 -->
-          <div class="payment-methods-list">
-            <div
-              v-for="method in paymentMethods"
-              :key="method.id"
-              class="payment-method-item"
-              :class="{ active: selectedMethod.id === method.id }"
-              @click="selectPaymentMethod(method)"
-            >
-              <div class="method-icon">
-                <iconify-icon
-                  :icon="method.icon"
-                  width="24"
-                  :style="{ color: method.color }"
-                ></iconify-icon>
-              </div>
-              <div class="method-info">
-                <div class="method-name">{{ method.name }}</div>
-                <div v-if="method.cardNumber" class="method-detail">
-                  {{ method.cardNumber }}
-                </div>
-              </div>
-              <iconify-icon
-                v-if="selectedMethod.id === method.id"
-                icon="heroicons:check-circle-solid"
-                width="20"
-                style="color: #07C160;"
-              ></iconify-icon>
-            </div>
-          </div>
-
-          <!-- 添加银行卡按钮 -->
-          <div class="add-card-section">
-            <button class="add-card-btn" @click="handleAddCard">
-              <iconify-icon icon="heroicons:plus-circle" width="20"></iconify-icon>
-              <span>添加银行卡</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- 遮罩层：点击关闭下拉菜单 -->
+    <div v-if="showPaymentMethods" class="dropdown-overlay" @click="showPaymentMethods = false"></div>
   </div>
 </template>
 
@@ -382,6 +376,7 @@ watch(() => props.visible, (newVal) => {
 
 /* 付款方式 */
 .payment-method-section {
+  position: relative;
   padding: 16px 20px;
   border-bottom: 1px solid #f0f0f0;
 }
@@ -425,93 +420,58 @@ watch(() => props.visible, (newVal) => {
   border-radius: 8px;
 }
 
-/* 付款方式选择面板（独立弹出） */
-.payment-methods-overlay {
+/* 下拉菜单遮罩 */
+.dropdown-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 10000;
-  animation: fadeIn 0.2s ease-out;
+  z-index: 9998;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.payment-methods-panel {
+/* 付款方式下拉菜单 */
+.payment-methods-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 20px;
+  right: 20px;
+  margin-top: 8px;
   background: white;
-  border-radius: 16px 16px 0 0;
-  width: 100%;
-  max-height: 70vh;
-  display: flex;
-  flex-direction: column;
-  animation: slideUp 0.3s ease-out;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px;
-  border-bottom: 1px solid #f0f0f0;
-  flex-shrink: 0;
-}
-
-.panel-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-}
-
-.panel-close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  color: #999;
-  transition: all 0.2s;
-}
-
-.panel-close-btn:hover {
-  background: #f0f0f0;
-  color: #333;
-}
-
-.panel-body {
-  flex: 1;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  max-height: 400px;
   overflow-y: auto;
-  padding: 0;
+}
+
+/* 下拉动画 */
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 .payment-methods-list {
-  padding: 0;
+  padding: 8px 0;
 }
 
 .payment-method-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: background 0.2s;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.payment-method-item:last-child {
-  border-bottom: none;
 }
 
 .payment-method-item:hover {
@@ -551,8 +511,8 @@ watch(() => props.visible, (newVal) => {
 
 /* 添加银行卡 */
 .add-card-section {
-  padding: 16px 20px;
-  border-top: 8px solid #f5f5f5;
+  padding: 8px;
+  border-top: 1px solid #f0f0f0;
 }
 
 .add-card-btn {
@@ -561,9 +521,9 @@ watch(() => props.visible, (newVal) => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px;
+  padding: 12px;
   background: #fff;
-  border: 1px solid #e0e0e0;
+  border: none;
   border-radius: 8px;
   color: #07C160;
   font-size: 15px;
@@ -574,7 +534,6 @@ watch(() => props.visible, (newVal) => {
 
 .add-card-btn:hover {
   background: #f8f8f8;
-  border-color: #07C160;
 }
 
 .add-card-btn:active {
