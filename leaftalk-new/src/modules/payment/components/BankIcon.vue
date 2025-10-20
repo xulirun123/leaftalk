@@ -25,19 +25,19 @@ const props = withDefaults(defineProps<Props>(), {
 
 const imageError = ref(false)
 
-// 银行图标LOGO（使用本地SVG文件）
+// 银行图标LOGO（使用真实的银行LOGO PNG文件）
 const bankLogos: Record<string, string> = {
-  // 工商银行 - 双圆双工字
-  icbc: '/images/banks/icbc.svg',
+  // 工商银行
+  icbc: '/images/banks/icbc.png',
 
-  // 中国银行 - 古钱币
-  boc: '/images/banks/boc.svg',
+  // 中国银行
+  boc: '/images/banks/boc.png',
 
-  // 建设银行 - 蓝色C
-  ccb: '/images/banks/ccb.svg',
+  // 建设银行
+  ccb: '/images/banks/ccb.png',
 
-  // 农业银行 - 麦穗
-  abc: '/images/banks/abc.svg'
+  // 农业银行
+  abc: '/images/banks/abc.png'
 }
 
 const bankLogoUrl = computed(() => {
