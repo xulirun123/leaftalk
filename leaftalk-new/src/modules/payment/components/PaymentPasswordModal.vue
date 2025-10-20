@@ -15,17 +15,14 @@
         <div class="payment-method-section">
           <div class="payment-method-header">
             <span class="method-label">付款方式</span>
-            <button class="change-method-btn" @click="showPaymentMethods = !showPaymentMethods">
+            <button class="change-method-btn" @click="openPaymentMethodModal">
               更改
-              <iconify-icon
-                :icon="showPaymentMethods ? 'heroicons:chevron-up' : 'heroicons:chevron-down'"
-                width="16"
-              ></iconify-icon>
+              <iconify-icon icon="heroicons:chevron-down" width="16"></iconify-icon>
             </button>
           </div>
 
           <!-- 当前选择的付款方式 -->
-          <div class="current-payment-method">
+          <div class="current-payment-method" :class="{ 'is-balance': selectedMethod.id === 'balance' }">
             <div class="method-icon">
               <iconify-icon
                 v-if="selectedMethod.id === 'balance'"
@@ -45,6 +42,13 @@
                 {{ selectedMethod.cardNumber }}
               </div>
             </div>
+            <!-- 零钱项显示打勾 -->
+            <iconify-icon
+              v-if="selectedMethod.id === 'balance'"
+              icon="heroicons:check-circle-solid"
+              width="20"
+              style="color: #07C160; margin-left: auto;"
+            ></iconify-icon>
           </div>
         </div>
 
@@ -93,11 +97,11 @@
     <!-- 选择付款方式弹窗 -->
     <transition name="slide-up">
       <div v-if="showPaymentMethods" class="payment-method-modal">
-        <div class="payment-modal-overlay" @click="showPaymentMethods = false"></div>
+        <div class="payment-modal-overlay" @click="closePaymentMethodModal"></div>
         <div class="payment-modal-content">
           <!-- 头部 -->
           <div class="payment-modal-header">
-            <button class="back-btn" @click="showPaymentMethods = false">
+            <button class="back-btn" @click="closePaymentMethodModal">
               <iconify-icon icon="heroicons:chevron-down" width="24"></iconify-icon>
             </button>
             <h3 class="payment-modal-title">选择付款方式</h3>
@@ -125,10 +129,10 @@
             <!-- 银行卡标题 -->
             <div class="bank-card-title">银行卡</div>
 
-            <!-- 银行卡列表 -->
+            <!-- 银行卡列表（最多显示5张） -->
             <div class="bank-card-list">
               <div
-                v-for="method in bankCards"
+                v-for="method in bankCards.slice(0, 5)"
                 :key="method.id"
                 class="bank-card-item"
                 @click="selectPaymentMethod(method)"
@@ -148,8 +152,13 @@
 
             <!-- 添加银行卡 -->
             <div class="add-bank-card-item" @click="handleAddCard">
-              <iconify-icon icon="heroicons:plus-circle" width="24" style="color: #07C160;"></iconify-icon>
+              <iconify-icon icon="heroicons:plus-circle" width="24" style="color: #333;"></iconify-icon>
               <span class="add-card-text">添加银行卡</span>
+            </div>
+
+            <!-- 底部说明文本 -->
+            <div class="footer-text">
+              本服务由叶语团队提供
             </div>
           </div>
         </div>
@@ -226,6 +235,16 @@ const walletBalance = ref('1580.50')
 
 // 银行卡列表（不包括零钱）
 const bankCards = computed(() => paymentMethods.value.filter(m => m.id !== 'balance'))
+
+// 打开付款方式弹窗
+const openPaymentMethodModal = () => {
+  showPaymentMethods.value = true
+}
+
+// 关闭付款方式弹窗
+const closePaymentMethodModal = () => {
+  showPaymentMethods.value = false
+}
 
 // 选择付款方式
 const selectPaymentMethod = (method: PaymentMethod) => {
@@ -449,6 +468,10 @@ watch(() => props.visible, (newVal) => {
   padding: 0 12px;
   background: #f7f7f7;
   border-radius: 6px;
+
+  &.is-balance {
+    background: #fffbe8; // 零钱项浅黄色背景
+  }
 }
 
 /* 选择付款方式弹窗 */
@@ -520,16 +543,16 @@ watch(() => props.visible, (newVal) => {
   padding: 0;
 }
 
-/* 零钱项 */
+/* 零钱项 - 48px高度 */
 .balance-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 42px;
+  height: 48px;
   padding: 0 20px;
   cursor: pointer;
   transition: background 0.2s;
-  background: #fffbe8;
+  background: #fffbe8; // 浅黄色背景
 }
 
 .balance-item:active {
@@ -543,7 +566,7 @@ watch(() => props.visible, (newVal) => {
 }
 
 .balance-text {
-  font-size: 15px;
+  font-size: 13px;
   color: #333;
 }
 
@@ -554,34 +577,34 @@ watch(() => props.visible, (newVal) => {
 }
 
 .balance-amount {
-  font-size: 14px;
+  font-size: 13px;
   color: #999;
 }
 
-/* 银行卡标题 */
+/* 银行卡标题 - 42px高度 */
 .bank-card-title {
-  height: 25px;
-  line-height: 25px;
+  height: 42px;
+  line-height: 42px;
   padding: 0 20px;
   font-size: 13px;
   color: #999;
   background: #f7f7f7;
 }
 
-/* 银行卡列表 */
+/* 银行卡列表 - 2px间距 */
 .bank-card-list {
   padding: 0;
   background: #f7f7f7;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 2px; // 2px灰色间距
 }
 
 .bank-card-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 42px;
+  height: 48px; // 48px高度
   padding: 0 20px;
   cursor: pointer;
   transition: background 0.2s;
@@ -599,29 +622,42 @@ watch(() => props.visible, (newVal) => {
 }
 
 .card-text {
-  font-size: 15px;
+  font-size: 13px; // 13px字体
   color: #333;
 }
 
-/* 添加银行卡 */
+/* 添加银行卡 - 42px高度 */
 .add-bank-card-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 20px;
+  height: 42px;
+  padding: 0 20px;
   cursor: pointer;
   transition: background 0.2s;
-  border-top: 8px solid #f5f5f5;
+  background: #fff;
+  margin-top: 2px;
 }
 
 .add-bank-card-item:active {
-  background: #f8f8f8;
+  background: #f7f7f7;
 }
 
 .add-card-text {
-  font-size: 15px;
-  color: #07C160;
-  font-weight: 500;
+  font-size: 13px;
+  color: #333; // 正常色
+}
+
+/* 底部说明文本 - 60px高度 */
+.footer-text {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #999;
+  background: #fff;
+  margin-top: 2px;
 }
 
 /* 滑入动画 */

@@ -42,12 +42,9 @@
       </div>
     </div>
 
-    <!-- 数字键盘（从底部弹出） -->
+    <!-- 数字键盘（从底部弹出，无完成按钮） -->
     <transition name="slide-up">
       <div v-if="showKeyboard" class="keyboard-panel">
-        <div class="keyboard-header">
-          <button class="keyboard-close" @click="showKeyboard = false">完成</button>
-        </div>
         <div class="keyboard-grid">
           <button
             v-for="(key, index) in keyboardKeys"
@@ -330,7 +327,7 @@ onMounted(async () => {
   }
 }
 
-/* 数字键盘面板 */
+/* 数字键盘面板（无完成按钮） */
 .keyboard-panel {
   position: fixed;
   bottom: 0;
@@ -340,24 +337,8 @@ onMounted(async () => {
   border-top: 1px solid #e0e0e0;
   z-index: 1000;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.keyboard-header {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.keyboard-close {
-  background: none;
-  border: none;
-  color: #07C160;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 4px 8px;
+  padding: 16px;
+  padding-bottom: 20px;
 }
 
 .keyboard-grid {
