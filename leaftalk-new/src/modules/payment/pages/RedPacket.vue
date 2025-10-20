@@ -49,13 +49,11 @@
           class="keyboard-key"
           :class="{
             'key-delete': key === 'delete',
-            'key-dot': key === '.',
-            'key-confirm': key === 'confirm'
+            'key-dot': key === '.'
           }"
           @click="handleKeyPress(key)"
         >
           <iconify-icon v-if="key === 'delete'" icon="heroicons:backspace" width="24"></iconify-icon>
-          <span v-else-if="key === 'confirm'">确认</span>
           <span v-else>{{ key }}</span>
         </button>
       </div>
@@ -100,20 +98,16 @@ const showPasswordModal = ref(false)
 const showResultDialog = ref(false)
 const sendResult = ref<any>({})
 
-// 数字键盘按键 (4行4列)
+// 数字键盘按键 (3排4列)
 const keyboardKeys = [
   '1', '2', '3', 'delete',
-  '4', '5', '6', 'confirm',
-  '7', '8', '9',
-  '0', '.'
+  '4', '5', '6', '0',
+  '7', '8', '9', '.'
 ]
 
 // 处理按键
 const handleKeyPress = (key: string) => {
-  if (key === 'confirm') {
-    // 确认按钮：不做任何操作，金额已经输入完成
-    return
-  } else if (key === 'delete') {
+  if (key === 'delete') {
     // 删除按钮
     if (packetAmount.value.length > 0) {
       packetAmount.value = packetAmount.value.slice(0, -1)
@@ -328,7 +322,7 @@ onMounted(async () => {
 .keyboard-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(4, 56px);
+  grid-template-rows: repeat(3, 56px);
   gap: 10px;
 }
 
@@ -375,24 +369,5 @@ onMounted(async () => {
 .key-dot {
   font-size: 32px;
   font-weight: 600;
-}
-
-.key-confirm {
-  grid-column: 4;
-  grid-row: 2 / 5;
-  background: linear-gradient(135deg, #07C160 0%, #06AD56 100%);
-  color: white;
-  font-size: 18px;
-  font-weight: 600;
-  box-shadow:
-    0 2px 4px rgba(7, 193, 96, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-
-  &:active {
-    background: linear-gradient(135deg, #06AD56 0%, #059A4C 100%);
-    box-shadow:
-      0 1px 2px rgba(7, 193, 96, 0.3),
-      inset 0 1px 3px rgba(0, 0, 0, 0.2);
-  }
 }
 </style>
