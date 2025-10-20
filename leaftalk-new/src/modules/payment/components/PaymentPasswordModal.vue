@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="payment-password-modal" @click="handleBackdropClick">
+  <div v-if="visible" class="payment-password-modal" @click.stop>
     <div class="modal-content" @click.stop>
       <div class="modal-body">
         <!-- 红包金额显示 -->
@@ -292,11 +292,6 @@ const close = () => {
   showPaymentMethods.value = false
   emit('update:visible', false)
   emit('cancel')
-}
-
-// 点击背景关闭
-const handleBackdropClick = () => {
-  close()
 }
 
 // 监听visible变化，重置状态
