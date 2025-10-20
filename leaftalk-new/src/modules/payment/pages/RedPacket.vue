@@ -315,7 +315,7 @@ onMounted(async () => {
 /* 数字键盘 */
 .keyboard-section {
   margin-top: auto;
-  padding: 16px 0 0 0;
+  padding: 16px 0 20px 0;
   background: #EDEDED;
 }
 
