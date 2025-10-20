@@ -1,51 +1,93 @@
 <template>
   <div class="bank-icon" :style="{ width: size + 'px', height: size + 'px' }">
-    <!-- 工商银行 ICBC -->
+    <!-- 工商银行 ICBC - 两个工字组成 -->
     <svg v-if="bank === 'icbc'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#C8102E"/>
-      <text x="50" y="60" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white" text-anchor="middle">工商</text>
-    </svg>
-
-    <!-- 中国银行 BOC -->
-    <svg v-else-if="bank === 'boc'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="48" fill="#B8292F"/>
-      <circle cx="50" cy="50" r="35" fill="none" stroke="white" stroke-width="3"/>
-      <rect x="35" y="35" width="30" height="30" fill="none" stroke="white" stroke-width="3"/>
-      <text x="50" y="95" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#B8292F" text-anchor="middle">中国银行</text>
-    </svg>
-
-    <!-- 建设银行 CCB -->
-    <svg v-else-if="bank === 'ccb'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="ccbGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#0066B3;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#004B87;stop-opacity:1" />
-        </linearGradient>
-      </defs>
       <!-- 外圆 -->
-      <circle cx="50" cy="50" r="48" fill="url(#ccbGradient)"/>
-      <!-- 内方 -->
-      <rect x="30" y="30" width="40" height="40" fill="none" stroke="white" stroke-width="4" rx="2"/>
-      <!-- 两个C的重叠效果 -->
-      <path d="M 65 35 Q 75 35 75 45 Q 75 55 65 55" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/>
-      <path d="M 70 40 Q 80 40 80 50 Q 80 60 70 60" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="50" cy="50" r="48" fill="none" stroke="#C8102E" stroke-width="3"/>
+      <!-- 内圆 -->
+      <circle cx="50" cy="50" r="38" fill="none" stroke="#C8102E" stroke-width="2"/>
+
+      <!-- 左边的"工"字 -->
+      <g transform="translate(30, 50)">
+        <!-- 上横 -->
+        <rect x="0" y="-15" width="18" height="3" fill="#C8102E"/>
+        <!-- 中竖 -->
+        <rect x="7.5" y="-12" width="3" height="24" fill="#C8102E"/>
+        <!-- 下横 -->
+        <rect x="0" y="9" width="18" height="3" fill="#C8102E"/>
+      </g>
+
+      <!-- 右边的"工"字 -->
+      <g transform="translate(52, 50)">
+        <!-- 上横 -->
+        <rect x="0" y="-15" width="18" height="3" fill="#C8102E"/>
+        <!-- 中竖 -->
+        <rect x="7.5" y="-12" width="3" height="24" fill="#C8102E"/>
+        <!-- 下横 -->
+        <rect x="0" y="9" width="18" height="3" fill="#C8102E"/>
+      </g>
     </svg>
 
-    <!-- 农业银行 ABC -->
+    <!-- 中国银行 BOC - 古钱币造型 -->
+    <svg v-else-if="bank === 'boc'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- 外圆 -->
+      <circle cx="50" cy="50" r="48" fill="none" stroke="#B8292F" stroke-width="3"/>
+      <!-- 内圆 -->
+      <circle cx="50" cy="50" r="32" fill="none" stroke="#B8292F" stroke-width="2.5"/>
+
+      <!-- 内方孔 -->
+      <rect x="38" y="38" width="24" height="24" fill="none" stroke="#B8292F" stroke-width="2.5"/>
+
+      <!-- 四个角的装饰 -->
+      <circle cx="38" cy="38" r="2" fill="#B8292F"/>
+      <circle cx="62" cy="38" r="2" fill="#B8292F"/>
+      <circle cx="38" cy="62" r="2" fill="#B8292F"/>
+      <circle cx="62" cy="62" r="2" fill="#B8292F"/>
+    </svg>
+
+    <!-- 建设银行 CCB - 古钱币+两个C -->
+    <svg v-else-if="bank === 'ccb'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- 外圆 -->
+      <circle cx="50" cy="50" r="48" fill="none" stroke="#0066B3" stroke-width="3"/>
+
+      <!-- 内方 -->
+      <rect x="32" y="32" width="36" height="36" fill="none" stroke="#0066B3" stroke-width="2.5"/>
+
+      <!-- 第一个C（左下） -->
+      <path d="M 42 58 Q 35 58 35 50 Q 35 42 42 42"
+            fill="none" stroke="#0066B3" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- 第二个C（右上，重叠） -->
+      <path d="M 58 42 Q 65 42 65 50 Q 65 58 58 58"
+            fill="none" stroke="#0066B3" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- 立体效果的阴影C -->
+      <path d="M 60 40 Q 68 40 68 50 Q 68 60 60 60"
+            fill="none" stroke="#0066B3" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    </svg>
+
+    <!-- 农业银行 ABC - 麦穗图案 -->
     <svg v-else-if="bank === 'abc'" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="abcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#00854A;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#006838;stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <circle cx="50" cy="50" r="48" fill="url(#abcGradient)"/>
-      <!-- 麦穗图案 -->
-      <path d="M 50 25 L 45 35 L 50 40 L 55 35 Z" fill="#FFD700"/>
-      <path d="M 50 40 L 45 50 L 50 55 L 55 50 Z" fill="#FFD700"/>
-      <path d="M 50 55 L 45 65 L 50 70 L 55 65 Z" fill="#FFD700"/>
-      <ellipse cx="40" cy="45" rx="8" ry="12" fill="#FFD700" opacity="0.7"/>
-      <ellipse cx="60" cy="45" rx="8" ry="12" fill="#FFD700" opacity="0.7"/>
+      <!-- 外圆 -->
+      <circle cx="50" cy="50" r="48" fill="none" stroke="#00854A" stroke-width="3"/>
+
+      <!-- 中间的麦穗主干 -->
+      <line x1="50" y1="25" x2="50" y2="75" stroke="#00854A" stroke-width="2.5"/>
+
+      <!-- 左侧麦穗 -->
+      <ellipse cx="38" cy="35" rx="6" ry="10" fill="#00854A" opacity="0.8"/>
+      <ellipse cx="36" cy="45" rx="7" ry="11" fill="#00854A" opacity="0.8"/>
+      <ellipse cx="38" cy="55" rx="6" ry="10" fill="#00854A" opacity="0.8"/>
+      <ellipse cx="40" cy="65" rx="5" ry="8" fill="#00854A" opacity="0.8"/>
+
+      <!-- 右侧麦穗 -->
+      <ellipse cx="62" cy="35" rx="6" ry="10" fill="#00854A" opacity="0.8"/>
+      <ellipse cx="64" cy="45" rx="7" ry="11" fill="#00854A" opacity="0.8"/>
+      <ellipse cx="62" cy="55" rx="6" ry="10" fill="#00854A" opacity="0.8"/>
+      <ellipse cx="60" cy="65" rx="5" ry="8" fill="#00854A" opacity="0.8"/>
+
+      <!-- 麦穗顶部 -->
+      <path d="M 50 25 L 45 30 L 50 28 L 55 30 Z" fill="#00854A"/>
     </svg>
 
     <!-- 默认银行图标 -->
