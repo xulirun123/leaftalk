@@ -51,20 +51,31 @@ export default defineConfig(({ mode }) => {
     // 代理配置，转发API请求到后端
     proxy: {
       '/api': {
-        target: 'http://localhost:8893',
+        target: 'http://127.0.0.1:8893',
         changeOrigin: true,
         secure: false,
         timeout: 30000,
         followRedirects: true,
-        ws: false
+        ws: false,
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('❌ 代理错误:', err.message)
+          })
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            console.log('🔄 代理请求:', req.method, req.url, '→', options.target + req.url)
+          })
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            console.log('✅ 代理响应:', proxyRes.statusCode, req.url)
+          })
+        }
       },
       '/socket.io': {
-        target: 'http://localhost:8893',  // WebSocket代理到生产服务器
+        target: 'http://127.0.0.1:8893',  // WebSocket代理到生产服务器
         changeOrigin: true,
         ws: true
       },
       '/ws': {
-        target: 'ws://localhost:8893',  // WebSocket代理到生产服务器
+        target: 'ws://127.0.0.1:8893',  // WebSocket代理到生产服务器
         changeOrigin: true,
         ws: true
       }
