@@ -2,7 +2,6 @@
   <div class="wechat-input" :class="{
     'emoji-panel-open': showEmojiPanel,
     'more-panel-open': showMorePanel,
-    'input-method-panel-open': showInputMethodPanel,
     'voice-mode': currentInputMode === 'voice'
   }">
     <!-- 主输入区域 -->
@@ -107,14 +106,7 @@
       />
     </div>
 
-    <!-- 输入法面板 -->
-    <InputMethodPanel
-      v-if="showInputMethodPanel"
-      :visible="showInputMethodPanel"
-      @input="handleInputMethodInput"
-      @temp-input="handleTempInput"
-      @close="handleInputMethodClose"
-    />
+
 
     <!-- 更多功能面板 -->
     <div v-if="showMorePanel" class="more-panel" @click.stop>
@@ -207,7 +199,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import InputMethodPanel from './InputMethodPanel.vue'
 import EmojiPicker from './EmojiPicker.vue'
 
 // Props
@@ -240,7 +231,7 @@ interface Emits {
   (e: 'red-packet'): void
   (e: 'transfer'): void
   (e: 'keyboard-height-change', height: number): void
-  (e: 'panel-change', data: { type: 'emoji' | 'more' | 'input-method' | 'none', height: number }): void
+  (e: 'panel-change', data: { type: 'emoji' | 'more' | 'none', height: number }): void
 }
 
 const emit = defineEmits<Emits>()
@@ -258,19 +249,16 @@ const fileInput = ref<HTMLInputElement>()
 // 面板状态
 const showEmojiPanel = ref(false)
 const showMorePanel = ref(false)
-const showInputMethodPanel = ref(false)
 
 // 监听面板状态变化，通知父组件
-watch([showEmojiPanel, showMorePanel, showInputMethodPanel], ([emoji, more, inputMethod]) => {
-  console.log('👀 面板状态变化:', { emoji, more, inputMethod })
+watch([showEmojiPanel, showMorePanel], ([emoji, more]) => {
+  console.log('👀 面板状态变化:', { emoji, more })
 
   // 确定当前激活的面板类型和高度
   if (emoji) {
     emit('panel-change', { type: 'emoji', height: 250 })
   } else if (more) {
     emit('panel-change', { type: 'more', height: 250 })
-  } else if (inputMethod) {
-    emit('panel-change', { type: 'input-method', height: 250 })
   } else {
     // 所有面板都关闭
     emit('panel-change', { type: 'none', height: 0 })
@@ -365,8 +353,7 @@ const toggleVoiceText = () => {
     currentInputMode.value = 'text'
     showEmojiPanel.value = false
     showMorePanel.value = false
-    showInputMethodPanel.value = true  // 显示输入法面板
-    // 聚焦到输入框
+    // 聚焦到输入框，调用原生键盘
     nextTick(() => {
       textInput.value?.focus()
     })
@@ -375,7 +362,6 @@ const toggleVoiceText = () => {
     currentInputMode.value = 'voice'
     showEmojiPanel.value = false
     showMorePanel.value = false
-    showInputMethodPanel.value = false
   }
 }
 
@@ -387,15 +373,17 @@ const toggleEmojiText = () => {
     currentInputMode.value = 'text'
     showEmojiPanel.value = false
     showMorePanel.value = false
-    showInputMethodPanel.value = true  // 显示输入法面板
-    console.log('🎭 切换到文本模式，显示输入法面板')
-    emit('panel-change', { type: 'input-method', height: 250 })
+    console.log('🎭 切换到文本模式')
+    emit('panel-change', { type: 'none', height: 0 })
+    // 聚焦到输入框，调用原生键盘
+    nextTick(() => {
+      textInput.value?.focus()
+    })
   } else {
     // 从语音/文本模式切换到表情模式
     currentInputMode.value = 'emoji'
     showEmojiPanel.value = true
     showMorePanel.value = false
-    showInputMethodPanel.value = false  // 关闭输入法面板
     console.log('🎭 切换到表情模式，显示表情面板')
     emit('panel-change', { type: 'emoji', height: 250 })
   }
@@ -406,7 +394,6 @@ const closePanels = () => {
 
   showEmojiPanel.value = false
   showMorePanel.value = false
-  showInputMethodPanel.value = false
 
   // 通知面板关闭
   emit('panel-change', { type: 'none', height: 0 })
@@ -511,34 +498,25 @@ const handleInputMethodInput = (text: string) => {
   adjustTextareaHeight()
 }
 
-const handleTempInput = (tempText: string) => {
-  // 处理临时输入（如拼音输入过程中的显示）
-  console.log('临时输入:', tempText)
-  // 可以在这里显示拼音输入状态
-}
 
-const handleInputMethodClose = () => {
-  showInputMethodPanel.value = false
-}
 
 const handleFocus = () => {
   emit('focus')
   console.log('📝 输入框获得焦点，当前模式:', currentInputMode.value, '关闭面板中:', isClosingPanels)
 
-  // 如果正在关闭面板，不要立即显示输入法面板
+  // 如果正在关闭面板，不要立即显示面板
   if (isClosingPanels) {
     console.log('📝 正在关闭面板，跳过焦点处理')
     return
   }
 
-  // 点击输入框时，切换到输入法面板
+  // 点击输入框时，关闭其他面板，使用原生键盘
   setTimeout(() => {
     if (!isClosingPanels) {
       currentInputMode.value = 'text'
-      showInputMethodPanel.value = true
       showEmojiPanel.value = false
       showMorePanel.value = false
-      console.log('📝 切换到输入法面板')
+      console.log('📝 切换到文本模式，使用原生键盘')
     }
   }, 100)
 }
@@ -556,7 +534,6 @@ const toggleMore = () => {
   if (showMorePanel.value) {
     // 打开更多面板时，关闭其他面板
     showEmojiPanel.value = false
-    showInputMethodPanel.value = false
     currentInputMode.value = 'text'
     console.log('➕ 打开更多面板，关闭其他面板')
     emit('panel-change', { type: 'more', height: 250 })
@@ -777,23 +754,10 @@ const updateInputPosition = () => {
 
   console.log('📍 更新输入框位置 - 面板状态:', {
     emoji: showEmojiPanel.value,
-    more: showMorePanel.value,
-    input: showInputMethodPanel.value
+    more: showMorePanel.value
   })
 
-  if (showInputMethodPanel.value) {
-    // 输入法面板显示时，获取真实面板高度
-    const inputMethodPanel = document.querySelector('.input-method-panel') as HTMLElement
-    if (inputMethodPanel) {
-      const panelHeight = inputMethodPanel.offsetHeight
-      inputElement.style.bottom = `${panelHeight}px`
-      console.log('📍 输入法面板：输入框在面板上方，面板高度:', panelHeight)
-    } else {
-      // 面板还没渲染，使用默认高度
-      inputElement.style.bottom = '280px'
-      console.log('📍 输入法面板：使用默认高度280px')
-    }
-  } else if (showEmojiPanel.value) {
+  if (showEmojiPanel.value) {
     // 表情面板显示
     inputElement.style.bottom = '250px'
     console.log('📍 表情面板：输入框在面板上方')
@@ -810,7 +774,7 @@ const updateInputPosition = () => {
 }
 
 // 监听面板状态变化
-watch([showEmojiPanel, showMorePanel, showInputMethodPanel], () => {
+watch([showEmojiPanel, showMorePanel], () => {
   nextTick(() => {
     updateInputPosition()
   })
@@ -843,8 +807,7 @@ const handleVisualViewportResize = () => {
     viewportHeight,
     keyboardHeight,
     showEmojiPanel: showEmojiPanel.value,
-    showMorePanel: showMorePanel.value,
-    showInputMethodPanel: showInputMethodPanel.value
+    showMorePanel: showMorePanel.value
   })
 
   // 发送键盘高度变化事件
@@ -884,11 +847,6 @@ onUnmounted(() => {
 /* 当更多功能面板显示时，输入框在面板上方 */
 .wechat-input.more-panel-open {
   bottom: 180px !important;
-}
-
-/* 当输入法面板显示时，由JavaScript动态调整位置 */
-.wechat-input.input-method-panel-open {
-  /* 位置由JavaScript动态设置，不使用固定值 */
 }
 
 /* 主输入区域 */
@@ -1380,10 +1338,6 @@ onUnmounted(() => {
     bottom: 180px;
   }
 
-  .wechat-input.input-method-panel-open {
-    bottom: 230px;  /* 与主样式保持一致 */
-  }
-
   .input-main {
     padding: 6px 8px;
     gap: 6px;
@@ -1474,10 +1428,6 @@ onUnmounted(() => {
 
   .wechat-input.more-panel-open {
     bottom: calc(180px + env(safe-area-inset-bottom));
-  }
-
-  .wechat-input.input-method-panel-open {
-    bottom: calc(230px + env(safe-area-inset-bottom));  /* 与主样式保持一致 */
   }
 
   .emoji-panel {

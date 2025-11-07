@@ -6,7 +6,7 @@
     "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "vite build",
     "preview": "vite preview --port 1420",
-    "server": "node production-server.js",
+    "server": "node server/app.js",
     "frontend": "node frontend-server.js",
     "webrtc": "node server/start-webrtc.js",
     "start": "node scripts/start-all.js",

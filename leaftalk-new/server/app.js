@@ -4759,6 +4759,62 @@ app.get('/api/chat/messages/:userId', authenticateToken, async (req, res) => {
     }
 })
 
+// 获取群聊历史消息
+app.get('/api/groups/:groupId/messages', authenticateToken, async (req, res) => {
+    try {
+        const { groupId } = req.params
+        const currentUserId = req.user.userId
+        const limit = parseInt(req.query.limit) || 50
+        const offset = parseInt(req.query.offset) || 0
+
+        console.log('📨 获取群聊消息:', { groupId, currentUserId, limit, offset })
+
+        // 检查用户是否是群成员
+        const [memberCheck] = await pool.execute(
+            'SELECT id FROM `group_members` WHERE group_id = ? AND user_id = ?',
+            [groupId, currentUserId]
+        )
+
+        if (memberCheck.length === 0) {
+            return res.status(403).json({
+                success: false,
+                error: '您不是该群成员'
+            })
+        }
+
+        // 确保limit和offset是安全的整数
+        const safeLimit = Math.max(1, Math.min(100, parseInt(limit) || 50))
+        const safeOffset = Math.max(0, parseInt(offset) || 0)
+
+        // 获取群聊消息
+        const [messages] = await pool.execute(`
+            SELECT id, sender_id, receiver_id, content, type as message_type, status, created_at
+            FROM messages
+            WHERE receiver_id = ?
+            ORDER BY created_at DESC
+            LIMIT ${safeLimit} OFFSET ${safeOffset}
+        `, [groupId])
+
+        console.log('✅ 获取群聊消息成功，数量:', messages.length)
+
+        res.json({
+            success: true,
+            data: messages.reverse(), // 返回时恢复时间正序
+            pagination: {
+                limit: safeLimit,
+                offset: safeOffset,
+                hasMore: messages.length === safeLimit
+            }
+        })
+    } catch (error) {
+        console.error('❌ 获取群聊历史失败:', error)
+        res.status(500).json({
+            success: false,
+            error: '获取群聊历史失败'
+        })
+    }
+})
+
 // 获取聊天会话列表的通用处理函数 - 简化版本，专注于正常工作
 const getChatSessions = async (req, res) => {
     try {
