@@ -5233,6 +5233,11 @@ const callRouter = require('../backend/routes/callRoutes')
 app.use('/api/call', authenticateToken, callRouter)
 console.log('✅ Call API mounted on /api/call')
 
+// 支付 API (红包、转账、充值等)
+const paymentRouter = require('./services/api/payment')
+app.use('/api/payment', authenticateToken, paymentRouter)
+console.log('✅ Payment API mounted on /api/payment')
+
 // 小程序 API
 app.get('/api/miniapps', authenticateToken, (req, res) => {
   res.json({

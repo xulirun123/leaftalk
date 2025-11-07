@@ -402,16 +402,24 @@ export const usePaymentStore = defineStore('payment', () => {
         throw new Error('余额不足')
       }
 
-      const response = await fetch('/api/payment/red-packet', {
+      // 获取 token
+      const token = localStorage.getItem('yeyu_auth_token') || localStorage.getItem('token')
+
+      const response = await fetch('/api/payment/send-redpacket', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           type,
           amount,
           count,
           blessing,
           receiverId,
-          groupId,
+          chatId: groupId,
+          isGroup: !!groupId,
+          paymentMethod: 'balance',
           paymentPassword
         })
       })
