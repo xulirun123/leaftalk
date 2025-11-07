@@ -139,7 +139,7 @@ router.post('/send-redpacket', async (req, res) => {
 
     // 获取用户信息
     const [users] = await db.query(
-      'SELECT payment_password, wallet_balance FROM users WHERE id = ?',
+      'SELECT pay_password, wallet_balance FROM users WHERE id = ?',
       [userId]
     );
 
@@ -153,7 +153,7 @@ router.post('/send-redpacket', async (req, res) => {
     const user = users[0];
 
     // 验证支付密码
-    if (!user.payment_password) {
+    if (!user.pay_password) {
       return res.status(400).json({
         success: false,
         code: 'NO_PASSWORD',
@@ -161,7 +161,7 @@ router.post('/send-redpacket', async (req, res) => {
       });
     }
 
-    const passwordMatch = await bcrypt.compare(paymentPassword, user.payment_password);
+    const passwordMatch = await bcrypt.compare(paymentPassword, user.pay_password);
 
     if (!passwordMatch) {
       return res.status(400).json({
