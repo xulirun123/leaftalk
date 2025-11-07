@@ -338,7 +338,19 @@ export const usePaymentStore = defineStore('payment', () => {
       })
 
       if (!response.ok) {
-        throw new Error('转账失败')
+        const errorData = await response.json().catch(() => ({}))
+
+        // 处理实名认证错误
+        if (response.status === 403 && errorData.code === 'NOT_VERIFIED') {
+          // 提示用户并跳转到实名认证页面
+          if (confirm(errorData.message || '请先完成实名认证才能使用支付功能。是否前往实名认证？')) {
+            window.location.href = '/#/wallet/real-name-verification'
+          }
+          throw new Error(errorData.message || '请先完成实名认证')
+        }
+
+        // 其他错误
+        throw new Error(errorData.message || '转账失败')
       }
 
       const data = await response.json()
@@ -416,7 +428,7 @@ export const usePaymentStore = defineStore('payment', () => {
           amount,
           count,
           blessing,
-          receiverId,
+          receiverId: groupId || receiverId, // 群聊时用 groupId，单聊时用 receiverId
           chatId: groupId,
           isGroup: !!groupId,
           paymentMethod: 'balance',
@@ -425,7 +437,19 @@ export const usePaymentStore = defineStore('payment', () => {
       })
 
       if (!response.ok) {
-        throw new Error('发送红包失败')
+        const errorData = await response.json().catch(() => ({}))
+
+        // 处理实名认证错误
+        if (response.status === 403 && errorData.code === 'NOT_VERIFIED') {
+          // 提示用户并跳转到实名认证页面
+          if (confirm(errorData.message || '请先完成实名认证才能使用支付功能。是否前往实名认证？')) {
+            window.location.href = '/#/wallet/real-name-verification'
+          }
+          throw new Error(errorData.message || '请先完成实名认证')
+        }
+
+        // 其他错误
+        throw new Error(errorData.message || '发送红包失败')
       }
 
       const data = await response.json()
