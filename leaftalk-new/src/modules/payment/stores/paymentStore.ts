@@ -326,14 +326,21 @@ export const usePaymentStore = defineStore('payment', () => {
         throw new Error(`今日支付限额为${settings.value.dailyLimit}元`)
       }
 
+      // 获取 token
+      const token = localStorage.getItem('yeyu_auth_token') || localStorage.getItem('token')
+
       const response = await fetch('/api/payment/transfer', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          toUserId, 
-          amount, 
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          toUserId,
+          amount,
           remark,
-          paymentPassword 
+          paymentMethod: 'wallet', // 使用叶语钱包
+          paymentPassword
         })
       })
 
@@ -431,7 +438,7 @@ export const usePaymentStore = defineStore('payment', () => {
           receiverId: groupId || receiverId, // 群聊时用 groupId，单聊时用 receiverId
           chatId: groupId,
           isGroup: !!groupId,
-          paymentMethod: 'balance',
+          paymentMethod: 'wallet', // 使用叶语钱包
           paymentPassword
         })
       })
